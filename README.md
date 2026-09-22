@@ -1,13 +1,23 @@
-# Blue Bird Wellness
+# Bluebird Wellness
 
-Marketing website for Blue Bird Wellness — mobile IV drip therapy, iron infusions and blood testing across London.
+Homepage for Bluebird Wellness, an IV drip clinic at Bluebird Dentists near Westfield, London, offering treatments in clinic and as a mobile call-out service.
 
-Single self-contained `index.html` (HTML/CSS/vanilla JS, no build step, no dependencies to install). Open it directly in a browser, or serve the folder with any static host.
+Plain HTML, CSS and JavaScript. No build step, so it can be hosted as-is on GitHub Pages.
+
+- `index.html`: page structure
+- `styles.css`: design tokens and styles (see `DESIGN.md`)
+- `script.js`: treatment content (the `TREATMENTS` list at the top), rendering and scroll motion
+- `images/`: transparent treatment cut-outs
+
+GSAP, ScrollTrigger and Lenis load from jsDelivr. If they fail to load, or the visitor prefers reduced motion, the page shows in its finished, static state.
+
+## Editing treatments
+
+Open `script.js` and edit the `TREATMENTS` list. Each entry has a name, a one-line card summary, an image (or a placeholder shape), a booking link and, optionally, a `showcase` block for a full-screen scroll section. The comment above the list explains every field.
 
 ## Before going live
 
-- Swap the placeholder phone number, WhatsApp number and email in `index.html` for real contact details.
-- Replace the drip menu names, descriptions and prices with the finalised service list.
-- Add real client reviews in the "Client stories" section.
-- Wire up the "Book Online" link to a real booking platform, and/or connect the enquiry form to a backend instead of the `mailto:` fallback.
-- Confirm regulatory/registration wording in the footer before publishing.
+- Replace every `#` booking and contact link with real URLs.
+- Have a clinician confirm the ingredients listed for each drip.
+- Have the copy checked against ASA/CAP rules before publishing.
+- Add images for the treatments that currently use placeholder shapes.
