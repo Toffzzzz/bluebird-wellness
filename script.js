@@ -5,6 +5,7 @@
    2. STAGE TIMING        ← fine-tune the scroll film here
    3. Rendering
    4. Iron: 3D red blood cell (Three.js)
+   4b. Hair & Scalp: scroll-driven hair sway (Three.js shader)
    5. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
    ========================================================================== */
 
@@ -20,6 +21,8 @@
      image        Path to a transparent cut-out, e.g. "images/iron.webp".
                   Leave as null to show the soft placeholder shape instead.
      imageSize    [width, height] of the image in pixels (keeps the layout steady).
+     imageFit     Optional. "cover" for a full photo (not a cut-out): it fills
+                  the card's image well instead of floating inside it.
      alt          Short description of the image for screen readers.
      placeholder  Shown when there is no image:
                     shape:  "drop" | "circle" | "pill" | "blob" | "arch"
@@ -33,6 +36,9 @@
                     tint:        the stage's background colour for this treatment
                     layers:      ("orange" and "plant" only) the layer images, all
                                  on the same canvas size as `image`
+                    swayMask:    ("wipe" only, optional) a greyscale mask the size
+                                 of `image`: white parts sway with the scroll,
+                                 black parts never move
 
    Copy rule: describe what's in each drip and the experience only. No claims
    that a treatment cures, treats, prevents, detoxes, boosts immunity,
@@ -82,16 +88,18 @@ const TREATMENTS = [
     name: 'Recovery (Hangover)',
     summary: 'Fluids with electrolytes and B vitamins, in a calm, unhurried setting.',
     bookUrl: '#',
-    image: null,
-    placeholder: { shape: 'drop', colour: '#D6E0F2' },
+    image: 'images/recovery.webp',
+    imageSize: [426, 800],
+    alt: 'A tall glass of sparkling water',
   },
   {
     id: 'detox',
     name: 'Detox',
     summary: 'Glutathione and vitamin C in a saline drip.',
     bookUrl: '#',
-    image: null,
-    placeholder: { shape: 'circle', colour: '#D8E0D7' },
+    image: 'images/detox.webp',
+    imageSize: [719, 800],
+    alt: 'Cucumber slices and mint leaves with water droplets',
   },
   {
     id: 'hair',
@@ -106,6 +114,7 @@ const TREATMENTS = [
       description: 'Biotin, zinc, B vitamins and amino acids in a saline base. Quiet time to sit back, in our clinic or wherever suits you.',
       scene: 'wipe',
       tint: '#F6F0EA',
+      swayMask: 'images/hair-mask.webp',
     },
   },
   {
@@ -113,8 +122,10 @@ const TREATMENTS = [
     name: 'Skin & Beauty',
     summary: 'Glutathione, vitamin C and biotin in a saline drip.',
     bookUrl: '#',
-    image: null,
-    placeholder: { shape: 'blob', colour: '#ECDCD8' },
+    image: 'images/skin.webp',
+    imageSize: [800, 800],
+    imageFit: 'cover',
+    alt: 'A single water droplet resting on skin',
   },
   {
     id: 'energy',
@@ -157,16 +168,18 @@ const TREATMENTS = [
     name: 'NAD+',
     summary: 'NAD+ given as a slow infusion over a longer, relaxed session.',
     bookUrl: '#',
-    image: null,
-    placeholder: { shape: 'pill', colour: '#DEDAEA' },
+    image: 'images/nad.webp',
+    imageSize: [800, 730],
+    alt: 'A glass model of a molecule, with clear spheres joined by rods',
   },
   {
     id: 'muscle-recovery',
     name: 'Muscle Recovery',
     summary: 'Magnesium, amino acids and fluids in a saline drip.',
     bookUrl: '#',
-    image: null,
-    placeholder: { shape: 'arch', colour: '#E7DCCD' },
+    image: 'images/muscle-recovery.webp',
+    imageSize: [800, 687],
+    alt: 'An athlete holding a deep lunge stretch',
   },
 ];
 
@@ -279,14 +292,32 @@ function staticListHTML(featured) {
   return `<div class="treatment-list">${blocks}</div>`;
 }
 
-function cardHTML(t) {
-  const media = t.image
-    ? `<img src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" loading="lazy" decoding="async">`
-    : `<span class="placeholder placeholder--${esc(t.placeholder?.shape || 'circle')}" style="--ph: ${esc(t.placeholder?.colour || '#E8EFFB')}"></span>`;
+// Share of the card's image well that a cut-out may fill (12% padding on each side).
+const CARD_FILL = 0.76;
 
+function cardMediaHTML(t) {
+  if (!t.image) {
+    return `<div class="card__media" aria-hidden="true"><span class="placeholder placeholder--${esc(t.placeholder?.shape || 'circle')}" style="--ph: ${esc(t.placeholder?.colour || '#E8EFFB')}"></span></div>`;
+  }
+  const [w, h] = t.imageSize;
+  const img = `<img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+
+  // A full photo fills the well; it scales inside its rounded frame on hover.
+  if (t.imageFit === 'cover') return `<div class="card__media card__media--photo">${img}</div>`;
+
+  // A cut-out is contained in the padded area, with a soft ellipse shadow just
+  // below where the image actually ends (tall, wide and square images differ).
+  const shownW = CARD_FILL * Math.min(1, w / h);
+  const shownH = CARD_FILL * Math.min(1, h / w);
+  const bottom = ((1 - shownH) / 2) * 100;
+  const shadow = `--shadow-w: ${(shownW * 70).toFixed(1)}%; --shadow-bottom: ${(bottom - 3).toFixed(1)}%`;
+  return `<div class="card__media"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}</div>`;
+}
+
+function cardHTML(t) {
   return `
     <article class="card" data-card>
-      <div class="card__media" aria-hidden="true">${media}</div>
+      ${cardMediaHTML(t)}
       <h3 class="card__title">${esc(t.name)}</h3>
       <p class="card__desc">${esc(t.summary)}</p>
       ${badgeHTML(t.badge)}
@@ -429,26 +460,40 @@ const SCENES = {
   },
 
   // HAIR & SCALP: a soft-edged wipe from bottom to top while easing out from 1.1× scale.
+  // With a swayMask, the hair also sways with the scroll (see section 4b); the
+  // plain image stays underneath as the fallback.
   wipe: {
     rest: 0.7,
-    html: (t) => objHTML(t, 'wipe', `<div class="wipe-frame"><div class="wipe-mask">${layerImg(t.image, t.imageSize)}</div></div>`),
-    animate({ scene, ft, isLast }) {
+    html: (t) => objHTML(t, 'wipe', `
+      <div class="wipe-frame"><div class="wipe-mask"><div class="layer wipe-content">
+        <img class="wipe-img" src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" decoding="async" draggable="false">
+      </div></div></div>`),
+    animate({ t, scene, ft, start, L, isLast }) {
       const obj = scene.querySelector('.obj');
       const mask = scene.querySelector('.wipe-mask');
-      const img = mask.querySelector('img');
+      const content = mask.querySelector('.wipe-content');
       const shadow = scene.querySelector('.obj__shadow');
 
       // The mask layer is 1.25× the image height; its top edge is a soft fade.
-      // Moving it up while counter-moving the image reveals the image from the bottom.
+      // Moving it up while counter-moving the content reveals it from the bottom.
       gsap.set(mask, { yPercent: 100 });
-      gsap.set(img, { yPercent: -125, scale: 1.1 });
+      gsap.set(content, { yPercent: -125, scale: 1.1 });
       gsap.set(shadow, { autoAlpha: 0 });
 
       ft(mask, { yPercent: 100 }, { yPercent: 0 }, 0, 0.7, 'power1.inOut');
-      ft(img, { yPercent: -125, scale: 1.1 }, { yPercent: 0, scale: 1 }, 0, 0.7, 'power1.inOut');
+      ft(content, { yPercent: -125, scale: 1.1 }, { yPercent: 0, scale: 1 }, 0, 0.7, 'power1.inOut');
       ft(shadow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.3, 0.7, 'power1.inOut');
 
       if (!isLast) ft(obj, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30 }, 0.7, 1, 'power1.inOut');
+
+      if (!t.showcase.swayMask) return;
+      // One and a half slow oscillations across the segment: 0 → +1 → −1 → +0.6 → 0.
+      const sway = { v: 0 };
+      const push = () => { if (hairSway) hairSway.setSway(sway.v); };
+      [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
+        ft(sway, { v: from }, { v: to, onUpdate: push }, f0, f1, 'sine.inOut');
+      });
+      hairWindow = [start - 0.02, start + L + 0.02];
     },
   },
 
@@ -666,8 +711,238 @@ function ensureIronCell(root, isDesktop) {
   return ironCellPromise;
 }
 
-const renderIron = (time) => {
+/* ==========================================================================
+   4b. Hair & Scalp: the hair sways with the scroll
+
+   hair.webp is drawn on a Three.js plane with a small shader that shifts the
+   texture lookup sideways. The shift grows from the top of the head (still)
+   to the ends of the hair (most movement) and is multiplied by
+   hair-mask.webp, so skin, ear, neck, shoulder and background never move.
+   ========================================================================== */
+
+const HAIR_SWAY = {
+  amplitude: 0.02,   // main sway at the ends, as a share of image width; with the
+                     // secondary wave the ends move at most about 2.5%
+  idle: 0.1,         // idle sway strength, relative to a full scroll swing
+  idlePeriod: 6,     // seconds per idle cycle
+  neckBand: 0.08,    // width (share of image width) over which the sway fades out
+                     // towards the neck and back
+};
+
+let hairSway = null;        // the running shader, or null (then the plain image is used)
+let hairSwayPromise = null;
+let hairWindow = [-1, -1];  // timeline span in which the hair is on screen
+let hairVisible = false;
+
+const loadImage = (src) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.onload = () => img.decode().then(() => resolve(img), () => resolve(img));
+  img.onerror = reject;
+  img.src = src;
+});
+
+async function createHairSway(content, img, maskSrc, pixelRatioCap) {
+  const probe = document.createElement('canvas');
+  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return null;
+
+  const THREE = await import('three');
+  const maskImg = await loadImage(maskSrc);
+  if (!img.complete || !img.naturalWidth) await img.decode();
+
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, premultipliedAlpha: true });
+  renderer.setClearColor(0x000000, 0);
+  // Sizes are handed to Three.js in whole device pixels (see resize), so the
+  // drawing buffer, viewport and textures always agree exactly.
+  renderer.setPixelRatio(1);
+  let pixelRatio = Math.min(window.devicePixelRatio || 1, pixelRatioCap);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+  const canvas = renderer.domElement;
+  canvas.className = 'wipe-canvas';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  // Both textures are resampled by the browser to the canvas's exact pixel
+  // size, so at rest every canvas pixel maps onto one texel and the hair looks
+  // identical to the <img> (GPU mipmapping would soften the fine strands).
+  const scaled = (source, w, h) => {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    // A CPU-backed canvas: its high-quality downscale is sharper than the GPU path.
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(source, 0, 0, w, h);
+    return c;
+  };
+  // The mask's white area also covers a strip of neck and background beside
+  // the hair. Fade the mask to black across the last part of each row on the
+  // neck/back (right) side, so hair lying against the skin moves less and
+  // that strip stays still. Rows use the nearest boundary within ±6 rows, so
+  // the fade has no steps.
+  const taperNeckSide = (c) => {
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const { width: w, height: h } = c;
+    const image = g.getImageData(0, 0, w, h);
+    const d = image.data;
+    const band = Math.max(2, Math.round(w * HAIR_SWAY.neckBand));
+    const edge = new Int32Array(h).fill(-1);
+    for (let y = 0; y < h; y++) {
+      for (let x = w - 1; x >= 0; x--) {
+        if (d[(y * w + x) * 4] > 127) { edge[y] = x; break; }
+      }
+    }
+    for (let y = 0; y < h; y++) {
+      let r = w;
+      for (let k = Math.max(0, y - 6); k <= Math.min(h - 1, y + 6); k++) if (edge[k] >= 0) r = Math.min(r, edge[k]);
+      if (r === w) continue;
+      for (let x = Math.max(0, r - band); x < w; x++) {
+        const t = Math.min(1, Math.max(0, (r - x) / band));
+        const i = (y * w + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = Math.round(d[i] * t * t * (3 - 2 * t));
+      }
+    }
+    g.putImageData(image, 0, 0);
+    return c;
+  };
+  const texture = (colorSpace, premultiply) => {
+    const tex = new THREE.Texture();
+    tex.colorSpace = colorSpace;
+    tex.premultiplyAlpha = premultiply;
+    tex.minFilter = tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  };
+  // Colour: sRGB, premultiplied on upload so soft edges blend without fringes.
+  const map = texture(THREE.SRGBColorSpace, true);
+  // Mask: plain data, no colour conversion.
+  const mask = texture(THREE.NoColorSpace, false);
+
+  const uniforms = {
+    uMap: { value: map },
+    uMask: { value: mask },
+    uSway: { value: 0 },
+    uTime: { value: 0 },
+    uAmplitude: { value: HAIR_SWAY.amplitude },
+  };
+
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    premultipliedAlpha: true,
+    depthTest: false,
+    depthWrite: false,
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D uMap;
+      uniform sampler2D uMask;
+      uniform float uSway;
+      uniform float uTime;
+      uniform float uAmplitude;
+      varying vec2 vUv;
+
+      void main() {
+        // vUv.y is 1 at the top of the image: the scalp barely moves, the ends move most.
+        float weight = smoothstep(0.1, 0.95, 1.0 - vUv.y);
+        float offset = uAmplitude * (uSway * weight + 0.25 * uSway * weight * sin(vUv.y * 6.0 + uTime * 0.8));
+
+        // How much this pixel may move (the mask value):
+        //  - hair moves by the mask (white = hair, black = never moves);
+        //  - clear background may receive hair swinging in from beside it;
+        //  - skin (opaque and black in the mask) never moves, and hair never
+        //    pulls skin in, so the ear, neck and shoulder stay perfectly still.
+        // Clear background is only pulled in from the outer (left) side of the
+        // hair; on the neck and back side that would open holes beside the skin.
+        // (Near-black mask values and near-opaque pixels count as fully still.)
+        vec2 from = vec2(vUv.x - offset, vUv.y);
+        float maskHere = smoothstep(0.02, 1.0, texture2D(uMask, vUv).r);
+        float maskFrom = smoothstep(0.02, 1.0, texture2D(uMask, from).r);
+        float clearHere = 1.0 - smoothstep(0.02, 0.6, texture2D(uMap, vUv).a);
+        float clearFrom = (1.0 - smoothstep(0.02, 0.6, texture2D(uMap, from).a)) * step(0.0, offset);
+        float mask = max(maskHere, clearHere * maskFrom) * max(maskFrom, clearFrom);
+
+        vec2 uv = vec2(vUv.x - offset * mask, vUv.y);
+        vec4 color = texture2D(uMap, uv); // premultiplied
+        if (uv.x < 0.0 || uv.x > 1.0) color = vec4(0.0);
+        gl_FragColor = color;
+        #include <colorspace_fragment>
+      }`,
+  });
+
+  const scene = new THREE.Scene();
+  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+  const camera = new THREE.Camera();
+
+  // The canvas fills the same box as the image (the image's aspect ratio);
+  // CSS sizes it, and its drawing buffer matches that box in device pixels.
+  let textureSize = '';
+  const resize = () => {
+    const w = content.clientWidth, h = content.clientHeight;
+    if (!w || !h) return;
+    const pw = Math.max(1, Math.round(w * pixelRatio));
+    const ph = Math.max(1, Math.round(h * pixelRatio));
+    renderer.setSize(pw, ph, false);
+    const key = `${pw}x${ph}`;
+    if (key === textureSize) return;
+    textureSize = key;
+    // A new size needs new GPU storage; dispose so the textures are re-allocated.
+    map.dispose();
+    mask.dispose();
+    map.image = scaled(img, pw, ph);
+    mask.image = taperNeckSide(scaled(maskImg, pw, ph));
+    map.needsUpdate = mask.needsUpdate = true;
+  };
+  new ResizeObserver(resize).observe(content);
+  resize();
+
+  let scrollSway = 0;
+  let idle = HAIR_SWAY.idle;
+  const sway = {
+    canvas,
+    setSway(v) { scrollSway = v; },
+    setIdle(v) { idle = v; },
+    setPixelRatioCap(cap) {
+      pixelRatio = Math.min(window.devicePixelRatio || 1, cap);
+      resize();
+    },
+    render(time) {
+      uniforms.uTime.value = time;
+      uniforms.uSway.value = scrollSway + idle * Math.sin((time / HAIR_SWAY.idlePeriod) * Math.PI * 2);
+      renderer.render(scene, camera);
+    },
+  };
+
+  // Draw the first frame before swapping, so the canvas replaces the image invisibly.
+  content.appendChild(canvas);
+  sway.render(0);
+  img.style.visibility = 'hidden';
+  return sway;
+}
+
+function ensureHairSway(root, isDesktop) {
+  const t = FEATURED.find((f) => f.showcase.swayMask);
+  const content = t && root.querySelector(`.scene[data-scene="${t.id}"] .wipe-content`);
+  if (!content) return Promise.resolve(null);
+  const cap = isDesktop ? 2 : 1.5;
+  if (!hairSwayPromise) {
+    hairSwayPromise = createHairSway(content, content.querySelector('.wipe-img'), t.showcase.swayMask, cap)
+      .catch(() => null)
+      .then((sway) => { hairSway = sway; return sway; });
+  } else if (hairSway) {
+    hairSway.setPixelRatioCap(cap);
+  }
+  return hairSwayPromise;
+}
+
+// Each 3D element only renders while its treatment is on screen.
+const renderScenes = (time) => {
   if (ironCell && ironVisible) ironCell.render(time);
+  if (hairSway && hairVisible) hairSway.render(time);
 };
 
 /* ==========================================================================
@@ -843,6 +1118,7 @@ function buildStageTimeline(root, isDesktop) {
     switches.forEach((at, i) => { if (time >= at) index = i; });
     setActive(index);
     ironVisible = time >= ironWindow[0] && time <= ironWindow[1];
+    hairVisible = time >= hairWindow[0] && time <= hairWindow[1];
   };
 
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' }, onUpdate });
@@ -861,7 +1137,7 @@ function buildStageTimeline(root, isDesktop) {
     }
     if (!isLast) tl.set(scenes[i], { autoAlpha: 0 }, start + L);
 
-    defs[i].animate({ tl, scene: scenes[i], ft, start, L, isFirst, isLast, isDesktop });
+    defs[i].animate({ t, tl, scene: scenes[i], ft, start, L, isFirst, isLast, isDesktop });
     tl.addLabel(t.id, rests[i]);
   });
 
@@ -907,12 +1183,12 @@ function initStage(context, isDesktop) {
 
   document.documentElement.classList.add('has-stage');
   const { tl } = buildStageTimeline(root, isDesktop);
-  gsap.ticker.add(renderIron);
+  gsap.ticker.add(renderScenes);
 
   let alive = true;
   (async () => {
-    // Everything is decoded and the 3D scene is ready before the ScrollTrigger exists.
-    await Promise.all([preloadImages(root), ensureIronCell(root, isDesktop)]);
+    // Everything is decoded and the 3D scenes are ready before the ScrollTrigger exists.
+    await Promise.all([preloadImages(root), ensureIronCell(root, isDesktop), ensureHairSway(root, isDesktop)]);
     if (!alive) return;
 
     context.add(() => {
@@ -940,7 +1216,8 @@ function initStage(context, isDesktop) {
     alive = false;
     stage = null;
     ironVisible = false;
-    gsap.ticker.remove(renderIron);
+    hairVisible = false;
+    gsap.ticker.remove(renderScenes);
     document.documentElement.classList.remove('has-stage');
   };
 }

@@ -576,6 +576,15 @@ html.lenis body { height: auto; }
   inset: auto 0 0 0;
   height: 80%; /* = the object's height, since the mask is 125% tall */
 }
+/* The plain image and, once ready, the swaying hair canvas fill the same box. */
+.wipe-img,
+.wipe-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
 .cell-canvas {
   display: block;
@@ -788,7 +797,10 @@ html.lenis body { height: auto; }
 @media (min-width: 1024px) { .card { --cols: 3; padding: var(--space-32); } }
 @media (min-width: 1200px) { .card { --cols: 4; padding: var(--space-24); } }
 
+/* Every card has the same square Sand well. Cut-outs are contained inside
+   12% padding with a soft static ellipse shadow; a full photo fills the well. */
 .card__media {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -798,11 +810,32 @@ html.lenis body { height: auto; }
 }
 
 .card__media img {
-  width: 74%;
-  height: 74%;
+  position: absolute;
+  inset: 12%;
+  width: 76%;
+  height: 76%;
   object-fit: contain;
-  filter: var(--shadow-float);
   transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.card__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: var(--shadow-bottom, 9%);
+  width: var(--shadow-w, 50%);
+  height: 7%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(21, 34, 56, 0.14), rgba(21, 34, 56, 0));
+  transform: translateX(-50%);
+}
+
+.card__media--photo { overflow: hidden; }
+.card__media--photo img {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-well);
 }
 
 .card__title {
