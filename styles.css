@@ -112,6 +112,8 @@ main { overflow-x: clip; }
 
 img { display: block; max-width: 100%; height: auto; }
 
+[hidden] { display: none !important; }
+
 h1, h2, h3, p { margin: 0; }
 
 a { color: inherit; }
@@ -393,52 +395,42 @@ html.lenis body { height: auto; }
   .hero__cue { display: none; }
 }
 
-/* ---------- Treatment showcase ---------- */
+/* ---------- Featured treatments: shared text ---------- */
 
-.showcase {
-  --media-h: min(64vh, 600px);
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 100vh;
-  min-height: 100svh;
-  padding: calc(var(--header-h) + var(--space-32)) 0 var(--space-48);
-  background: var(--color-cream);
-  overflow: hidden;
+.treatment-title {
+  font-size: var(--text-treatment);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
-.showcase__inner {
+.treatment-desc {
+  font-size: var(--text-body-lg);
+  line-height: 1.5;
+  color: var(--color-slate);
+  text-wrap: pretty;
+}
+
+/* ---------- Featured treatments: static list ----------
+   Shown for reduced motion, and whenever the scroll animation can't run. */
+
+.treatment-block { padding: var(--space-96) 0; }
+.treatment-block + .treatment-block { padding-top: 0; }
+
+.treatment-block__inner {
   display: grid;
-  grid-template-columns: 1fr;
   align-items: center;
   justify-items: center;
-  gap: var(--space-24);
+  gap: var(--space-32);
 }
 
-.showcase__media {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  width: 100%;
+.treatment-block__media img {
+  width: min(100%, 440px);
+  height: auto;
   filter: var(--shadow-float);
 }
 
-/* The stage keeps each image's natural proportions (set via --ratio). */
-.showcase__stage {
-  position: relative;
-  aspect-ratio: var(--ratio);
-  width: min(100%, calc(var(--media-h) * var(--ratio)));
-}
-
-.showcase__stage img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.showcase__text {
+.treatment-block__text {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -446,75 +438,311 @@ html.lenis body { height: auto; }
   max-width: 30rem;
   text-align: center;
 }
-
-.showcase__title {
-  font-size: var(--text-treatment);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.showcase__desc {
-  font-size: var(--text-body-lg);
-  line-height: 1.5;
-  color: var(--color-slate);
-  text-wrap: pretty;
-}
-
-.showcase__text .btn { margin-top: var(--space-8); }
-
-@media (max-width: 767.98px) {
-  .showcase { --media-h: clamp(180px, 36svh, 340px); }
-  .showcase__title { font-size: clamp(40px, 12vw, 56px); }
-}
+.treatment-block__text .btn { margin-top: var(--space-8); }
 
 @media (min-width: 768px) {
-  .showcase__inner {
+  .treatment-block__inner {
     grid-template-columns: 1fr 1fr;
     gap: var(--space-64);
   }
-  .showcase__text {
+  .treatment-block__text {
     align-items: flex-start;
-    text-align: left;
     justify-self: start;
+    text-align: left;
   }
-  .showcase--image-right .showcase__media { order: 2; }
-  .showcase--image-right .showcase__text { justify-self: end; }
+  .treatment-block--image-right .treatment-block__media { order: 2; }
+  .treatment-block--image-right .treatment-block__text { justify-self: end; }
 }
 
-/* Energy: the runner carries its own shadow so it can travel as one layer. */
-.showcase--run .showcase__media { filter: none; }
-.showcase--run .showcase__stage img { filter: var(--shadow-float); }
+/* ---------- Featured treatments: the continuous stage ----------
+   One pinned, full-screen section. Every visual sits in the same visual
+   area and every text block in the same text area, stacked on top of each
+   other; script.js moves between them with one scrubbed timeline. */
 
-/* Immunity: two copies of the image, each clipped along the gap between the halves. */
-.split-half--a {
-  clip-path: polygon(0 0, var(--cut-top) 0, var(--cut-bottom) 100%, 0 100%);
-  transform-origin: 30% 40%;
+.stage { display: none; }
+.has-stage .stage { display: block; }
+.has-stage .treatment-list { display: none; }
+
+.stage {
+  --vis-w: min(560px, 42vw);
+  --vis-h: min(600px, 64vh);
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
 }
-.split-half--b {
-  clip-path: polygon(var(--cut-top) 0, 100% 0, 100% 100%, var(--cut-bottom) 100%);
-  transform-origin: 70% 60%;
+@supports (height: 100svh) {
+  .stage {
+    --vis-h: min(600px, 64svh);
+    height: 100svh;
+  }
 }
 
-/* Iron: 3D spin needs perspective on the stage. */
-.showcase--spin .showcase__stage { perspective: 1000px; }
+/* The one element whose colour animates: a gentle tint per treatment. */
+.stage__bg {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-cream);
+}
 
-/* Hair & scalp: a soft-edged wipe. The mask layer extends 25% above the
-   image; its top fifth fades out, which gives the wipe a soft leading edge.
-   The motion moves the layer with transforms only. */
+.stage__inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: var(--space-64);
+  height: 100%;
+  padding-top: var(--header-h);
+}
+
+.stage__visual {
+  position: relative;
+  z-index: 1;
+  order: 2;
+  justify-self: center;
+  width: var(--vis-w);
+  height: var(--vis-h);
+}
+
+.stage__text {
+  position: relative;
+  z-index: 2;
+  order: 1;
+  display: grid;
+  justify-self: start;
+  max-width: 30rem;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.scene:not(:first-child) { opacity: 0; visibility: hidden; }
+
+/* An object keeps its canvas proportions and fits inside the visual area. */
+.obj {
+  position: relative;
+  aspect-ratio: var(--ratio);
+  width: min(var(--vis-w), calc(var(--vis-h) * var(--ratio)));
+  will-change: transform, opacity;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform, opacity;
+}
+
+/* Soft contact shadow: a separate ellipse that moves and fades with its object
+   (never a filter on anything that moves). */
+.obj__shadow {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: -3%;
+  height: 8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(21, 34, 56, 0.14), rgba(21, 34, 56, 0));
+  will-change: transform, opacity;
+}
+.obj--runner .obj__shadow { left: 14%; right: 12%; bottom: -1%; }
+.obj--orange .obj__shadow { left: 18%; right: 14%; bottom: -5%; height: 9%; }
+.obj--cell .obj__shadow { left: 20%; right: 20%; bottom: 2%; }
+.obj--wipe .obj__shadow { left: 6%; right: 6%; bottom: -3%; }
+.obj--plant .obj__shadow { left: 38%; right: 30%; bottom: 0; height: 5%; }
+
+/* Hair: the mask layer is 1.25× the image height and its top fifth fades
+   out, giving the upward wipe a soft leading edge. It moves with transforms
+   only. The frame keeps the enlarged (1.1×) image inside the object's box. */
+.wipe-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
 .wipe-mask {
   position: absolute;
   inset: -25% 0 0 0;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 20%);
+  will-change: transform;
 }
-.showcase__stage .wipe-mask img {
+.wipe-mask .layer {
   inset: auto 0 0 0;
-  height: 80%; /* = the stage height, since the mask is 125% tall */
+  height: 80%; /* = the object's height, since the mask is 125% tall */
 }
 
-/* Longevity: grows from the base of the stem. */
-.showcase--grow .showcase__stage img { transform-origin: 50% 100%; }
+.cell-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Text blocks share one grid cell; only the active one takes clicks. */
+.stage__copy {
+  grid-area: 1 / 1;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-16);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.stage__copy:not(:first-child) { opacity: 0; visibility: hidden; }
+.stage__copy.is-active { pointer-events: auto; }
+.stage__copy .btn { margin-top: var(--space-8); }
+
+/* Progress indicator: right side on desktop, bottom on mobile. */
+.stage__progress {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-16);
+  transform: translateY(-50%);
+}
+
+.stage__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 56px;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--color-slate);
+  font-family: inherit;
+  font-size: var(--text-eyebrow);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out), opacity var(--duration-base) var(--ease-out);
+}
+.stage__step::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 30px;
+  width: 16px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.stage__step:hover { opacity: 1; }
+.stage__step.is-active {
+  color: var(--color-ink);
+  opacity: 1;
+}
+.stage__step.is-active::before { transform: scaleX(1); }
+
+.stage__names {
+  display: grid;
+  margin: 0;
+  padding-right: 6px;
+}
+.stage__name {
+  grid-area: 1 / 1;
+  justify-self: end;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-ink);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+}
+.stage__name.is-active {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 767.98px) {
+  .stage {
+    --vis-w: min(560px, 80vw);
+    --vis-h: clamp(170px, 33vh, 320px);
+  }
+  @supports (height: 100svh) {
+    .stage { --vis-h: clamp(170px, 33svh, 320px); }
+  }
+
+  .stage__inner {
+    grid-template-columns: 1fr;
+    align-content: center;
+    justify-items: center;
+    gap: var(--space-16);
+    padding-top: calc(var(--header-h) + 8px);
+    padding-bottom: 56px;
+  }
+  .stage__visual { order: 0; }
+  .stage__text {
+    order: 1;
+    justify-self: center;
+  }
+  .stage__copy {
+    align-items: center;
+    gap: var(--space-12);
+    text-align: center;
+  }
+  .stage__copy .treatment-title { font-size: clamp(38px, 11vw, 52px); }
+  .stage__copy .treatment-desc { font-size: var(--text-body); }
+
+  .stage__progress {
+    top: auto;
+    right: auto;
+    left: 50%;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: var(--space-12);
+    transform: translateX(-50%);
+  }
+  .stage__steps { flex-direction: row; }
+  .stage__step {
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+  .stage__step::before {
+    top: auto;
+    bottom: 5px;
+    right: 50%;
+    width: 12px;
+    transform-origin: center;
+    translate: 50% 0;
+  }
+  .stage__names { padding-right: 0; }
+  .stage__name { justify-self: start; }
+}
+
+@media (max-width: 767.98px) and (max-height: 600px) {
+  .stage__copy .eyebrow { display: none; }
+}
 
 /* ---------- Standard sections ---------- */
 

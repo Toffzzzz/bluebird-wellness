@@ -12,6 +12,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Three.js for the 3D red blood cell, loaded as an ES module on demand -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -44,9 +54,10 @@
       <p class="hero__cue" aria-hidden="true"><span>Scroll to explore</span></p>
     </section>
 
-    <!-- ============ Treatment showcases ============
-         Generated from the TREATMENTS list in script.js -->
-    <div id="showcases"></div>
+    <!-- ============ Featured treatments: one pinned, continuous stage ============
+         Generated from the TREATMENTS list in script.js (plus a static
+         version for reduced motion) -->
+    <div id="stage-root"></div>
 
     <!-- ============ All treatments ============ -->
     <section class="section section--porcelain" id="treatments" aria-labelledby="treatments-title">
