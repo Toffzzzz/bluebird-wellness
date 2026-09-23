@@ -576,8 +576,26 @@ html.lenis body { height: auto; }
   object-fit: contain;
   pointer-events: none;
   user-select: none;
-  will-change: transform, opacity;
 }
+/* Only layers that move or fade on their own get their own compositing layer. */
+.obj--runner .layer,
+.obj--orange .layer,
+.obj--coconut .layer,
+.obj--plant .layer,
+.obj--cucumber [data-layer^="slice"],
+.obj--cucumber [data-layer^="splash"],
+.obj--cucumber .fx--bubbles,
+.obj--droplet .zoomer,
+.obj--droplet [data-layer^="fall"],
+.obj--droplet .fx--frames,
+.obj--shower .fx--shower,
+.turn,
+.idle-turn,
+.tilt,
+.bob,
+.three-fallback,
+.three-host,
+.wipe-content { will-change: transform, opacity; }
 
 /* Soft contact shadow: a separate ellipse that moves and fades with its object
    (never a filter on anything that moves). */
@@ -593,15 +611,15 @@ html.lenis body { height: auto; }
 }
 .obj--runner .obj__shadow { left: 14%; right: 12%; bottom: -1%; }
 .obj--orange .obj__shadow { left: 18%; right: 14%; bottom: -5%; height: 9%; }
-.obj--float .obj__shadow { left: 18%; right: 18%; bottom: -4%; }
+.obj--cell3d .obj__shadow { left: 18%; right: 18%; bottom: -4%; }
 .obj--coconut .obj__shadow { left: 20%; right: 22%; bottom: -2%; height: 6%; }
-.obj--fizz .obj__shadow { left: 22%; right: 22%; bottom: -3%; }
-.obj--spin .obj__shadow,
 .obj--molecule .obj__shadow { left: 22%; right: 22%; bottom: -5%; }
 .obj--plant .obj__shadow { left: 38%; right: 30%; bottom: 0; height: 5%; }
 .obj--wipe .obj__shadow { left: 12%; right: 12%; bottom: -2%; height: 5%; }
-.obj--droplet .obj__shadow { left: 10%; right: 10%; bottom: -6%; }
-.obj--glass .obj__shadow { left: 12%; right: 12%; bottom: -2%; height: 5%; }
+/* Skin, Recovery and Detox bring their own soft shadows (or none). */
+.obj--droplet .obj__shadow,
+.obj--shower .obj__shadow,
+.obj--cucumber .obj__shadow { display: none; }
 /* Under his feet (the feet span about 32–64% across; the soles sit at 96.3% down). */
 .obj--frames .obj__shadow { left: 28%; right: 34%; bottom: 2%; height: 3.5%; }
 
@@ -648,80 +666,43 @@ html.lenis body { height: auto; }
   height: 100%;
 }
 
-/* Skin & Beauty: the photo in a rounded frame, with the falling droplet,
-   ripples and splash dots zooming together inside it. */
-.obj--droplet .frame {
-  overflow: hidden;
-  border-radius: var(--radius-card);
+/* Recovery: the wet picture is revealed from the top down over the dry one.
+   --reveal (a % from the top) is animated on the object by script.js from
+   -8% (all dry) to 108% (all wet); each edge is 8% soft, and the dry picture
+   only fades where the wet one is fully shown, so nothing is ever
+   see-through. The default is the starting state, because scrolling back
+   before the reveal returns a custom property to its stylesheet value. */
+.obj--shower { --reveal: -8%; }
+.obj--shower [data-layer="wet"] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 var(--reveal), transparent calc(var(--reveal) + 8%));
+  mask-image: linear-gradient(to bottom, #000 var(--reveal), transparent calc(var(--reveal) + 8%));
 }
-.obj--droplet .frame img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.obj--shower [data-layer="dry"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
+  mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
 }
-.obj--droplet .ripple { overflow: visible; }
-/* The falling drop: its bottom touches 52.6% / 58.5% of the frame. */
-.drop-fall {
-  position: absolute;
-  left: calc(52.6% - 3.5%);
-  top: calc(58.5% - 10.5%);
-  width: 7%;
-  height: 10.5%;
-  overflow: visible;
-  will-change: transform, opacity;
-}
-/* Tiny splash dots, all starting where the droplet touches the skin. */
-.splash-dot {
-  position: absolute;
-  left: 52.6%;
-  top: 59.5%;
-  width: 3px;
-  height: 3px;
-  margin: -1.5px 0 0 -1.5px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 0 0.5px rgba(80, 60, 45, 0.3);
-  will-change: transform, opacity;
-}
-.splash-dot:nth-child(3n + 1) { width: 2px; height: 2px; margin: -1px 0 0 -1px; }
-.splash-dot:nth-child(3n) { width: 4px; height: 4px; margin: -2px 0 0 -2px; }
 
-/* NAD+: the 3D canvas replaces the image once its first frame is drawn. */
-.mol-3d,
-.mol-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
+/* Detox: the bubbles stay inside the water. */
+.fx--bubbles {
+  clip-path: polygon(26.7% 35.7%, 73.3% 35.7%, 73.3% 82.3%, 26.7% 82.3%);
 }
-.mol-3d { opacity: 0; }
-.mol-fallback,
-.mol-3d { transition: opacity 0.6s var(--ease-out); }
-.obj--molecule.is-3d .mol-fallback { opacity: 0; }
-.obj--molecule.is-3d .mol-3d { opacity: 1; }
 
-/* Canvases for bubbles and the frame sequence. */
-.fx {
-  position: absolute;
+/* Iron and NAD+: the 3D canvas replaces the photo once its first frame is drawn. */
+.three-canvas {
   display: block;
-  pointer-events: none;
-}
-/* Detox: the bubble canvases extend a little beyond the image. */
-.fx--back,
-.fx--front {
-  inset: -10%;
-  width: 120%;
-  height: 120%;
-}
-/* Recovery: clipped to the water inside the glass. */
-.fx--water {
-  inset: 0;
   width: 100%;
   height: 100%;
-  clip-path: polygon(9% 16%, 91% 16%, 84% 85%, 16% 85%);
 }
-.fx--frames {
-  display: block;
-}
+.three-host { opacity: 0; }
+.three-fallback,
+.three-host { transition: opacity 0.6s var(--ease-out); }
+.is-3d .three-fallback { opacity: 0; }
+.is-3d .three-host { opacity: 1; }
+
+/* Canvases for image sequences and effects (sized in device pixels by script.js). */
+.fx--frames,
+.fx--shower,
+.fx--bubbles { display: block; }
 
 /* Text blocks share one grid cell; only the active one takes clicks. */
 .stage__copy {

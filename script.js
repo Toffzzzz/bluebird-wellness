@@ -5,8 +5,8 @@
    2. STAGE TIMING        ← fine-tune the scroll film here
    3. Rendering
    4. Scenes (one per kind of featured visual)
-   5. Live effects: bubbles, frame sequence, hair sway (Three.js shader),
-      NAD+ glass molecule (Three.js)
+   5. Live effects: shower water, bubbles, frame sequences, hair sway
+      (Three.js shader), 3D blood cell and NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
    ========================================================================== */
 
@@ -33,17 +33,18 @@
      showcase     The treatment's part of the pinned scroll stage:
                     description: 1–2 sentences shown beside the visual
                     scene:       which animation (see section 4):
-                                 "runner" | "orange" | "float" | "coconut" |
-                                 "fizz" | "molecule" | "spin" | "plant" |
-                                 "wipe" | "droplet" | "glass" | "frames"
+                                 "runner" | "orange" | "cell3d" | "coconut" |
+                                 "cucumber" | "molecule" | "plant" | "wipe" |
+                                 "droplet" | "shower" | "frames"
                                  (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
-                    layers:      ("orange", "plant") layer images on the image's canvas;
-                                 ("coconut") layers on their own 1000 × 1056 canvas;
-                                 ("droplet") the skin without the droplet, and the droplet alone
+                    layers:      ("orange", "plant", "cucumber", "shower", "droplet")
+                                 layer images on the image's canvas;
+                                 ("coconut") layers on their own 1000 × 1056 canvas
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
-                    frames:      ("frames") { path, count, size } image sequence
-                    model:       ("molecule") V2000 SDF file for the 3D glass molecule
+                    frames:      ("frames", "droplet") { path, count, size } image sequence
+                    model:       ("molecule") V2000 SDF file for the 3D glass molecule;
+                                 ("cell3d") glTF binary (.glb) of the blood cell
 
    Copy rule: describe what's in each drip and the experience only. No claims
    that a treatment cures, treats, prevents, detoxes, boosts immunity,
@@ -100,8 +101,9 @@ const TREATMENTS = [
     badge: { text: 'Blood test required first', variant: 'sky' },
     showcase: {
       description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
-      scene: 'float',
+      scene: 'cell3d',
       tint: '#F9EFEE',
+      model: 'models/red-blood-cell.glb',
     },
   },
   {
@@ -131,13 +133,21 @@ const TREATMENTS = [
     summary: 'A slow, calm drip with time to rest.',
     priceFrom: 169, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/detox.webp',
-    imageSize: [719, 800],
-    alt: 'Cucumber slices and mint leaves with water droplets',
+    image: 'images/detox-card.webp',
+    imageSize: [570, 1015],
+    alt: 'A cucumber slice resting at the bottom of a tall glass of water',
     showcase: {
       description: 'A drip prepared for you after your consultation. A calm, unhurried session in our clinic or wherever suits you.',
-      scene: 'fizz',
+      scene: 'cucumber',
       tint: '#F0F4EC',
+      layers: {
+        glass: 'images/detox-glass.webp',
+        glassFront: 'images/detox-glass-front.webp',
+        splashBody: 'images/detox-splash-body.webp',
+        splashTop: 'images/detox-splash-top.webp',
+        sliceRest: 'images/detox-slice-rest.webp',
+        sliceFall: 'images/detox-slice-fall.webp',
+      },
     },
   },
   {
@@ -184,7 +194,7 @@ const TREATMENTS = [
     priceFrom: 179, // PROVISIONAL
     bookUrl: '#',
     image: 'images/hair.webp',
-    imageSize: [634, 1024],
+    imageSize: [720, 1024],
     alt: 'Long, glossy brown hair seen from behind',
     showcase: {
       description: 'A vitamin and mineral drip, prepared after your consultation. Quiet time to sit back, in our clinic or wherever suits you.',
@@ -209,8 +219,10 @@ const TREATMENTS = [
       tint: '#F8EFEA',
       layers: {
         base: 'images/skin-base.webp',
-        drop: 'images/skin-drop.webp',
+        fallHigh: 'images/skin/drop-fall-high.webp',
+        fallLow: 'images/skin/drop-fall-low.webp',
       },
+      frames: { path: 'images/skin/skin-drop-{n}.webp', count: 14, size: [800, 800] },
     },
   },
   {
@@ -219,13 +231,17 @@ const TREATMENTS = [
     summary: 'Fluids with electrolytes and vitamins, in a calm, unhurried setting.',
     priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/recovery.webp',
-    imageSize: [432, 800],
-    alt: 'A tall glass of sparkling water',
+    image: 'images/shower-wet.webp',
+    imageSize: [829, 941],
+    alt: 'A woman with her eyes closed, tipping her head back under a rain shower',
     showcase: {
       description: 'Fluids with electrolytes and vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
-      scene: 'glass',
+      scene: 'shower',
       tint: '#EFF4F5',
+      layers: {
+        dry: 'images/shower-dry.webp',
+        wet: 'images/shower-wet.webp',
+      },
     },
   },
   {
@@ -416,15 +432,16 @@ function render() {
 
    runner   Energy: the runner settles beside the text, then runs off
    orange   Immunity: the orange splits into halves and juice
-   float    Iron: the blood cell floats and turns
+   cell3d   Iron: the 3D blood cell turns like a turntable
+            (falls back to the photo floating and turning)
    coconut  Hydration: the coconut cracks, the lid lifts, water splashes
-   fizz     Detox: cucumber and mint with bubbles
+   cucumber Detox: a slice drops into a glass of water and splashes
    molecule NAD+: the 3D glass molecule turns like a turntable
-   spin     the turning image (NAD+ fallback when 3D can't run)
+            (falls back to the photo turning in-plane)
    plant    Longevity: the stem grows, the bud and leaves unfold
    wipe     Hair & Scalp: soft wipe, then the hair sways
-   droplet  Skin & Beauty: a droplet falls onto the skin
-   glass    Recovery: bubbles in the glass
+   droplet  Skin & Beauty: a droplet falls onto the skin and settles
+   shower   Recovery: water from the shower soaks the hair
    frames   Muscle Recovery: the deadlift image sequence
    fade     fallback for anything else
 
@@ -437,9 +454,11 @@ function render() {
                 a gentle time-based loop that only runs while on screen
      c.live(effect)
                 a canvas/WebGL effect that only runs while on screen
-     c.tl, c.start, c.L, c.isFirst, c.isLast, c.isDesktop
+     c.tl, c.start, c.L, c.label, c.isFirst, c.isLast, c.isDesktop
+   A scene may also have preload(t, scene, isDesktop), awaited before the
+   stage starts, and its own rest label.
    Every scene shows its natural, finished picture during its rest.
-   Only transform, opacity, clip-path and mask position are animated.
+   Only transform, opacity, clip-path, masks and custom properties are animated.
    ========================================================================== */
 
 // Offset of an element inside an ancestor, ignoring transforms.
@@ -470,7 +489,14 @@ const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
   ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
 };
 
-// The turning image ("spin", and the NAD+ fallback). `tilt` receives the 3D wobble.
+// The 3D scenes draw into .three-host; until their first frame (or if 3D
+// can't run) the photo in .three-fallback shows, with its own animation.
+const threeHTML = (fallback) => `
+  <div class="layer three-fallback">${fallback}</div>
+  <div class="layer three-host" aria-hidden="true"></div>`;
+
+// The NAD+ fallback: the photo turns in-plane across the segment (upright at
+// rest), with a very slow idle turn. `tilt` receives a subtle 3D wobble.
 const spinHTML = (t) => `<div class="layer turn"><div class="layer idle-turn">${layerImg(t.image, t.imageSize)}</div></div>`;
 function spinImage({ scene, ft, idle, label }, tilt) {
   const turn = scene.querySelector('.turn');
@@ -480,6 +506,68 @@ function spinImage({ scene, ft, idle, label }, tilt) {
   ft(tilt, { rotationX: -8, rotationY: 8 }, { rotationX: 0, rotationY: 0 }, 0.35, label, 'sine.inOut');
   ft(tilt, { rotationX: 0, rotationY: 0 }, { rotationX: 5, rotationY: -5 }, label, 1, 'sine.inOut');
   idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
+}
+
+// The Iron fallback: the photo turns gently in-plane with a subtle 3D tilt
+// (never beyond ±12°).
+const floatHTML = (t) => `<div class="layer tilt">${layerImg(t.image, t.imageSize)}</div>`;
+function floatImage({ scene, ft }) {
+  const tilt = scene.querySelector('.tilt');
+  gsap.set(tilt, { rotation: -20, rotationY: -12, transformPerspective: 1200 });
+  ft(tilt, { rotation: -20, rotationY: -12 }, { rotation: 15, rotationY: 8 }, 0, 1, 'sine.inOut');
+}
+
+// A 3D view is created once, the first time its treatment approaches, and
+// kept on its scene element (so it survives the stage being rebuilt).
+function ensure3D(scene, create, pixelRatioCap) {
+  const state = scene.view3d || (scene.view3d = { view: null, promise: null });
+  if (!state.promise) {
+    state.promise = create()
+      .catch(() => null)
+      .then((view) => { state.view = view; return view; });
+  } else if (state.view) {
+    state.view.setPixelRatioCap(pixelRatioCap);
+  }
+  return state.promise;
+}
+
+// A turntable across the whole segment: one full turn, facing front at the
+// rest label, handed to the scene's 3D view on every frame.
+function turntable3D(c, create) {
+  const { scene, ft, live, start, L, label, isDesktop } = c;
+  const turn = { y: -2 * Math.PI * label };
+  ft(turn, { y: -2 * Math.PI * label }, { y: 2 * Math.PI * (1 - label) }, 0, 1);
+  const cap = isDesktop ? 2 : 1.5;
+  live({
+    initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
+    init: () => ensure3D(scene, () => create(cap), cap).then((view) => view && view.render(turn.y)),
+    frame: (time, dt) => { if (scene.view3d?.view) scene.view3d.view.render(turn.y, dt); },
+  });
+}
+
+// Loads and decodes an image sequence, then draws it on the scene's
+// .fx--frames canvas (awaited before the stage starts).
+function preloadFrames(t, scene, isDesktop, options) {
+  const { path, count } = t.showcase.frames;
+  const srcs = Array.from({ length: count }, (_, i) => path.replace('{n}', pad(i + 1)));
+  return Promise.all(srcs.map(loadImage)).then((images) => {
+    scene.frameSequence = createFrameSequence(scene.querySelector('.fx--frames'), images, isDesktop, options);
+    return scene.frameSequence;
+  });
+}
+
+// Drives a frame sequence from the segment: map(f) turns the segment
+// fraction into a position between 0 and 1 along the sequence.
+function scrubFrames({ scene, tl, start, L, live }, map) {
+  const proxy = { p: 0 };
+  tl.fromTo(proxy, { p: 0 }, {
+    p: 1, duration: L, ease: 'none', immediateRender: false,
+    onUpdate: () => {
+      const seq = scene.frameSequence;
+      if (seq) seq.setPosition(map(proxy.p) * (seq.count - 1));
+    },
+  }, start);
+  live({ frame: () => scene.frameSequence && scene.frameSequence.draw() });
 }
 
 const SCENES = {
@@ -557,19 +645,25 @@ const SCENES = {
     },
   },
 
-  // IRON: the original photograph floats in and turns gently in-plane, with a
-  // subtle 3D tilt (never beyond ±12°) and a slow idle float at rest.
-  float: {
-    html: (t) => objHTML(t, 'float', `<div class="layer tilt"><div class="layer bob">${layerImg(t.image, t.imageSize)}</div></div>`),
+  // IRON: the 3D red blood cell (section 5), lit like a studio photograph,
+  // turning like a turntable once across its segment (facing front at rest),
+  // with a very slow idle turn and a gentle float. iron.webp shows until the
+  // first 3D frame is drawn; without WebGL (or if loading fails) the photo
+  // keeps its gentle in-plane turn instead.
+  cell3d: {
+    html: (t) => objHTML(t, 'cell3d', `<div class="layer bob">${threeHTML(floatHTML(t))}</div>`),
     animate(c) {
-      const { obj, scene, ft, idle } = c;
-      const tilt = scene.querySelector('.tilt');
+      const { t, obj, scene, idle } = c;
       fadeIn(c, { scale: 0.85, y: 30 });
-      gsap.set(tilt, { rotation: -20, rotationY: -12, transformPerspective: 1200 });
-      ft(tilt, { rotation: -20, rotationY: -12 }, { rotation: 15, rotationY: 8 }, 0, 1, 'sine.inOut');
+      floatImage(c);
       idle(scene.querySelector('.bob'), { y: -5, duration: 3.2 });
       fadeOut(c, { y: -30, scale: 0.94 });
-      return obj;
+      // The model (4.5 MB) downloads once the stage itself is ready.
+      if (!scene.modelBytes) {
+        scene.modelBytes = stageLoaded.then(() => fetchBytes(t.showcase.model));
+        scene.modelBytes.catch(() => {});
+      }
+      turntable3D(c, (cap) => createBloodCell(obj, scene.modelBytes, cap));
     },
   },
 
@@ -622,58 +716,76 @@ const SCENES = {
     },
   },
 
-  // DETOX: the cucumber and mint float gently while bubbles fizz around them,
-  // on one canvas behind the image and one in front for depth.
-  fizz: {
-    html: (t) => objHTML(t, 'fizz', `
-      <canvas class="fx fx--back" aria-hidden="true"></canvas>
-      <div class="layer drift">${layerImg(t.image, t.imageSize)}</div>
-      <canvas class="fx fx--front" aria-hidden="true"></canvas>`),
+  // DETOX: a cucumber slice drops into a tall glass of water, passing behind
+  // the rim and the water line (glassFront) into the water; the water splashes
+  // up from the rim, then settles while the slice sinks to the bottom and a
+  // few bubbles rise from it (section 5). All layers share the 570 × 1015
+  // canvas; origins and offsets are % of it.
+  cucumber: {
+    label: 0.74,
+    html: (t) => {
+      const ly = t.showcase.layers;
+      return objHTML(t, 'cucumber', [
+        layerImg(ly.glass, t.imageSize, ' data-layer="glass"'),
+        layerImg(ly.sliceFall, t.imageSize, ' data-layer="slice-fall"'),
+        layerImg(ly.glassFront, t.imageSize, ' data-layer="glass-front"'),
+        layerImg(ly.splashBody, t.imageSize, ' data-layer="splash-body"'),
+        layerImg(ly.sliceRest, t.imageSize, ' data-layer="slice-rest"'),
+        '<canvas class="layer fx--bubbles" aria-hidden="true"></canvas>',
+        layerImg(ly.splashTop, t.imageSize, ' data-layer="splash-top"'),
+      ].join(''));
+    },
     animate(c) {
-      const { obj, scene, ft, live, isDesktop } = c;
-      const drift = scene.querySelector('.drift');
-      fadeIn(c, { y: 60 });
-      ft(drift, { rotation: -2, x: -6 }, { rotation: 2, x: 6 }, 0, 0.55, 'sine.inOut');
-      ft(drift, { rotation: 2, x: 6 }, { rotation: -1, x: 0 }, 0.55, 1, 'sine.inOut');
-      fadeOut(c, { x: -60 });
-      live(createDetoxBubbles(obj, isDesktop));
+      const { scene, ft, live, isDesktop } = c;
+      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
+      const fall = q('slice-fall'), body = q('splash-body'), top = q('splash-top'), rest = q('slice-rest');
+      const bubbles = scene.querySelector('.fx--bubbles');
+      const falling = { yPercent: -62, rotation: -38.2, scale: 0.85 };
+      const landed = { yPercent: 0, rotation: 21.8, scale: 1 };
+      // Where the slice is in the splash picture, and where it comes to rest.
+      const inSplash = { xPercent: 5.18, yPercent: -25.9, rotation: 31.4, scale: 1.03 };
+      const sunk = { xPercent: 0, yPercent: 0, rotation: 0, scale: 1 };
+
+      fadeIn(c, { y: 40 });
+      gsap.set(fall, { transformOrigin: '52.28% 49.68%', autoAlpha: 0, ...falling });
+      gsap.set(top, { transformOrigin: '49.74% 22.66%', autoAlpha: 0, scaleX: 0.6, scaleY: 0.2 }); // the rim
+      gsap.set(rest, { transformOrigin: '47.11% 75.59%', autoAlpha: 0, ...inSplash });
+      gsap.set([body, bubbles], { autoAlpha: 0 });
+
+      // The drop: the slice accelerates down and turns, then disappears into the splash.
+      ft(fall, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.08, 0.12);
+      ft(fall, falling, landed, 0.08, 0.3, 'power2.in');
+      ft(fall, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.3, 0.315);
+
+      // The splash bursts up from the rim, then its droplets fall back.
+      ft([body, top], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.29, 0.31);
+      ft(top, { scaleX: 0.6, scaleY: 0.2 }, { scaleX: 1, scaleY: 1 }, 0.29, 0.42, 'power2.out');
+      ft(top, { yPercent: 0, autoAlpha: 1 }, { yPercent: 4, autoAlpha: 0 }, 0.42, 0.58, 'power1.in');
+
+      // The water settles and the slice sinks to the bottom.
+      ft(body, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.4, 0.47);
+      ft(rest, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.4, 0.44);
+      ft(rest, inSplash, sunk, 0.46, 0.64, 'power2.inOut');
+
+      // Bubbles rise from the slice once it has settled.
+      ft(bubbles, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.6, 0.7);
+      fadeOut(c, { y: -30 });
+      live(createSliceBubbles(bubbles, isDesktop));
     },
   },
 
   // NAD+: the real 3D structure (section 5) in clear glass, turning like a
   // turntable once across its segment (facing front at rest), with a very
   // slow extra idle turn. nad.webp shows until the first 3D frame is drawn;
-  // without WebGL (or if loading fails) the image keeps the "spin" animation.
+  // without WebGL (or if loading fails) the photo turns in-plane instead.
   molecule: {
-    html: (t) => objHTML(t, 'molecule', `
-      <div class="layer mol-fallback">${spinHTML(t)}</div>
-      <div class="layer mol-3d" aria-hidden="true"></div>`),
+    html: (t) => objHTML(t, 'molecule', threeHTML(spinHTML(t))),
     animate(c) {
-      const { t, obj, scene, ft, live, start, L, label, isDesktop } = c;
+      const { t, obj, scene } = c;
       fadeIn(c, { scale: 0.9 });
-      spinImage(c, scene.querySelector('.mol-fallback'));
+      spinImage(c, scene.querySelector('.three-fallback'));
       fadeOut(c, { scale: 0.85 });
-
-      // One full turn across the segment: -2π × label → 2π × (1 − label).
-      const turn = { y: -2 * Math.PI * label };
-      ft(turn, { y: -2 * Math.PI * label }, { y: 2 * Math.PI * (1 - label) }, 0, 1);
-      live({
-        initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
-        init: () => ensureMolecule(obj, t, isDesktop).then((m) => m && m.render(turn.y)),
-        frame: (time, dt) => { if (nadMolecule) nadMolecule.render(turn.y, dt); },
-      });
-    },
-  },
-
-  // The image version of the molecule: a full in-plane turn across the
-  // segment (upright at rest), a very slow idle turn and a subtle 3D wobble.
-  // Used by NAD+ as its fallback, and for any treatment with scene "spin".
-  spin: {
-    html: (t) => objHTML(t, 'spin', spinHTML(t)),
-    animate(c) {
-      fadeIn(c, { scale: 0.9 });
-      spinImage(c, c.obj);
-      fadeOut(c, { scale: 0.85 });
+      turntable3D(c, (cap) => createMolecule(obj, t.showcase.model, cap));
     },
   },
 
@@ -750,102 +862,73 @@ const SCENES = {
     },
   },
 
-  // SKIN & BEAUTY: a clear water droplet falls onto the skin, squashes, and
-  // settles into the resting droplet with ripples and a few tiny splashes.
-  // Everything sits in one zooming layer inside the rounded frame, so it
-  // stays aligned. The droplet touches the skin at 52.6% 59.5% of the photo.
+  // SKIN & BEAUTY: a real-looking water droplet falls onto the skin (two
+  // pictures of the falling drop, crossfaded as it speeds up), then the impact
+  // plays as a 14-frame sequence, from touching the skin to resting. Everything
+  // zooms together in one layer. No frame: skin-base.webp already fades into
+  // the Skin tint at its edges. The droplet lands at 52.6% 59.5%.
   droplet: {
-    html: (t) => {
-      const ring = '<ellipse cx="52.6" cy="59.5" rx="11" ry="3.2" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>';
-      const dots = Array.from({ length: 6 }, () => '<span class="splash-dot"></span>').join('');
-      return objHTML(t, 'droplet', `
-        <div class="layer frame"><div class="layer zoomer">
-          ${layerImg(t.showcase.layers.base, t.imageSize, ' data-layer="base"')}
-          <svg class="layer ripple" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <g transform="rotate(-16 52.6 59.5)">${ring}${ring}</g>
-          </svg>
-          ${layerImg(t.showcase.layers.drop, t.imageSize, ' data-layer="drop"')}
-          <svg class="drop-fall" viewBox="0 0 70 105" aria-hidden="true">
-            <defs>
-              <radialGradient id="drop-fall-body" cx="50%" cy="66%" r="50%">
-                <stop offset="0" stop-color="rgba(255,255,255,0.55)"/>
-                <stop offset="1" stop-color="rgba(190,150,120,0.28)"/>
-              </radialGradient>
-            </defs>
-            <path d="M35 2 C44 22 68 44 68 70 A33 33 0 0 1 2 70 C2 44 26 22 35 2 Z" fill="url(#drop-fall-body)" stroke="rgba(80,60,45,0.35)" stroke-width="1" vector-effect="non-scaling-stroke"/>
-            <ellipse cx="22" cy="58" rx="5" ry="8.5" transform="rotate(25 22 58)" fill="rgba(255,255,255,0.85)"/>
-          </svg>
-          <div class="layer splash-dots" aria-hidden="true">${dots}</div>
-        </div></div>`);
-    },
+    label: 0.64,
+    html: (t) => objHTML(t, 'droplet', `
+      <div class="layer zoomer">
+        ${layerImg(t.showcase.layers.base, t.imageSize, ' data-layer="base"')}
+        ${layerImg(t.showcase.layers.fallHigh, t.imageSize, ' data-layer="fall-high"')}
+        ${layerImg(t.showcase.layers.fallLow, t.imageSize, ' data-layer="fall-low"')}
+        <canvas class="layer fx--frames" aria-hidden="true"></canvas>
+      </div>`, t.showcase.frames.size),
+    // The impact frames are soft, semi-transparent water, so neighbouring
+    // frames are blended as a true cross-dissolve.
+    preload: (t, scene, isDesktop) => preloadFrames(t, scene, isDesktop, { dissolve: true }),
     animate(c) {
       const { scene, ft } = c;
-      const frame = scene.querySelector('.frame');
       const zoomer = scene.querySelector('.zoomer');
-      const drop = scene.querySelector('[data-layer="drop"]');
-      const fall = scene.querySelector('.drop-fall');
-      const ripple = scene.querySelector('.ripple');
-      const [ring1, ring2] = ripple.querySelectorAll('ellipse');
-      const splash = scene.querySelector('.splash-dots');
-      const dots = [...splash.children];
-      const CONTACT = '52.6% 59.5%';
+      const high = scene.querySelector('[data-layer="fall-high"]');
+      const low = scene.querySelector('[data-layer="fall-low"]');
+      const impact = scene.querySelector('.fx--frames');
 
       fadeIn(c, { scale: 0.94 });
-      gsap.set(zoomer, { transformOrigin: CONTACT });
+      gsap.set(zoomer, { transformOrigin: '52.6% 59.5%' });
       ft(zoomer, { scale: 1.08 }, { scale: 1 }, 0, 0.7, 'power1.out');
 
-      // The fall: from above the frame, accelerating and stretching slightly.
-      gsap.set(fall, { transformOrigin: '50% 100%', yPercent: -560 });
-      ft(fall, { yPercent: -560 }, { yPercent: 0 }, 0.1, 0.32, 'power2.in');
-      ft(fall, { scaleY: 1 }, { scaleY: 1.12 }, 0.1, 0.32, 'power1.in');
-      // Impact: it squashes flat and disappears into the resting droplet.
-      ft(fall, { scaleX: 1, scaleY: 1.12, autoAlpha: 1 }, { scaleX: 1.8, scaleY: 0.3, autoAlpha: 0 }, 0.32, 0.35, 'power1.out');
+      // The fall, accelerating like gravity. The nearer, faster picture fades
+      // in over the first before it goes, so the drop never looks see-through.
+      gsap.set([high, low], { autoAlpha: 0, yPercent: -55 });
+      ft([high, low], { yPercent: -55 }, { yPercent: 0 }, 0.1, 0.32, 'power2.in');
+      ft(high, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.1, 0.14);
+      ft(low, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.24, 0.29);
+      ft(high, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.29, 0.3);
+      ft(low, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.32, 0.33);
 
-      // The resting droplet appears quickly and settles with a small wobble.
-      gsap.set(drop, { transformOrigin: CONTACT, autoAlpha: 0, scale: 0.35 });
-      ft(drop, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.32, 0.35);
-      ft(drop, { scale: 0.35 }, { scale: 1 }, 0.32, 0.46, 'back.out(1.7)');
-
-      // Ripples spread along the skin. Their layer only shows from the impact on,
-      // so scrolling back never reveals a ring at its starting size.
-      gsap.set(ripple, { autoAlpha: 0 });
-      ft(ripple, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.318, 0.32);
-      gsap.set([ring1, ring2], { transformOrigin: '50% 50%', scale: 0.3, opacity: 0 });
-      ft(ring1, { scale: 0.3, opacity: 0.9 }, { scale: 1.8, opacity: 0 }, 0.32, 0.56, 'power2.out');
-      ft(ring2, { scale: 0.3, opacity: 0.9 }, { scale: 1.8, opacity: 0 }, 0.36, 0.62, 'power2.out');
-
-      // Splash dots fly out in low arcs along the skin (which rises 16° to the
-      // right), left and right, then fade.
-      gsap.set(splash, { autoAlpha: 0 });
-      ft(splash, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.318, 0.32);
-      const slope = Math.tan((16 * Math.PI) / 180);
-      const spread = [-0.058, -0.036, -0.021, 0.024, 0.041, 0.06]; // share of the frame's width
-      dots.forEach((dot, i) => {
-        const dx = spread[i];
-        const lift = 0.012 + 0.012 * ((i * 7) % 3) / 2; // peak height, 1.2–2.4% of the frame
-        const x = () => dx * frame.offsetWidth;
-        const yLand = () => -dx * slope * frame.offsetHeight;
-        const yPeak = () => (-dx * slope * 0.5 - lift) * frame.offsetHeight;
-        gsap.set(dot, { x: 0, y: 0, autoAlpha: 1 });
-        ft(dot, { x: 0 }, { x }, 0.32, 0.44, 'power1.out');
-        ft(dot, { y: 0 }, { y: yPeak }, 0.32, 0.37, 'power2.out');
-        ft(dot, { y: yPeak }, { y: yLand }, 0.37, 0.44, 'power2.in');
-        ft(dot, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.39, 0.44, 'power1.in');
-      });
+      // The impact: a quick splash, then a slower settle (ease-out over 0.32 → 0.50).
+      gsap.set(impact, { autoAlpha: 0 });
+      ft(impact, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.32, 0.325);
+      scrubFrames(c, (p) => 1 - (1 - gsap.utils.clamp(0, 1, (p - 0.32) / 0.18)) ** 1.6);
 
       fadeOut(c, { x: -60 });
     },
   },
 
-  // RECOVERY: bubbles fizz inside the glass, clipped to the water. The glass
-  // itself only moves on its entrance and exit.
-  glass: {
-    html: (t) => objHTML(t, 'glass', `${layerImg(t.image, t.imageSize)}<canvas class="fx fx--water" aria-hidden="true"></canvas>`),
+  // RECOVERY: water pours from the shower head and soaks her hair and face,
+  // as a soft wipe from the top down driven by --reveal (a % from the top;
+  // see styles.css). The dry picture only fades where the wet one is already
+  // fully shown, so nothing is ever see-through. Once the water has reached
+  // her head, fine streaks keep falling from the shower (section 5).
+  shower: {
+    label: 0.72,
+    html: (t) => objHTML(t, 'shower', `
+      ${layerImg(t.showcase.layers.dry, t.imageSize, ' data-layer="dry"')}
+      ${layerImg(t.showcase.layers.wet, t.imageSize, ' data-layer="wet"')}
+      <canvas class="layer fx--shower" aria-hidden="true"></canvas>`),
     animate(c) {
-      const { obj, live, isDesktop } = c;
+      const { obj, ft, live, isDesktop } = c;
+      const water = obj.querySelector('.fx--shower');
       fadeIn(c, { y: 40 });
+      gsap.set(obj, { '--reveal': '-8%' });
+      ft(obj, { '--reveal': '-8%' }, { '--reveal': '108%' }, 0.2, 0.62, 'power1.in');
+      gsap.set(water, { autoAlpha: 0 });
+      ft(water, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.55, 0.65);
       fadeOut(c, { y: -30 });
-      live(createGlassBubbles(obj, isDesktop));
+      live(createShowerWater(water, isDesktop));
     },
   },
 
@@ -854,28 +937,11 @@ const SCENES = {
   frames: {
     label: 0.74,
     html: (t) => objHTML(t, 'frames', `<canvas class="layer fx--frames" aria-hidden="true"></canvas>`, t.showcase.frames.size),
-    preload: (t, scene, isDesktop) => {
-      const { path, count } = t.showcase.frames;
-      const srcs = Array.from({ length: count }, (_, i) => path.replace('{n}', pad(i + 1)));
-      return Promise.all(srcs.map(loadImage)).then((images) => {
-        const seq = createFrameSequence(scene.querySelector('.fx--frames'), images, isDesktop);
-        scene.frameSequence = seq;
-        return seq;
-      });
-    },
+    preload: (t, scene, isDesktop) => preloadFrames(t, scene, isDesktop),
     animate(c) {
-      const { scene, tl, start, L, live } = c;
       fadeIn(c, { x: 40 });
-      const proxy = { p: 0 };
       const FROM = 0.12, TO = 0.7;
-      tl.fromTo(proxy, { p: 0 }, {
-        p: 1, duration: L, ease: 'none', immediateRender: false,
-        onUpdate: () => {
-          const seq = scene.frameSequence;
-          if (seq) seq.setPosition(gsap.utils.clamp(0, 1, (proxy.p - FROM) / (TO - FROM)) * (seq.count - 1));
-        },
-      }, start);
-      live({ frame: () => scene.frameSequence && scene.frameSequence.draw() });
+      scrubFrames(c, (p) => gsap.utils.clamp(0, 1, (p - FROM) / (TO - FROM)));
     },
   },
 
@@ -917,105 +983,29 @@ const scrollBoost = () => Math.min(1, Math.abs(lenis ? lenis.velocity : 0) / 30)
 const rand = (a, b) => a + Math.random() * (b - a);
 const smooth = (e0, e1, x) => { const t = gsap.utils.clamp(0, 1, (x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
 
-// A small clear bubble: transparent centre, soft white rim, a faint darker
-// outline so it reads on cream, and a small highlight (like the photo's droplets).
-function bubbleSprite() {
-  const size = 64, r = size / 2;
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const g = c.getContext('2d');
-  const body = g.createRadialGradient(r, r, 0, r, r, r);
-  body.addColorStop(0, 'rgba(255,255,255,0.05)');
-  body.addColorStop(0.62, 'rgba(255,255,255,0.1)');
-  body.addColorStop(0.85, 'rgba(255,255,255,0.6)');
-  body.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = body;
-  g.beginPath(); g.arc(r, r, r, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = 'rgba(70, 90, 80, 0.22)';
-  g.lineWidth = 2;
-  g.beginPath(); g.arc(r, r, r * 0.9, 0, Math.PI * 2); g.stroke();
-  g.fillStyle = 'rgba(255,255,255,0.9)';
-  g.beginPath(); g.arc(r * 0.64, r * 0.6, r * 0.17, 0, Math.PI * 2); g.fill();
-  return c;
-}
+// A canvas whose opacity is animated to 0 is hidden: skip drawing it.
+const shown = (canvas) => canvas.style.visibility !== 'hidden';
 
-// DETOX: 50–80 bubbles (about half on small screens) rise from the lower part
-// of the image and around the slices, wobbling, then fade near the top.
-function createDetoxBubbles(obj, isDesktop) {
-  const back = obj.querySelector('.fx--back');
-  const front = obj.querySelector('.fx--front');
-  const bctx = back.getContext('2d');
-  const fctx = front.getContext('2d');
-  const cap = isDesktop ? 2 : 1.5;
-  const max = isDesktop ? 72 : 36;
-  const rate = isDesktop ? 15 : 8; // bubbles per second when still
-  let sprite = null, w = 0, h = 0, parts = [], carry = 0, observer = null;
-
-  const resize = () => { ({ w, h } = fitCanvas(back, bctx, cap)); fitCanvas(front, fctx, cap); };
-  const spawn = () => {
-    const x = rand(0.24, 0.78) * w;
-    return {
-      x0: x, x, y: rand(0.55, 0.9) * h,
-      r: rand(1, 5),                       // 2–10px across
-      vy: rand(0.07, 0.15) * h,            // px per second
-      amp: rand(1.5, 5), freq: rand(1.5, 3.5), phase: rand(0, Math.PI * 2),
-      age: 0, front: Math.random() < 0.55,
-    };
-  };
-
-  return {
-    start() {
-      sprite = sprite || bubbleSprite();
-      if (!observer) { observer = new ResizeObserver(resize); observer.observe(back); }
-      resize();
-    },
-    stop() {
-      parts = []; carry = 0;
-      bctx.clearRect(0, 0, w, h); fctx.clearRect(0, 0, w, h);
-    },
-    frame(time, dt) {
-      const boost = scrollBoost();
-      carry += rate * (1 + 3 * boost) * dt;
-      while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
-      const speed = 1 + 1.5 * boost;
-      bctx.clearRect(0, 0, w, h); fctx.clearRect(0, 0, w, h);
-      parts = parts.filter((p) => {
-        p.age += dt;
-        p.y -= p.vy * speed * dt;
-        p.x = p.x0 + Math.sin(p.age * p.freq + p.phase) * p.amp;
-        const alpha = Math.min(1, p.age / 0.35) * smooth(0.06 * h, 0.3 * h, p.y);
-        if (p.y < 0.04 * h) return false;
-        const ctx = p.front ? fctx : bctx;
-        ctx.globalAlpha = alpha * (p.front ? 0.95 : 0.65);
-        ctx.drawImage(sprite, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
-        return true;
-      });
-      bctx.globalAlpha = fctx.globalAlpha = 1;
-    },
-  };
-}
-
-// RECOVERY: 40–80 tiny bubbles (half on small screens) rise inside the water,
-// mostly in a central stream, accelerate a little, and pop with a sparkle at
-// the surface. The canvas is clipped to the water with CSS.
-function createGlassBubbles(obj, isDesktop) {
-  const canvas = obj.querySelector('.fx--water');
+// RECOVERY: thin, bright streaks of water fall from just under the shower
+// head, accelerating, and fade out where they reach her head (lower towards
+// the right, where her face tips back). 40 at a time (20 on small screens).
+function createShowerWater(canvas, isDesktop) {
   const ctx = canvas.getContext('2d');
   const cap = isDesktop ? 2 : 1.5;
-  const max = isDesktop ? 80 : 40;
-  const rate = isDesktop ? 20 : 10;
-  const SURFACE = 0.16, BASE = 0.85;
-  let w = 0, h = 0, parts = [], sparks = [], carry = 0, observer = null;
+  const max = isDesktop ? 40 : 20;
+  const rate = max * 2; // streaks per second (each lives about half a second)
+  const START = 0.155;  // just under the shower head, as a share of the height
+  let w = 0, h = 0, parts = [], carry = 0, observer = null, blank = true;
 
+  // Where a streak meets her head, by how far across it falls.
+  const stopAt = (x) => (x < 0.5 ? 0.36 : x < 0.65 ? rand(0.4, 0.45) : x < 0.71 ? rand(0.45, 0.55) : x < 0.76 ? rand(0.55, 0.62) : 0.64);
   const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); };
   const spawn = () => {
-    const stream = Math.random() < 0.72;
+    const x = rand(0.53, 0.86);
     return {
-      x0: (stream ? rand(0.38, 0.62) : rand(0.2, 0.8)) * w,
-      y: (BASE - rand(0, 0.02)) * h,
-      r: rand(0.5, 2),                    // 1–4px across
-      vy: rand(0.04, 0.07) * h, accel: rand(0.04, 0.07) * h,
-      amp: rand(0.3, 1.2), freq: rand(3, 6), phase: rand(0, Math.PI * 2), age: 0,
+      x: x * w, y: START * h, stop: stopAt(x) * h,
+      len: rand(6, 14), width: rand(1, 2),  // px
+      vy: rand(0.25, 0.4) * h, accel: rand(1.2, 1.8) * h, age: 0,
     };
   };
 
@@ -1024,20 +1014,84 @@ function createGlassBubbles(obj, isDesktop) {
       if (!observer) { observer = new ResizeObserver(resize); observer.observe(canvas); }
       resize();
     },
-    stop() { parts = []; sparks = []; carry = 0; ctx.clearRect(0, 0, w, h); },
+    stop() { parts = []; carry = 0; ctx.clearRect(0, 0, w, h); blank = true; },
+    frame(time, dt) {
+      carry += rate * dt;
+      while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
+      parts = parts.filter((p) => {
+        p.age += dt;
+        p.vy += p.accel * dt;
+        p.y += p.vy * dt;
+        return p.y < p.stop;
+      });
+      if (!shown(canvas)) {
+        if (!blank) { ctx.clearRect(0, 0, w, h); blank = true; }
+        return;
+      }
+      blank = false;
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineCap = 'round';
+      for (const p of parts) {
+        const top = Math.max(START * h, p.y - p.len);
+        // Fade in as it leaves the shower head, and out as it reaches her head.
+        ctx.globalAlpha = Math.min(1, p.age / 0.05) * gsap.utils.clamp(0, 1, (p.stop - p.y) / (0.04 * h));
+        ctx.beginPath();
+        ctx.moveTo(p.x, top);
+        ctx.lineTo(p.x, p.y);
+        ctx.lineWidth = p.width + 1.2; // a faint darker edge, so it reads on the pale background
+        ctx.strokeStyle = 'rgba(60, 85, 100, 0.18)';
+        ctx.stroke();
+        ctx.lineWidth = p.width;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+}
+
+// DETOX: tiny bubbles (1–4px) rise from around the resting slice, wobble a
+// little, speed up, and pop with a sparkle at the water surface. The canvas
+// is clipped to the water with CSS. 30 at a time (15 on small screens).
+function createSliceBubbles(canvas, isDesktop) {
+  const ctx = canvas.getContext('2d');
+  const cap = isDesktop ? 2 : 1.5;
+  const max = isDesktop ? 30 : 15;
+  const rate = isDesktop ? 9 : 4.5; // bubbles per second (each lives about 3 seconds)
+  const SURFACE = 0.357;
+  let w = 0, h = 0, parts = [], sparks = [], carry = 0, observer = null, blank = true;
+
+  const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); };
+  const spawn = () => ({
+    x0: rand(0.38, 0.56) * w,
+    y: rand(0.7, 0.78) * h,
+    r: rand(0.5, 2),                    // 1–4px across
+    vy: rand(0.03, 0.05) * h, accel: rand(0.03, 0.05) * h,
+    amp: rand(0.3, 1.2), freq: rand(3, 6), phase: rand(0, Math.PI * 2), age: 0,
+  });
+
+  return {
+    start() {
+      if (!observer) { observer = new ResizeObserver(resize); observer.observe(canvas); }
+      resize();
+    },
+    stop() { parts = []; sparks = []; carry = 0; ctx.clearRect(0, 0, w, h); blank = true; },
     frame(time, dt) {
       const boost = scrollBoost();
-      carry += rate * (1 + 3 * boost) * dt;
+      carry += rate * (1 + 2 * boost) * dt;
       while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
       const speed = 1 + 1.2 * boost;
-      ctx.clearRect(0, 0, w, h);
-      ctx.lineWidth = 0.7;
+      const draw = shown(canvas);
+      if (draw) ctx.clearRect(0, 0, w, h);
+      else if (!blank) { ctx.clearRect(0, 0, w, h); blank = true; }
+      if (draw) { blank = false; ctx.lineWidth = 0.7; }
       parts = parts.filter((p) => {
         p.age += dt;
         p.vy += p.accel * dt;
         p.y -= p.vy * speed * dt;
         const x = p.x0 + Math.sin(p.age * p.freq + p.phase) * p.amp;
         if (p.y - p.r <= SURFACE * h) { sparks.push({ x, y: SURFACE * h + 1, age: 0 }); return false; }
+        if (!draw) return true;
         ctx.globalAlpha = Math.min(1, p.age / 0.25);
         ctx.beginPath();
         ctx.arc(x, p.y, p.r, 0, Math.PI * 2);
@@ -1045,7 +1099,7 @@ function createGlassBubbles(obj, isDesktop) {
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(90,110,120,0.25)';
+        ctx.strokeStyle = 'rgba(90,110,100,0.25)';
         ctx.beginPath(); ctx.arc(x, p.y, p.r + 0.6, 0, Math.PI * 2); ctx.stroke();
         return true;
       });
@@ -1054,6 +1108,7 @@ function createGlassBubbles(obj, isDesktop) {
         s.age += dt;
         const life = s.age / 0.3;
         if (life >= 1) return false;
+        if (!draw) return true;
         const len = 1.5 + 3 * life;
         ctx.globalAlpha = 1 - life;
         ctx.strokeStyle = 'rgba(255,255,255,0.95)';
@@ -1068,10 +1123,14 @@ function createGlassBubbles(obj, isDesktop) {
   };
 }
 
-// MUSCLE RECOVERY: draw frame floor(p), then frame ceil(p) on top with the
-// fractional part as opacity. Every frame is drawn at the same position and
-// size (the feet are pre-aligned). Only redraws when the position changes.
-function createFrameSequence(canvas, images, isDesktop) {
+// Image sequences (Skin & Beauty, Muscle Recovery): every frame is drawn at
+// the same position and size (they are pre-aligned). Between two frames:
+//  - by default, frame floor(p) and then frame ceil(p) on top with the
+//    fractional part as opacity (the deadlift);
+//  - with { dissolve: true }, a true cross-dissolve (1 − f)·A + f·B, which
+//    suits soft, semi-transparent frames such as the water droplet.
+// Only redraws when the position changes.
+function createFrameSequence(canvas, images, isDesktop, { dissolve = false } = {}) {
   const ctx = canvas.getContext('2d');
   const cap = isDesktop ? 2 : 1.5;
   let w = 0, h = 0, position = 0, drawn = -1;
@@ -1087,14 +1146,17 @@ function createFrameSequence(canvas, images, isDesktop) {
     if (drawn === position || !w) return;
     const i0 = Math.floor(position), i1 = Math.min(images.length - 1, Math.ceil(position));
     const f = position - i0;
+    const blend = i1 !== i0 && f > 0.001;
     ctx.clearRect(0, 0, w, h);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = blend && dissolve ? 1 - f : 1;
     ctx.drawImage(images[i0], 0, 0, w, h);
-    if (i1 !== i0 && f > 0.001) {
+    if (blend) {
       ctx.globalAlpha = f;
+      if (dissolve) ctx.globalCompositeOperation = 'lighter'; // adds the premultiplied colours
       ctx.drawImage(images[i1], 0, 0, w, h);
-      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
     }
+    ctx.globalAlpha = 1;
     drawn = position;
   };
   new ResizeObserver(resize).observe(canvas);
@@ -1285,11 +1347,175 @@ function ensureHairSway(content, t, isDesktop) {
   return hairSwayPromise;
 }
 
+/* ---------- 3D scenes (Iron and NAD+): shared setup ----------
+   Each 3D scene draws with Three.js into a transparent canvas that fills its
+   object's .three-host (so the layout keeps the photo's proportions), lit by
+   a studio reflection map (RoomEnvironment through PMREM). The model sits on
+   a turntable: a fixed forward tilt, with the model turning inside it. */
+
+const hasWebGL = () => {
+  const probe = document.createElement('canvas');
+  return !!(probe.getContext('webgl2') || probe.getContext('webgl'));
+};
+
+const fetchBytes = (src) => fetch(src).then((r) => {
+  if (!r.ok) throw new Error(`Could not load ${src}`);
+  return r.arrayBuffer();
+});
+
+// Resolves once every stage image is decoded (large downloads wait for it).
+let markStageLoaded;
+const stageLoaded = new Promise((resolve) => { markStageLoaded = resolve; });
+
+async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 }) {
+  const [THREE, { RoomEnvironment }] = await Promise.all([
+    import('three'),
+    import('three/addons/environments/RoomEnvironment.js'),
+  ]);
+  const host = obj.querySelector('.three-host');
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true });
+  renderer.setClearColor(0x000000, 0);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = exposure;
+  renderer.domElement.className = 'three-canvas';
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+
+  const spinner = new THREE.Group();
+  const tilted = new THREE.Group();
+  tilted.rotation.x = tilt;
+  tilted.add(spinner);
+  scene.add(tilted);
+
+  // Frame the model so it fits, with a little margin, at every angle of the
+  // turn: its points are projected at 72 angles and the camera distance is
+  // found by bisection.
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
+  let samples = [];
+  const fit = () => {
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const limit = 0.94; // share of the half-width/height the model may reach
+    const fits = (d) => samples.every(([v, r]) => {
+      const depth = d - v.z - r;
+      return depth > 0
+        && (Math.abs(v.x) + r) / (depth * tanV * camera.aspect) <= limit
+        && (Math.abs(v.y) + r) / (depth * tanV) <= limit;
+    });
+    let lo = 0, hi = 500;
+    for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+    camera.position.set(0, 0, hi);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  };
+  const resize = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    fit();
+  };
+  new ResizeObserver(resize).observe(host);
+
+  let idleAngle = 0;
+  const view = {
+    setPixelRatioCap(cap) {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+      resize();
+    },
+    // angle: the scroll-driven turn; a very slow extra turn is added while the page is still.
+    render(angle, dt = 0) {
+      idleAngle += idleSpeed * dt * (1 - scrollBoost());
+      spinner.rotation.y = angle + idleAngle;
+      renderer.render(scene, camera);
+    },
+  };
+
+  return {
+    THREE, scene, spinner,
+    // points: [position, radius] pairs in the model's own frame.
+    frameAround(points) {
+      samples = [];
+      const turn = new THREE.Matrix4(), tiltM = new THREE.Matrix4().makeRotationX(tilt), spin = new THREE.Matrix4();
+      for (let k = 0; k < 72; k++) {
+        turn.multiplyMatrices(tiltM, spin.makeRotationY((k / 72) * Math.PI * 2));
+        points.forEach(([p, r]) => samples.push([p.clone().applyMatrix4(turn), r]));
+      }
+      resize();
+    },
+    // Draw the first frame, then crossfade from the photo to the canvas.
+    show() {
+      host.appendChild(renderer.domElement);
+      view.render(0);
+      obj.classList.add('is-3d');
+      return view;
+    },
+  };
+}
+
+/* ---------- Iron: the red blood cell, lit like a studio photograph ----------
+   models/red-blood-cell.glb is used exactly as loaded: its own normals,
+   tangents, textures, clearcoat, sheen and faint emissive glow. It is a disc
+   facing +Z; the fixed tilt shows its dimple. */
+
+const BLOOD_CELL = {
+  tilt: 0.3,
+  idleSpeed: 0.012,             // radians per second while the page is still (about 9 min a turn)
+  exposure: 1.05,
+  environmentIntensity: 0.6,    // wet reflections without washing out the red
+  normalScale: 0.75,            // softens the model's bumps a little (its clearcoat bumps stay at 0.7)
+};
+
+async function createBloodCell(obj, modelBytes, pixelRatioCap) {
+  if (!hasWebGL()) return null;
+  const [bytes, { GLTFLoader }] = await Promise.all([
+    modelBytes,
+    import('three/addons/loaders/GLTFLoader.js'),
+  ]);
+  const studio = await createStudio(obj, pixelRatioCap, BLOOD_CELL);
+  const { THREE, scene, spinner } = studio;
+  const gltf = await new GLTFLoader().parseAsync(bytes, '');
+  const model = gltf.scene;
+
+  scene.environmentIntensity = BLOOD_CELL.environmentIntensity;
+  // Key: warm white from the upper left, in front.
+  const key = new THREE.DirectionalLight(0xfff6ee, 3.0);
+  key.position.set(-3, 4, 4);
+  // Rim: from behind and above on the right, for a bright edge along the top.
+  const rim = new THREE.DirectionalLight(0xffffff, 2.0);
+  rim.position.set(3, 2, -4);
+  // Fill: keeps the shadow side deep red, never black or flat.
+  const fill = new THREE.HemisphereLight(0xffffff, 0xe8d9d2, 0.4);
+  scene.add(key, rim, fill);
+
+  model.traverse((o) => { if (o.material?.normalScale) o.material.normalScale.multiplyScalar(BLOOD_CELL.normalScale); });
+
+  // Centre it, and frame it from a sample of its own vertices.
+  const box = new THREE.Box3().setFromObject(model);
+  model.position.sub(box.getCenter(new THREE.Vector3()));
+  model.updateMatrixWorld(true);
+  const points = [];
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    const position = o.geometry.attributes.position;
+    const step = Math.max(1, Math.floor(position.count / 800));
+    for (let i = 0; i < position.count; i += step) {
+      points.push([new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld), 0]);
+    }
+  });
+  spinner.add(model);
+  studio.frameAround(points);
+  return studio.show();
+}
+
 /* ---------- NAD+: a clear glass molecule on a turntable ----------
-   The real 3D structure, read from a V2000 SDF file, drawn with Three.js as
-   glass spheres (atoms) and rods (bonds). Three instanced meshes keep it to
-   three draw calls, so it stays light on phones. The canvas is transparent
-   and fills the object's box, which keeps nad.webp's proportions. */
+   The real 3D structure, read from a V2000 SDF file, drawn as glass spheres
+   (atoms) and rods (bonds). Three instanced meshes keep it to three draw
+   calls, so it stays light on phones. */
 
 const MOLECULE = {
   heavyRadius: 0.38,
@@ -1297,9 +1523,12 @@ const MOLECULE = {
   bondRadius: 0.09,
   tilt: 0.3,          // fixed forward tilt (radians), so the turn reads as 3D
   idleSpeed: 0.03,    // extra idle turn while the page is still (radians per second)
-  opacity: 0.4,
-  hydrogenOpacity: 0.26,
-  tints: { O: 0xEEF4FF, N: 0xF4F0FF, P: 0xFFF5E6 }, // hints only: it reads as clear glass
+  opacity: 0.8,
+  bondOpacity: 0.85,
+  hydrogenOpacity: 0.6,
+  colour: 0xD9E3F0,   // a light, cool glass
+  edge: 0x6F84A3,     // the darker, bluer edge at grazing angles
+  tints: { O: 0xE2EBFF, N: 0xE9E4FF, P: 0xFFEFD9 }, // hints only: it reads as clear glass
 };
 
 // A tiny V2000 reader: the counts line gives the number of atoms and bonds,
@@ -1355,61 +1584,44 @@ function orientMolecule(THREE, atoms) {
   return pts.map((p) => p.applyMatrix4(basis));
 }
 
-let nadMolecule = null;        // the running 3D molecule, or null (then the image is used)
-let nadMoleculePromise = null;
-
 async function createMolecule(obj, src, pixelRatioCap) {
-  const probe = document.createElement('canvas');
-  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return null;
+  if (!hasWebGL()) return null;
 
   // 3D structure: PubChem CID 5892 (NCBI)
-  const [THREE, { RoomEnvironment }, text] = await Promise.all([
-    import('three'),
-    import('three/addons/environments/RoomEnvironment.js'),
-    fetch(src).then((r) => { if (!r.ok) throw new Error(`Could not load ${src}`); return r.text(); }),
-  ]);
+  const text = await fetch(src).then((r) => { if (!r.ok) throw new Error(`Could not load ${src}`); return r.text(); });
   const { atoms, bonds } = parseSDF(text);
+  const studio = await createStudio(obj, pixelRatioCap, MOLECULE);
+  const { THREE, scene, spinner } = studio;
   const pts = orientMolecule(THREE, atoms);
-  const host = obj.querySelector('.mol-3d');
 
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true });
-  renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NeutralToneMapping;
-  const canvas = renderer.domElement;
-  canvas.className = 'mol-canvas';
-
-  const scene = new THREE.Scene();
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
   const light = new THREE.DirectionalLight(0xffffff, 1.6);
   light.position.set(-3, 5, 6);
   scene.add(light);
 
-  // Clear glass: no transmission (over a transparent canvas it renders dark and
-  // muddy). Instead a soft fresnel rim gives each sphere and rod a cool,
-  // denser edge, which is how clear glass reads against a light background;
-  // the reflections supply the bright highlights.
+  // Glass without transmission (over a transparent canvas it renders dark and
+  // muddy): a light cool tint, crisp reflections, and a fresnel rim that
+  // darkens towards a deeper blue at grazing angles, so every sphere and rod
+  // has a clear outline, like glass photographed on white. At this opacity
+  // the glass writes depth, so parts behind a sphere never show through it
+  // in the wrong order.
+  const edge = new THREE.Color(MOLECULE.edge); // linear, like the shader's colours
   const glass = (opacity) => {
     const material = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
+      color: MOLECULE.colour,
       metalness: 0,
-      roughness: 0.06,
+      roughness: 0.05,
       clearcoat: 1,
       clearcoatRoughness: 0.05,
       ior: 1.5,
-      envMapIntensity: 1.3,
+      envMapIntensity: 1.5,
       transparent: true,
       opacity,
-      depthWrite: false,
     });
     material.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
-        float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.6);
-        outgoingLight = mix(outgoingLight, vec3(0.33, 0.43, 0.58), 0.8 * rim);
-        diffuseColor.a = min(1.0, diffuseColor.a + 0.55 * rim);
+        float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);
+        outgoingLight = mix(outgoingLight, vec3(${edge.r.toFixed(4)}, ${edge.g.toFixed(4)}, ${edge.b.toFixed(4)}), 0.85 * rim);
+        diffuseColor.a = min(1.0, diffuseColor.a + 0.4 * rim);
         #include <opaque_fragment>`);
     };
     return material;
@@ -1421,7 +1633,7 @@ async function createMolecule(obj, src, pixelRatioCap) {
   const rod = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
   const heavyMesh = new THREE.InstancedMesh(sphere, glass(MOLECULE.opacity), heavy.length);
   const hydrogenMesh = new THREE.InstancedMesh(sphere, glass(MOLECULE.hydrogenOpacity), hydrogens.length);
-  const bondMesh = new THREE.InstancedMesh(rod, glass(MOLECULE.opacity), bonds.length);
+  const bondMesh = new THREE.InstancedMesh(rod, glass(MOLECULE.bondOpacity), bonds.length);
 
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3();
   const colour = new THREE.Color();
@@ -1439,87 +1651,15 @@ async function createMolecule(obj, src, pixelRatioCap) {
     bondMesh.setMatrixAt(k, m.compose(mid, q, s.set(MOLECULE.bondRadius, dir.length(), MOLECULE.bondRadius)));
   });
 
-  // The rods draw first, then the atoms over them; the tilt is fixed and the
-  // turntable turns inside it, around the molecule's own vertical axis.
-  bondMesh.renderOrder = 0;
-  heavyMesh.renderOrder = 1;
-  hydrogenMesh.renderOrder = 2;
-  const spinner = new THREE.Group();
-  spinner.add(bondMesh, heavyMesh, hydrogenMesh);
-  const tilt = new THREE.Group();
-  tilt.rotation.x = MOLECULE.tilt;
-  tilt.add(spinner);
-  scene.add(tilt);
+  // The atoms draw first, then the rods between them.
+  heavyMesh.renderOrder = 0;
+  hydrogenMesh.renderOrder = 1;
+  bondMesh.renderOrder = 2;
+  spinner.add(heavyMesh, hydrogenMesh, bondMesh);
 
-  // Frame it so the whole molecule fits, with a little margin, at every angle
-  // of the turn: every atom is projected at 72 angles and the camera distance
-  // is found by bisection.
   const radius = (i) => (atoms[i].el === 'H' ? MOLECULE.hydrogenRadius : MOLECULE.heavyRadius);
-  const turned = [];
-  for (let k = 0; k < 72; k++) {
-    tilt.rotation.x = MOLECULE.tilt;
-    spinner.rotation.y = (k / 72) * Math.PI * 2;
-    tilt.updateMatrixWorld(true);
-    pts.forEach((p, i) => turned.push([p.clone().applyMatrix4(spinner.matrixWorld), radius(i)]));
-  }
-  spinner.rotation.y = 0;
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
-  const fit = () => {
-    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const limit = 0.94; // share of the half-width/height the molecule may reach
-    const fits = (d) => turned.every(([v, r]) => {
-      const depth = d - v.z - r;
-      return depth > 0
-        && (Math.abs(v.x) + r) / (depth * tanV * camera.aspect) <= limit
-        && (Math.abs(v.y) + r) / (depth * tanV) <= limit;
-    });
-    let lo = 0, hi = 500;
-    for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
-    camera.position.set(0, 0, hi);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-  };
-
-  const resize = () => {
-    const w = host.clientWidth, h = host.clientHeight;
-    if (!w || !h) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    fit();
-  };
-  new ResizeObserver(resize).observe(host);
-  resize();
-
-  let idleAngle = 0;
-  const molecule = {
-    setPixelRatioCap(cap) {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
-      resize();
-    },
-    render(angle, dt = 0) {
-      idleAngle += MOLECULE.idleSpeed * dt * (1 - scrollBoost());
-      spinner.rotation.y = angle + idleAngle;
-      renderer.render(scene, camera);
-    },
-  };
-
-  // Draw the first frame, then crossfade from the image to the canvas.
-  host.appendChild(canvas);
-  molecule.render(0);
-  obj.classList.add('is-3d');
-  return molecule;
-}
-
-function ensureMolecule(obj, t, isDesktop) {
-  const cap = isDesktop ? 2 : 1.5;
-  if (!nadMoleculePromise) {
-    nadMoleculePromise = createMolecule(obj, t.showcase.model, cap)
-      .catch(() => null)
-      .then((molecule) => { nadMolecule = molecule; return molecule; });
-  } else if (nadMolecule) {
-    nadMolecule.setPixelRatioCap(cap);
-  }
-  return nadMoleculePromise;
+  studio.frameAround(pts.map((p, i) => [p, radius(i)]));
+  return studio.show();
 }
 
 /* ---------- Running the live effects ---------- */
@@ -1782,9 +1922,15 @@ function buildStage(root, isDesktop) {
   return { tl, labels, end, preloads };
 }
 
-async function preloadStage(root) {
-  const images = [...root.querySelectorAll('.stage img')];
-  await Promise.all(images.map((img) => img.decode().catch(() => {})));
+// Every stage image (layers, 3D fallbacks) is loaded and decoded, and every
+// image sequence (the scenes' preload) is decoded and drawn, before the stage
+// starts, so nothing pops in while scrolling.
+async function preloadStage(root, preloads) {
+  const images = [...root.querySelectorAll('img')];
+  await Promise.all([
+    ...images.map((img) => img.decode().catch(() => {})),
+    ...preloads,
+  ]);
 }
 
 function initStage(context, isDesktop) {
@@ -1800,9 +1946,13 @@ function initStage(context, isDesktop) {
     // Every image and frame is decoded, Three.js is fetched and the fonts are
     // in before the ScrollTrigger exists, so nothing loads mid-scroll.
     const fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
-    const three = FEATURED.some((t) => t.showcase.swayMask || t.showcase.model) ? import('three').catch(() => null) : null;
-    const room = FEATURED.some((t) => t.showcase.model) ? import('three/addons/environments/RoomEnvironment.js').catch(() => null) : null;
-    await Promise.all([preloadStage(root), fonts, three, room, ...preloads]);
+    const needs = (test) => FEATURED.some((t) => test(t.showcase));
+    const addon = (path) => import(`three/addons/${path}`).catch(() => null);
+    const three = needs((s) => s.swayMask || s.model) ? import('three').catch(() => null) : null;
+    const room = needs((s) => s.model) ? addon('environments/RoomEnvironment.js') : null;
+    const gltf = needs((s) => s.model?.endsWith('.glb')) ? addon('loaders/GLTFLoader.js') : null;
+    await Promise.all([preloadStage(root, preloads), fonts, three, room, gltf]);
+    markStageLoaded();
     if (!alive) return;
 
     context.add(() => {
