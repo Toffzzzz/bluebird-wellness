@@ -177,6 +177,23 @@
     </div>
   </footer>
 
+  <!-- ============ About pop-up: one shared dialog, filled by script.js ============ -->
+  <dialog class="about" id="about" aria-labelledby="about-title">
+    <div class="about__card">
+      <header class="about__head">
+        <h2 class="about__title" id="about-title">About</h2>
+        <button type="button" class="about__close" aria-label="Close" data-about-close>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div class="about__body"></div>
+      <footer class="about__foot">
+        <div class="about__meta"></div>
+        <a class="btn btn--primary about__book" href="#">Book<span class="visually-hidden"></span></a>
+      </footer>
+    </div>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js" defer></script>

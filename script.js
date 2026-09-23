@@ -5,19 +5,21 @@
    2. STAGE TIMING        ← fine-tune the scroll film here
    3. Rendering
    4. Scenes (one per kind of featured visual)
-   5. Live effects: shower water, bubbles, frame sequences, hair sway
-      (Three.js shader), 3D blood cell and NAD+ glass molecule (Three.js)
+   5. Live effects: shower water, frame sequences, hair sway (Three.js
+      shader), 3D blood cell and NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
+   7. About pop-up
    ========================================================================== */
 
 /* ==========================================================================
    1. TREATMENT CONTENT
 
-   The order of this list is the order of the pinned stage AND of the
-   "All treatments" grid.
+   The order of this list is the order of the pinned stage (and its side
+   list), of the "All treatments" grid and of the reduced-motion list.
    Fields:
      id           Unique, lowercase, no spaces. Also used as the page anchor.
      name         Display name.
+     short        Short label for the stage's side list; falls back to name.
      summary      One line for the card.
      priceFrom    "From £X" price in pounds.
                   PROVISIONAL: every price below still needs confirming.
@@ -30,17 +32,21 @@
      placeholder  Shown when there is no image: { shape, colour }
                   shape: "drop" | "circle" | "pill" | "blob" | "arch"
      badge        Optional small label, e.g. { text: "…", variant: "sky" | "sage" }
+     about        Paragraphs shown in the About pop-up; the same copy rules
+                  apply: no claims that a drip cures, treats, prevents,
+                  detoxes, boosts immunity, reverses ageing or grows hair.
      showcase     The treatment's part of the pinned scroll stage:
                     description: 1–2 sentences shown beside the visual
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "cell3d" | "coconut" |
                                  "cucumber" | "molecule" | "plant" | "wipe" |
-                                 "droplet" | "shower" | "frames"
+                                 "droplet" | "shower" | "frames" | "bone"
                                  (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
-                    layers:      ("orange", "plant", "cucumber", "shower", "droplet")
-                                 layer images on the image's canvas;
-                                 ("coconut") layers on their own 1000 × 1056 canvas
+                    layers:      ("orange", "plant", "cucumber", "shower",
+                                 "droplet", "bone") layer images on the image's
+                                 canvas; ("coconut") layers on their own
+                                 1000 × 1056 canvas
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
                     frames:      ("frames", "droplet") { path, count, size } image sequence
                     model:       ("molecule") V2000 SDF file for the 3D glass molecule;
@@ -54,67 +60,20 @@
 // Ingredients to be confirmed by prescriber and compliance review before launch.
 const TREATMENTS = [
   {
-    id: 'energy',
-    name: 'Energy',
-    summary: 'A vitamin drip in a calm, unhurried session.',
-    priceFrom: 149, // PROVISIONAL
-    bookUrl: '#',
-    image: 'images/energy.webp',
-    imageSize: [772, 955],
-    alt: 'A runner mid-stride',
-    showcase: {
-      description: 'A vitamin drip, prepared for you after your consultation. Take a seat and unwind while it runs, in clinic or at home.',
-      scene: 'runner',
-      tint: '#F7F4EF',
-    },
-  },
-  {
-    id: 'immunity',
-    name: 'Immunity',
-    summary: 'A vitamin and mineral drip, prepared after your consultation.',
-    priceFrom: 149, // PROVISIONAL
-    bookUrl: '#',
-    image: 'images/immunity.webp',
-    imageSize: [1040, 919],
-    alt: 'Two halves of an orange with droplets of juice',
-    showcase: {
-      description: 'A vitamin and mineral drip, prepared for you after your consultation. Sit back and relax while it runs, in clinic or at home.',
-      scene: 'orange',
-      tint: '#FAF1E8',
-      layers: {
-        juice: 'images/orange-juice.webp',
-        left: 'images/orange-half-left.webp',
-        right: 'images/orange-half-right.webp',
-        whole: 'images/orange-whole.webp',
-      },
-    },
-  },
-  {
-    id: 'iron',
-    name: 'Iron',
-    summary: 'For diagnosed iron deficiency. A blood test and clinical assessment are needed first.',
-    priceFrom: 295, // PROVISIONAL
-    bookUrl: '#',
-    image: 'images/iron.webp',
-    imageSize: [760, 707],
-    alt: 'A single red blood cell',
-    badge: { text: 'Blood test required first', variant: 'sky' },
-    showcase: {
-      description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
-      scene: 'cell3d',
-      tint: '#F9EFEE',
-      model: 'models/red-blood-cell.glb',
-    },
-  },
-  {
     id: 'hydration',
     name: 'Hydration',
+    short: 'Hydration',
     summary: 'Fluids and electrolytes in a saline drip.',
     priceFrom: 129, // PROVISIONAL
     bookUrl: '#',
     image: 'images/hydration.webp',
     imageSize: [760, 803],
     alt: 'A green coconut split open, with water splashing from it',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
     showcase: {
       description: 'Fluids and electrolytes in a saline drip, given at an unhurried pace. Rest while it runs, in clinic or at home.',
       scene: 'coconut',
@@ -128,14 +87,108 @@ const TREATMENTS = [
     },
   },
   {
+    id: 'energy',
+    name: 'Energy',
+    short: 'Energy',
+    summary: 'A vitamin drip in a calm, unhurried session.',
+    priceFrom: 149, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/energy.webp',
+    imageSize: [772, 955],
+    alt: 'A runner mid-stride',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
+    showcase: {
+      description: 'A vitamin drip, prepared for you after your consultation. Take a seat and unwind while it runs, in clinic or at home.',
+      scene: 'runner',
+      tint: '#F7F4EF',
+    },
+  },
+  {
+    id: 'iron',
+    name: 'Iron',
+    short: 'Iron',
+    summary: 'For diagnosed iron deficiency. A blood test and clinical assessment are needed first.',
+    priceFrom: 295, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/iron.webp',
+    imageSize: [760, 707],
+    alt: 'A single red blood cell',
+    badge: { text: 'Blood test required first', variant: 'sky' },
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
+    showcase: {
+      description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
+      scene: 'cell3d',
+      tint: '#F9EFEE',
+      model: 'models/red-blood-cell.glb',
+    },
+  },
+  {
+    id: 'muscle-recovery',
+    name: 'Muscle Recovery',
+    short: 'Muscle',
+    summary: 'Fluids, minerals and amino acids in a saline drip.',
+    priceFrom: 169, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/deadlift/deadlift-30.webp', // the finished pose: cards and reduced motion
+    imageSize: [792, 1310],
+    alt: 'An athlete standing tall at the top of a deadlift',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
+    showcase: {
+      description: 'Fluids, minerals and amino acids in a saline drip. Put your feet up while it runs, in clinic or at home.',
+      scene: 'frames',
+      tint: '#F3F0EC',
+      frames: { path: 'images/deadlift/deadlift-{n}.webp', count: 30, size: [792, 1310] },
+    },
+  },
+  {
+    id: 'nad',
+    name: 'NAD+',
+    short: 'NAD+',
+    summary: 'NAD+ given as a slow infusion over a longer, relaxed session.',
+    priceFrom: 395, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/nad.webp',
+    imageSize: [800, 730],
+    alt: 'A glass model of a molecule, with clear spheres joined by rods',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
+    showcase: {
+      description: 'NAD+ given as a slow infusion over a longer session. Settle in and rest while it runs, in clinic or at home.',
+      scene: 'molecule',
+      tint: '#F2F2F7',
+      model: 'models/nad.sdf',
+    },
+  },
+  {
     id: 'detox',
     name: 'Detox',
+    short: 'Detox',
     summary: 'A slow, calm drip with time to rest.',
     priceFrom: 169, // PROVISIONAL
     bookUrl: '#',
     image: 'images/detox-card.webp',
     imageSize: [570, 1015],
-    alt: 'A cucumber slice resting at the bottom of a tall glass of water',
+    alt: 'A cucumber slice splashing into a tall glass of water',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
     showcase: {
       description: 'A drip prepared for you after your consultation. A calm, unhurried session in our clinic or wherever suits you.',
       scene: 'cucumber',
@@ -145,36 +198,105 @@ const TREATMENTS = [
         glassFront: 'images/detox-glass-front.webp',
         splashBody: 'images/detox-splash-body.webp',
         splashTop: 'images/detox-splash-top.webp',
-        sliceRest: 'images/detox-slice-rest.webp',
         sliceFall: 'images/detox-slice-fall.webp',
       },
     },
   },
   {
-    id: 'nad',
-    name: 'NAD+',
-    summary: 'NAD+ given as a slow infusion over a longer, relaxed session.',
-    priceFrom: 395, // PROVISIONAL
+    id: 'immunity',
+    name: 'Immunity',
+    short: 'Immunity',
+    summary: 'A vitamin and mineral drip, prepared after your consultation.',
+    priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/nad.webp',
-    imageSize: [800, 730],
-    alt: 'A glass model of a molecule, with clear spheres joined by rods',
+    image: 'images/immunity.webp',
+    imageSize: [1040, 919],
+    alt: 'Two halves of an orange with droplets of juice',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
     showcase: {
-      description: 'NAD+ given as a slow infusion over a longer session. Settle in and rest while it runs, in clinic or at home.',
-      scene: 'molecule',
-      tint: '#F2F2F7',
-      model: 'models/nad.sdf',
+      description: 'A vitamin and mineral drip, prepared for you after your consultation. Sit back and relax while it runs, in clinic or at home.',
+      scene: 'orange',
+      tint: '#FAF1E8',
+      layers: {
+        juice: 'images/orange-juice.webp',
+        left: 'images/orange-half-left.webp',
+        right: 'images/orange-half-right.webp',
+        whole: 'images/orange-whole.webp',
+      },
+    },
+  },
+  {
+    id: 'recovery',
+    name: 'Recovery (Hangover)',
+    short: 'Recovery',
+    summary: 'Fluids with electrolytes and vitamins, in a calm, unhurried setting.',
+    priceFrom: 149, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/shower-wet.webp',
+    imageSize: [829, 941],
+    alt: 'A woman with her eyes closed, tipping her head back under a rain shower',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
+    showcase: {
+      description: 'Fluids with electrolytes and vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
+      scene: 'shower',
+      tint: '#EFF4F5',
+      layers: {
+        dry: 'images/shower-dry.webp',
+        wet: 'images/shower-wet.webp',
+      },
+    },
+  },
+  {
+    id: 'vitamin-d',
+    name: 'Vitamin D',
+    short: 'Vitamin D',
+    summary: 'A vitamin D drip, prepared after your consultation.',
+    priceFrom: 149, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/bone-whole.webp',
+    imageSize: [1405, 320],
+    alt: 'A human thigh bone',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
+    showcase: {
+      description: 'A vitamin D drip, prepared for you after your consultation. Sit back and relax while it runs, in clinic or at home.',
+      scene: 'bone',
+      tint: '#EEF2F6',
+      layers: {
+        left: 'images/bone-left.webp',
+        right: 'images/bone-right.webp',
+        leftClean: 'images/bone-left-clean.webp',
+        rightClean: 'images/bone-right-clean.webp',
+        whole: 'images/bone-whole.webp',
+      },
     },
   },
   {
     id: 'longevity',
     name: 'Longevity',
+    short: 'Longevity',
     summary: 'A vitamin, mineral and amino acid drip.',
     priceFrom: 249, // PROVISIONAL
     bookUrl: '#',
     image: 'images/longevity.webp',
     imageSize: [860, 911],
     alt: 'A young green shoot with water droplets',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
     showcase: {
       description: 'A vitamin, mineral and amino acid drip, prepared after your consultation. A calm, unhurried session, in clinic or at home.',
       scene: 'plant',
@@ -188,24 +310,9 @@ const TREATMENTS = [
     },
   },
   {
-    id: 'hair',
-    name: 'Hair & Scalp',
-    summary: 'A vitamin and mineral drip, with quiet time to sit back.',
-    priceFrom: 179, // PROVISIONAL
-    bookUrl: '#',
-    image: 'images/hair.webp',
-    imageSize: [720, 1024],
-    alt: 'Long, glossy brown hair seen from behind',
-    showcase: {
-      description: 'A vitamin and mineral drip, prepared after your consultation. Quiet time to sit back, in our clinic or wherever suits you.',
-      scene: 'wipe',
-      tint: '#F6F0EA',
-      swayMask: 'images/hair-mask.webp',
-    },
-  },
-  {
     id: 'skin',
     name: 'Skin & Beauty',
+    short: 'Skin',
     summary: 'A vitamin drip with time to sit back and rest.',
     priceFrom: 179, // PROVISIONAL
     bookUrl: '#',
@@ -213,6 +320,11 @@ const TREATMENTS = [
     imageSize: [800, 800],
     imageFit: 'cover',
     alt: 'A single water droplet resting on skin',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
     showcase: {
       description: 'A vitamin drip, prepared after your consultation. Time to sit back and rest, in our clinic or at home.',
       scene: 'droplet',
@@ -226,38 +338,25 @@ const TREATMENTS = [
     },
   },
   {
-    id: 'recovery',
-    name: 'Recovery (Hangover)',
-    summary: 'Fluids with electrolytes and vitamins, in a calm, unhurried setting.',
-    priceFrom: 149, // PROVISIONAL
+    id: 'hair',
+    name: 'Hair & Scalp',
+    short: 'Hair',
+    summary: 'A vitamin and mineral drip, with quiet time to sit back.',
+    priceFrom: 179, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/shower-wet.webp',
-    imageSize: [829, 941],
-    alt: 'A woman with her eyes closed, tipping her head back under a rain shower',
+    image: 'images/hair.webp',
+    imageSize: [720, 1024],
+    alt: 'Long, glossy brown hair seen from behind',
+    about: [
+      'Placeholder: a short introduction to this drip will go here.',
+      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
+      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
+    ],
     showcase: {
-      description: 'Fluids with electrolytes and vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
-      scene: 'shower',
-      tint: '#EFF4F5',
-      layers: {
-        dry: 'images/shower-dry.webp',
-        wet: 'images/shower-wet.webp',
-      },
-    },
-  },
-  {
-    id: 'muscle-recovery',
-    name: 'Muscle Recovery',
-    summary: 'Fluids, minerals and amino acids in a saline drip.',
-    priceFrom: 169, // PROVISIONAL
-    bookUrl: '#',
-    image: 'images/deadlift/deadlift-30.webp', // the finished pose: cards and reduced motion
-    imageSize: [792, 1310],
-    alt: 'An athlete standing tall at the top of a deadlift',
-    showcase: {
-      description: 'Fluids, minerals and amino acids in a saline drip. Put your feet up while it runs, in clinic or at home.',
-      scene: 'frames',
-      tint: '#F3F0EC',
-      frames: { path: 'images/deadlift/deadlift-{n}.webp', count: 30, size: [792, 1310] },
+      description: 'A vitamin and mineral drip, prepared after your consultation. Quiet time to sit back, in our clinic or wherever suits you.',
+      scene: 'wipe',
+      tint: '#F6F0EA',
+      swayMask: 'images/hair-mask.webp',
     },
   },
 ];
@@ -272,6 +371,9 @@ const TREATMENTS = [
      0.82 – 1     exit (overlapping the next treatment's entrance)
    The next segment therefore starts at 0.82 of the current one. Each
    treatment's label (where scrolling gently settles) sits in its rest.
+   The first treatment's entrance plays while the stage scrolls into view
+   (its top moving from `approach` of the viewport height to the top), so
+   the pinned stage opens on its entered picture, text and tint.
    ========================================================================== */
 
 const STAGE = {
@@ -280,8 +382,9 @@ const STAGE = {
   enterEnd: 0.2,        // end of the entrance
   exitStart: 0.82,      // start of the exit (= start of the next segment)
   label: 0.6,           // default rest label (scenes may override)
-  textIn: [0.03, 0.18], // text fades up during the entrance…
-  textOut: [0.82, 0.92],// …and away at the start of the exit
+  textIn: [0.08, 0.2],  // text fades up during the entrance…
+  textOut: [0.82, 0.9], // …and away at the start of the exit (gone before the next arrives)
+  approach: 0.6,        // share of the viewport height the first entrance plays over
   finalTint: '#FBFAF7', // Porcelain, to match the "All treatments" band below
   snap: {
     idle: 150,          // ms of stillness before gliding to the nearest rest point
@@ -313,6 +416,11 @@ function bookHTML(t, compact = false) {
   return `<a class="btn btn--primary${compact ? ' btn--compact' : ''}" href="${esc(t.bookUrl)}">Book<span class="visually-hidden"> ${esc(t.name)}</span></a>`;
 }
 
+// Opens the shared About pop-up (section 7) for this treatment.
+function aboutHTML(t, compact = false) {
+  return `<button type="button" class="btn btn--secondary${compact ? ' btn--compact' : ''}" data-about="${esc(t.id)}">About<span class="visually-hidden"> ${esc(t.name)}</span></button>`;
+}
+
 const layerImg = (src, [w, h], attrs = '') =>
   `<img class="layer" src="${esc(src)}" alt="" width="${w}" height="${h}" decoding="async" draggable="false"${attrs}>`;
 
@@ -333,7 +441,7 @@ function textHTML(t, titleId) {
     <h2 class="treatment-title" id="${titleId}">${esc(t.name)}</h2>
     <p class="treatment-desc">${esc(t.showcase.description)}</p>
     ${badgeHTML(t.badge)}
-    <div class="treatment-actions">${bookHTML(t)}${priceHTML(t)}</div>`;
+    <div class="treatment-actions">${bookHTML(t)}${aboutHTML(t)}${priceHTML(t)}</div>`;
 }
 
 function stageHTML(featured) {
@@ -347,11 +455,8 @@ function stageHTML(featured) {
   const copies = featured.map((t) =>
     `<article class="stage__copy" data-copy="${esc(t.id)}">${textHTML(t, `stage-${esc(t.id)}-title`)}</article>`).join('');
 
-  const steps = featured.map((t, i) => `
-    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="${i + 1}: ${esc(t.name)}"><span>${pad(i + 1)}</span></button></li>`).join('');
-
-  const names = featured.map((t, i) =>
-    `<span class="stage__name"><span class="stage__name-num">${pad(i + 1)}</span> ${esc(t.name)}</span>`).join('');
+  const steps = featured.map((t) => `
+    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="Go to ${esc(t.name)}"><span>${esc(t.short || t.name)}</span></button></li>`).join('');
 
   return `
     <section class="stage" id="stage" aria-label="Featured treatments">
@@ -362,7 +467,6 @@ function stageHTML(featured) {
       </div>
       <nav class="stage__progress" aria-label="Featured treatments">
         <ol class="stage__steps">${steps}</ol>
-        <p class="stage__names" aria-hidden="true">${names}</p>
       </nav>
     </section>`;
 }
@@ -414,7 +518,7 @@ function cardHTML(t) {
       <h3 class="card__title">${esc(t.name)}</h3>
       <p class="card__desc">${esc(t.summary)}</p>
       ${badgeHTML(t.badge)}
-      <div class="card__action">${bookHTML(t, true)}${priceHTML(t)}</div>
+      <div class="card__action">${bookHTML(t, true)}${aboutHTML(t, true)}${priceHTML(t)}</div>
     </article>`;
 }
 
@@ -430,19 +534,20 @@ function render() {
 /* ==========================================================================
    4. Scenes: the markup and the animation for each kind of featured visual.
 
-   runner   Energy: the runner settles beside the text, then runs off
-   orange   Immunity: the orange splits into halves and juice
-   cell3d   Iron: the 3D blood cell turns like a turntable
-            (falls back to the photo floating and turning)
    coconut  Hydration: the coconut cracks, the lid lifts, water splashes
-   cucumber Detox: a slice drops into a glass of water and splashes
+   runner   Energy: the runner moves in beside the text, then runs off
+   cell3d   Iron: the 3D blood cell lies at an angle, turning and rocking
+            (falls back to the photo floating and turning)
+   frames   Muscle Recovery: the deadlift image sequence
    molecule NAD+: the 3D glass molecule turns like a turntable
             (falls back to the photo turning in-plane)
-   plant    Longevity: the stem grows, the bud and leaves unfold
-   wipe     Hair & Scalp: soft wipe, then the hair sways
-   droplet  Skin & Beauty: a droplet falls onto the skin and settles
+   cucumber Detox: a slice drops into a glass of water and splashes
+   orange   Immunity: the orange splits into halves and juice
    shower   Recovery: water from the shower soaks the hair
-   frames   Muscle Recovery: the deadlift image sequence
+   bone     Vitamin D: two halves of a bone come together as one
+   plant    Longevity: the stem grows, the bud and leaves unfold
+   droplet  Skin & Beauty: a droplet falls onto the skin and settles
+   wipe     Hair & Scalp: soft wipe, then the hair sways
    fade     fallback for anything else
 
    animate(c) receives:
@@ -454,7 +559,10 @@ function render() {
                 a gentle time-based loop that only runs while on screen
      c.live(effect)
                 a canvas/WebGL effect that only runs while on screen
-     c.tl, c.start, c.L, c.label, c.isFirst, c.isLast, c.isDesktop
+     c.tl, c.start, c.L, c.label, c.isLast, c.isDesktop
+   The first treatment's entrance plays while the stage scrolls into view,
+   so the stage opens on its entered picture; the last one has no exit
+   (fadeOut skips it) and stays until the stage scrolls away.
    A scene may also have preload(t, scene, isDesktop), awaited before the
    stage starts, and its own rest label.
    Every scene shows its natural, finished picture during its rest.
@@ -472,10 +580,11 @@ function offsetWithin(el, ancestor) {
 }
 
 // Default entrance and exit. The fades are staggered (the outgoing object
-// fades mostly before the incoming one appears) while their movements overlap,
-// so a handover never shows two half-faded pictures on top of each other.
-const FADE_IN = [0.04, 0.18];
-const FADE_OUT = [0.82, 0.95];
+// has all but gone, under 10%, when the incoming one starts to appear) while
+// their movements overlap, so a handover never shows two half-faded pictures
+// on top of each other.
+const FADE_IN = [0.08, 0.2];
+const FADE_OUT = [0.82, 0.92];
 const fadeIn = ({ obj, ft }, from = { y: 40 }) => {
   gsap.set(obj, { autoAlpha: 0, ...from });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
@@ -531,18 +640,23 @@ function ensure3D(scene, create, pixelRatioCap) {
   return state.promise;
 }
 
-// A turntable across the whole segment: one full turn, facing front at the
-// rest label, handed to the scene's 3D view on every frame.
-function turntable3D(c, create) {
-  const { scene, ft, live, start, L, label, isDesktop } = c;
-  const turn = { y: -2 * Math.PI * label };
-  ft(turn, { y: -2 * Math.PI * label }, { y: 2 * Math.PI * (1 - label) }, 0, 1);
+// Hands the scrubbed `motion` ({ turn, tilt? }) to the scene's 3D view on
+// every frame.
+function scrub3D({ scene, live, start, L, isDesktop }, motion, create) {
   const cap = isDesktop ? 2 : 1.5;
   live({
     initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
-    init: () => ensure3D(scene, () => create(cap), cap).then((view) => view && view.render(turn.y)),
-    frame: (time, dt) => { if (scene.view3d?.view) scene.view3d.view.render(turn.y, dt); },
+    init: () => ensure3D(scene, () => create(cap), cap).then((view) => view && view.render(motion)),
+    frame: (time, dt) => { if (scene.view3d?.view) scene.view3d.view.render(motion, dt); },
   });
+}
+
+// A turntable across the whole segment: one full turn, facing front at the
+// rest label.
+function turntable3D(c, create) {
+  const motion = { turn: -2 * Math.PI * c.label };
+  c.ft(motion, { turn: -2 * Math.PI * c.label }, { turn: 2 * Math.PI * (1 - c.label) }, 0, 1);
+  scrub3D(c, motion, create);
 }
 
 // Loads and decodes an image sequence, then draws it on the scene's
@@ -571,25 +685,16 @@ function scrubFrames({ scene, tl, start, L, live }, map) {
 }
 
 const SCENES = {
-  // ENERGY: starts large and centred with no text, settles beside the text
-  // during the entrance, bobs very slightly at rest, then runs off the edge.
+  // ENERGY: fades in beside the text with a gentle move in from the left,
+  // bobs very slightly at rest, then runs off the right edge.
   runner: {
     html: (t) => objHTML(t, 'runner', layerImg(t.image, t.imageSize, ' data-layer="runner"')),
     animate(c) {
-      const { obj, scene, ft, idle, isFirst, isLast } = c;
+      const { obj, scene, ft, idle, isLast } = c;
       const root = document.getElementById('stage');
-      const header = 64;
-      const centreX = () => root.clientWidth / 2 - (offsetWithin(obj, root).left + obj.offsetWidth / 2);
-      const centreY = () => (root.clientHeight + header) / 2 - (offsetWithin(obj, root).top + obj.offsetHeight / 2);
-      const bigScale = () => gsap.utils.clamp(1.1, 1.8, ((root.clientHeight - header) * 0.84) / obj.offsetHeight);
       const xExit = () => window.innerWidth - offsetWithin(obj, root).left + 40;
 
-      gsap.set(obj, { x: centreX, y: centreY, scale: bigScale });
-      if (!isFirst) {
-        gsap.set(obj, { autoAlpha: 0 });
-        ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-      }
-      ft(obj, { x: centreX, y: centreY, scale: bigScale }, { x: 0, y: 0, scale: 1 }, 0, 0.2, 'power2.inOut');
+      fadeIn(c, { x: -60 });
       if (!isLast) ft(obj, { x: 0 }, { x: xExit }, 0.82, 1, 'power1.in');
       // A very subtle forward bob while he waits.
       idle(scene.querySelector('[data-layer="runner"]'), { y: -2.5, x: 1.5, duration: 0.42 });
@@ -646,14 +751,16 @@ const SCENES = {
   },
 
   // IRON: the 3D red blood cell (section 5), lit like a studio photograph,
-  // turning like a turntable once across its segment (facing front at rest),
-  // with a very slow idle turn and a gentle float. iron.webp shows until the
-  // first 3D frame is drawn; without WebGL (or if loading fails) the photo
-  // keeps its gentle in-plane turn instead.
+  // lying at an angle like a disc on a table, tipped towards the viewer so
+  // the dimple shows. It settles from nearly edge-on as it fades in, turns
+  // half a turn about its own axis across the segment (at its resting angle
+  // at the rest label) and rocks gently, with a very slow idle spin and a
+  // gentle float. iron.webp shows until the first 3D frame is drawn; without
+  // WebGL (or if loading fails) the photo keeps its gentle in-plane turn.
   cell3d: {
     html: (t) => objHTML(t, 'cell3d', `<div class="layer bob">${threeHTML(floatHTML(t))}</div>`),
     animate(c) {
-      const { t, obj, scene, idle } = c;
+      const { t, obj, scene, idle, ft, label } = c;
       fadeIn(c, { scale: 0.85, y: 30 });
       floatImage(c);
       idle(scene.querySelector('.bob'), { y: -5, duration: 3.2 });
@@ -663,7 +770,16 @@ const SCENES = {
         scene.modelBytes = stageLoaded.then(() => fetchBytes(t.showcase.model));
         scene.modelBytes.catch(() => {});
       }
-      turntable3D(c, (cap) => createBloodCell(obj, scene.modelBytes, cap));
+
+      // The tilt is the entrance settle plus the rock (−0.96 → −0.81 → −1.06 → −0.96).
+      const { tilt, tiltEnter, rock } = BLOOD_CELL;
+      const motion = { turn: -Math.PI * label, settle: tiltEnter, rock: 0, get tilt() { return this.settle + this.rock; } };
+      ft(motion, { turn: -Math.PI * label }, { turn: Math.PI * (1 - label) }, 0, 1);
+      ft(motion, { settle: tiltEnter }, { settle: tilt }, 0, 0.2, 'power2.out');
+      ft(motion, { rock: 0 }, { rock: rock }, 0, 1 / 3, 'sine.inOut');
+      ft(motion, { rock: rock }, { rock: -rock * 2 / 3 }, 1 / 3, 2 / 3, 'sine.inOut');
+      ft(motion, { rock: -rock * 2 / 3 }, { rock: 0 }, 2 / 3, 1, 'sine.inOut');
+      scrub3D(c, motion, (cap) => createBloodCell(obj, scene.modelBytes, cap));
     },
   },
 
@@ -717,12 +833,11 @@ const SCENES = {
   },
 
   // DETOX: a cucumber slice drops into a tall glass of water, passing behind
-  // the rim and the water line (glassFront) into the water; the water splashes
-  // up from the rim, then settles while the slice sinks to the bottom and a
-  // few bubbles rise from it (section 5). All layers share the 570 × 1015
-  // canvas; origins and offsets are % of it.
+  // the rim and the water line (glassFront) into the water, and the water
+  // splashes up out of the glass. The picture holds on that splash. All
+  // layers share the 570 × 1015 canvas; origins and offsets are % of it.
   cucumber: {
-    label: 0.74,
+    label: 0.5,
     html: (t) => {
       const ly = t.showcase.layers;
       return objHTML(t, 'cucumber', [
@@ -730,47 +845,30 @@ const SCENES = {
         layerImg(ly.sliceFall, t.imageSize, ' data-layer="slice-fall"'),
         layerImg(ly.glassFront, t.imageSize, ' data-layer="glass-front"'),
         layerImg(ly.splashBody, t.imageSize, ' data-layer="splash-body"'),
-        layerImg(ly.sliceRest, t.imageSize, ' data-layer="slice-rest"'),
-        '<canvas class="layer fx--bubbles" aria-hidden="true"></canvas>',
         layerImg(ly.splashTop, t.imageSize, ' data-layer="splash-top"'),
       ].join(''));
     },
     animate(c) {
-      const { scene, ft, live, isDesktop } = c;
+      const { scene, ft } = c;
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const fall = q('slice-fall'), body = q('splash-body'), top = q('splash-top'), rest = q('slice-rest');
-      const bubbles = scene.querySelector('.fx--bubbles');
+      const fall = q('slice-fall'), body = q('splash-body'), top = q('splash-top');
       const falling = { yPercent: -62, rotation: -38.2, scale: 0.85 };
       const landed = { yPercent: 0, rotation: 21.8, scale: 1 };
-      // Where the slice is in the splash picture, and where it comes to rest.
-      const inSplash = { xPercent: 5.18, yPercent: -25.9, rotation: 31.4, scale: 1.03 };
-      const sunk = { xPercent: 0, yPercent: 0, rotation: 0, scale: 1 };
 
       fadeIn(c, { y: 40 });
       gsap.set(fall, { transformOrigin: '52.28% 49.68%', autoAlpha: 0, ...falling });
       gsap.set(top, { transformOrigin: '49.74% 22.66%', autoAlpha: 0, scaleX: 0.6, scaleY: 0.2 }); // the rim
-      gsap.set(rest, { transformOrigin: '47.11% 75.59%', autoAlpha: 0, ...inSplash });
-      gsap.set([body, bubbles], { autoAlpha: 0 });
+      gsap.set(body, { autoAlpha: 0 });
 
       // The drop: the slice accelerates down and turns, then disappears into the splash.
       ft(fall, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.08, 0.12);
       ft(fall, falling, landed, 0.08, 0.3, 'power2.in');
       ft(fall, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.3, 0.315);
 
-      // The splash bursts up from the rim, then its droplets fall back.
+      // The splash bursts up from the rim and holds.
       ft([body, top], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.29, 0.31);
       ft(top, { scaleX: 0.6, scaleY: 0.2 }, { scaleX: 1, scaleY: 1 }, 0.29, 0.42, 'power2.out');
-      ft(top, { yPercent: 0, autoAlpha: 1 }, { yPercent: 4, autoAlpha: 0 }, 0.42, 0.58, 'power1.in');
-
-      // The water settles and the slice sinks to the bottom.
-      ft(body, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.4, 0.47);
-      ft(rest, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.4, 0.44);
-      ft(rest, inSplash, sunk, 0.46, 0.64, 'power2.inOut');
-
-      // Bubbles rise from the slice once it has settled.
-      ft(bubbles, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.6, 0.7);
       fadeOut(c, { y: -30 });
-      live(createSliceBubbles(bubbles, isDesktop));
     },
   },
 
@@ -942,6 +1040,69 @@ const SCENES = {
       fadeIn(c, { x: 40 });
       const FROM = 0.12, TO = 0.7;
       scrubFrames(c, (p) => gsap.utils.clamp(0, 1, (p - FROM) / (TO - FROM)));
+      fadeOut(c, { y: -30 });
+    },
+  },
+
+  // VITAMIN D: two halves of a broken bone slide together from either side,
+  // pivoting at the join (50.64% 54.22% of the 1405 × 320 canvas). As they
+  // approach, each broken half crossfades to its clean piece (the whole bone
+  // cut in two), so the crumbly ends fade; a soft glow blooms at the join and
+  // the whole bone takes over, invisibly, once the halves are exactly closed.
+  bone: {
+    label: 0.7,
+    html: (t) => {
+      const ly = t.showcase.layers;
+      return objHTML(t, 'bone', `
+        <div class="layer bone-half bone-half--left">
+          ${layerImg(ly.left, t.imageSize, ' data-layer="left"')}
+          ${layerImg(ly.leftClean, t.imageSize, ' data-layer="left-clean"')}
+        </div>
+        <div class="layer bone-half bone-half--right">
+          ${layerImg(ly.right, t.imageSize, ' data-layer="right"')}
+          ${layerImg(ly.rightClean, t.imageSize, ' data-layer="right-clean"')}
+        </div>
+        ${layerImg(ly.whole, t.imageSize, ' data-layer="whole"')}
+        <span class="bone-glow" aria-hidden="true"></span>`);
+    },
+    animate(c) {
+      const { scene, ft } = c;
+      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
+      const halfL = scene.querySelector('.bone-half--left'), halfR = scene.querySelector('.bone-half--right');
+      const brokenL = q('left'), brokenR = q('right'), cleanL = q('left-clean'), cleanR = q('right-clean');
+      const whole = q('whole'), glow = scene.querySelector('.bone-glow');
+      const apartL = { xPercent: -6, rotation: -4 }, apartR = { xPercent: 6, rotation: 4 };
+      const closed = { xPercent: 0, rotation: 0 };
+
+      fadeIn(c, { y: 30 });
+      gsap.set([halfL, halfR], { transformOrigin: '50.64% 54.22%' });
+      gsap.set(halfL, apartL);
+      gsap.set(halfR, apartR);
+      gsap.set([cleanL, cleanR, whole], { autoAlpha: 0 });
+      gsap.set(glow, { x: 0, y: 0, xPercent: -50, yPercent: -50, scale: 0.3, autoAlpha: 0 });
+
+      // The halves slide together, closing exactly.
+      ft(halfL, apartL, closed, 0.1, 0.5, 'power2.inOut');
+      ft(halfR, apartR, closed, 0.1, 0.5, 'power2.inOut');
+
+      // The broken ends fade as they approach. The clean piece (on top) comes
+      // in faster than the broken half goes, so the bone never looks see-through.
+      ft([cleanL, cleanR], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.34, 0.46, 'power2.out');
+      ft([brokenL, brokenR], { autoAlpha: 1 }, { autoAlpha: 0 }, 0.34, 0.46, 'power2.in');
+
+      // A soft glow blooms at the join, then spreads and fades.
+      ft(glow, { scale: 0.3, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.44, 0.52, 'power1.out');
+      ft(glow, { scale: 1, autoAlpha: 1 }, { scale: 1.4, autoAlpha: 0 }, 0.52, 0.66, 'power1.in');
+
+      // Handover, once the halves are exactly closed: the clean pieces match
+      // the whole bone's shape, but as separately compressed images their
+      // colours differ very slightly, and while both are shown their soft
+      // edges add up. So the whole bone fades in on top (blending the pieces'
+      // texture and the cut into its own), then the halves fade out beneath
+      // it (its outline eases back), with no step anywhere.
+      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.54, 'sine.inOut');
+      ft([halfL, halfR], { autoAlpha: 1 }, { autoAlpha: 0 }, 0.54, 0.58, 'sine.inOut');
+      fadeOut(c, { y: -30 });
     },
   },
 
@@ -981,7 +1142,6 @@ function fitCanvas(canvas, ctx, cap) {
 // 0 (still) to 1 (scrolling briskly), from Lenis's current velocity.
 const scrollBoost = () => Math.min(1, Math.abs(lenis ? lenis.velocity : 0) / 30);
 const rand = (a, b) => a + Math.random() * (b - a);
-const smooth = (e0, e1, x) => { const t = gsap.utils.clamp(0, 1, (x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
 
 // A canvas whose opacity is animated to 0 is hidden: skip drawing it.
 const shown = (canvas) => canvas.style.visibility !== 'hidden';
@@ -1045,79 +1205,6 @@ function createShowerWater(canvas, isDesktop) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
-    },
-  };
-}
-
-// DETOX: tiny bubbles (1–4px) rise from around the resting slice, wobble a
-// little, speed up, and pop with a sparkle at the water surface. The canvas
-// is clipped to the water with CSS. 30 at a time (15 on small screens).
-function createSliceBubbles(canvas, isDesktop) {
-  const ctx = canvas.getContext('2d');
-  const cap = isDesktop ? 2 : 1.5;
-  const max = isDesktop ? 30 : 15;
-  const rate = isDesktop ? 9 : 4.5; // bubbles per second (each lives about 3 seconds)
-  const SURFACE = 0.357;
-  let w = 0, h = 0, parts = [], sparks = [], carry = 0, observer = null, blank = true;
-
-  const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); };
-  const spawn = () => ({
-    x0: rand(0.38, 0.56) * w,
-    y: rand(0.7, 0.78) * h,
-    r: rand(0.5, 2),                    // 1–4px across
-    vy: rand(0.03, 0.05) * h, accel: rand(0.03, 0.05) * h,
-    amp: rand(0.3, 1.2), freq: rand(3, 6), phase: rand(0, Math.PI * 2), age: 0,
-  });
-
-  return {
-    start() {
-      if (!observer) { observer = new ResizeObserver(resize); observer.observe(canvas); }
-      resize();
-    },
-    stop() { parts = []; sparks = []; carry = 0; ctx.clearRect(0, 0, w, h); blank = true; },
-    frame(time, dt) {
-      const boost = scrollBoost();
-      carry += rate * (1 + 2 * boost) * dt;
-      while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
-      const speed = 1 + 1.2 * boost;
-      const draw = shown(canvas);
-      if (draw) ctx.clearRect(0, 0, w, h);
-      else if (!blank) { ctx.clearRect(0, 0, w, h); blank = true; }
-      if (draw) { blank = false; ctx.lineWidth = 0.7; }
-      parts = parts.filter((p) => {
-        p.age += dt;
-        p.vy += p.accel * dt;
-        p.y -= p.vy * speed * dt;
-        const x = p.x0 + Math.sin(p.age * p.freq + p.phase) * p.amp;
-        if (p.y - p.r <= SURFACE * h) { sparks.push({ x, y: SURFACE * h + 1, age: 0 }); return false; }
-        if (!draw) return true;
-        ctx.globalAlpha = Math.min(1, p.age / 0.25);
-        ctx.beginPath();
-        ctx.arc(x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.18)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(90,110,100,0.25)';
-        ctx.beginPath(); ctx.arc(x, p.y, p.r + 0.6, 0, Math.PI * 2); ctx.stroke();
-        return true;
-      });
-      // Tiny sparkles where bubbles pop.
-      sparks = sparks.filter((s) => {
-        s.age += dt;
-        const life = s.age / 0.3;
-        if (life >= 1) return false;
-        if (!draw) return true;
-        const len = 1.5 + 3 * life;
-        ctx.globalAlpha = 1 - life;
-        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-        ctx.beginPath();
-        ctx.moveTo(s.x - len, s.y); ctx.lineTo(s.x + len, s.y);
-        ctx.moveTo(s.x, s.y - len); ctx.lineTo(s.x, s.y + len);
-        ctx.stroke();
-        return true;
-      });
       ctx.globalAlpha = 1;
     },
   };
@@ -1350,8 +1437,11 @@ function ensureHairSway(content, t, isDesktop) {
 /* ---------- 3D scenes (Iron and NAD+): shared setup ----------
    Each 3D scene draws with Three.js into a transparent canvas that fills its
    object's .three-host (so the layout keeps the photo's proportions), lit by
-   a studio reflection map (RoomEnvironment through PMREM). The model sits on
-   a turntable: a fixed forward tilt, with the model turning inside it. */
+   a studio reflection map (RoomEnvironment through PMREM). The model sits in
+   three nested groups, so the rotations never interfere: a fixed in-plane
+   roll (outermost), a tilt about X (fixed, or scrubbed through the motion's
+   tilt), and the spin about the model's own axis (Y for a turntable, Z for
+   a disc lying at an angle) with the model centred inside it. */
 
 const hasWebGL = () => {
   const probe = document.createElement('canvas');
@@ -1367,7 +1457,7 @@ const fetchBytes = (src) => fetch(src).then((r) => {
 let markStageLoaded;
 const stageLoaded = new Promise((resolve) => { markStageLoaded = resolve; });
 
-async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 }) {
+async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1, roll = 0, axis = 'y', frameTilts = [tilt] }) {
   const [THREE, { RoomEnvironment }] = await Promise.all([
     import('three'),
     import('three/addons/environments/RoomEnvironment.js'),
@@ -1386,15 +1476,18 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
 
-  const spinner = new THREE.Group();
+  const posed = new THREE.Group();
   const tilted = new THREE.Group();
+  const spinner = new THREE.Group();
+  posed.rotation.z = roll;
   tilted.rotation.x = tilt;
   tilted.add(spinner);
-  scene.add(tilted);
+  posed.add(tilted);
+  scene.add(posed);
 
   // Frame the model so it fits, with a little margin, at every angle of the
-  // turn: its points are projected at 72 angles and the camera distance is
-  // found by bisection.
+  // spin and every tilt it passes through: its points are projected at 72
+  // angles per tilt and the camera distance is found by bisection.
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
   let samples = [];
   const fit = () => {
@@ -1427,10 +1520,12 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
       resize();
     },
-    // angle: the scroll-driven turn; a very slow extra turn is added while the page is still.
-    render(angle, dt = 0) {
+    // motion.turn: the scroll-driven spin (a very slow extra turn is added
+    // while the page is still); motion.tilt, if given, replaces the fixed tilt.
+    render(motion, dt = 0) {
       idleAngle += idleSpeed * dt * (1 - scrollBoost());
-      spinner.rotation.y = angle + idleAngle;
+      spinner.rotation[axis] = motion.turn + idleAngle;
+      if (motion.tilt != null) tilted.rotation.x = motion.tilt;
       renderer.render(scene, camera);
     },
   };
@@ -1440,17 +1535,22 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 
     // points: [position, radius] pairs in the model's own frame.
     frameAround(points) {
       samples = [];
-      const turn = new THREE.Matrix4(), tiltM = new THREE.Matrix4().makeRotationX(tilt), spin = new THREE.Matrix4();
-      for (let k = 0; k < 72; k++) {
-        turn.multiplyMatrices(tiltM, spin.makeRotationY((k / 72) * Math.PI * 2));
-        points.forEach(([p, r]) => samples.push([p.clone().applyMatrix4(turn), r]));
-      }
+      const pose = new THREE.Matrix4(), rollM = new THREE.Matrix4().makeRotationZ(roll);
+      const tiltM = new THREE.Matrix4(), spin = new THREE.Matrix4();
+      const spinAbout = axis === 'z' ? 'makeRotationZ' : 'makeRotationY';
+      frameTilts.forEach((angle) => {
+        tiltM.makeRotationX(angle);
+        for (let k = 0; k < 72; k++) {
+          pose.copy(rollM).multiply(tiltM).multiply(spin[spinAbout]((k / 72) * Math.PI * 2));
+          points.forEach(([p, r]) => samples.push([p.clone().applyMatrix4(pose), r]));
+        }
+      });
       resize();
     },
     // Draw the first frame, then crossfade from the photo to the canvas.
     show() {
       host.appendChild(renderer.domElement);
-      view.render(0);
+      view.render({ turn: 0 });
       obj.classList.add('is-3d');
       return view;
     },
@@ -1460,10 +1560,17 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 
 /* ---------- Iron: the red blood cell, lit like a studio photograph ----------
    models/red-blood-cell.glb is used exactly as loaded: its own normals,
    tangents, textures, clearcoat, sheen and faint emissive glow. It is a disc
-   facing +Z; the fixed tilt shows its dimple. */
+   facing +Z: lying flat, seen from about 35° above so the dimple shows, and
+   leaning with its long axis from upper left to lower right. It spins about
+   its own axis (the disc's normal). */
 
 const BLOOD_CELL = {
-  tilt: 0.3,
+  roll: -0.4,                   // the lean on screen (about −23°)
+  tilt: -0.96,                  // lying flat, seen from about 35° above (the resting tilt)
+  tiltEnter: -1.4,              // nearly edge-on as it fades in
+  rock: 0.15,                   // the gentle scroll rock: −0.96 → −0.81 → −1.06 → −0.96
+  axis: 'z',
+  frameTilts: [-1.4, -1.06, -0.96, -0.81], // framed so the entrance and the rock never clip
   idleSpeed: 0.012,             // radians per second while the page is still (about 9 min a turn)
   exposure: 1.05,
   environmentIntensity: 0.6,    // wet reflections without washing out the red
@@ -1681,8 +1788,11 @@ function updateLives(time) {
   }
 }
 
-// Driven by gsap.ticker; each effect is capped at 60fps.
+// Driven by gsap.ticker; each effect is capped at 60fps, and nothing runs
+// once the stage has scrolled out of view.
+let stageOnScreen = true;
 function tickLives(time) {
+  if (!stageOnScreen) return;
   for (const l of lives) {
     if (!l.visible || !l.frame) continue;
     if (l.last && time - l.last < 1 / 60 - 0.002) continue;
@@ -1697,7 +1807,7 @@ function tickLives(time) {
    ========================================================================== */
 
 let lenis = null;
-let stage = null; // { st, tl, ids } once the stage is live
+let stage = null; // { st, pin, tl, ids, labelScroll } once the stage is live
 
 // Header gains its divider once the page has scrolled.
 function initHeader() {
@@ -1725,7 +1835,7 @@ function glideTo(y, duration, easing = easeInOutCubic) {
 
 function scrollToTreatment(id) {
   if (!stage) return;
-  const y = stage.st.labelToScroll(id);
+  const y = stage.labelScroll(id);
   const distance = Math.abs(y - window.scrollY) / window.innerHeight;
   glideTo(y, gsap.utils.clamp(0.9, 2, 0.8 + distance * 0.2));
 }
@@ -1769,7 +1879,7 @@ function jumpToHash() {
   const id = decodeURIComponent(location.hash.slice(1));
   if (!id || id === 'top' || !lenis) return;
   if (stage && stage.ids.includes(id)) {
-    lenis.scrollTo(stage.st.labelToScroll(id), { immediate: true, force: true });
+    lenis.scrollTo(stage.labelScroll(id), { immediate: true, force: true });
   } else {
     const target = document.getElementById(id);
     if (target) lenis.scrollTo(target, { immediate: true, force: true });
@@ -1777,19 +1887,19 @@ function jumpToHash() {
 }
 
 /* ---------- Gentle snapping, done through Lenis ----------
-   When scrolling has stopped inside the stage, glide to the nearest rest
-   point. The very start and end of the stage count as rest points too, so
+   When scrolling has stopped inside the pinned stage, glide to the nearest
+   rest point. The very start and end of the pin count as rest points too, so
    the page never pulls you back while you're entering or leaving it. */
 
 let snapTimer = 0;
 let touching = false;
 
 function maybeSnap() {
-  if (!stage || !lenis || autoScrolling || touching) return;
-  const { st, ids } = stage;
+  if (!stage || !lenis || autoScrolling || touching || aboutOpen) return;
+  const { pin, ids, labelScroll } = stage;
   const y = lenis.scroll;
-  if (y <= st.start + 1 || y >= st.end - 1) return;
-  const targets = [st.start, ...ids.map((id) => st.labelToScroll(id)), st.end];
+  if (y <= pin.start + 1 || y >= pin.end - 1) return;
+  const targets = [pin.start, ...ids.map(labelScroll), pin.end];
   const nearest = targets.reduce((best, t) => (Math.abs(t - y) < Math.abs(best - y) ? t : best));
   const distance = Math.abs(nearest - y);
   if (distance < 2) return;
@@ -1825,7 +1935,6 @@ function buildStage(root, isDesktop) {
   const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
   const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
   const steps = [...root.querySelectorAll('.stage__step')];
-  const names = [...root.querySelectorAll('.stage__name')];
   const bg = root.querySelector('.stage__bg');
   const defs = FEATURED.map((t) => SCENES[t.showcase.scene] || SCENES.fade);
 
@@ -1852,7 +1961,6 @@ function buildStage(root, isDesktop) {
       if (i === index) el.setAttribute('aria-current', 'step');
       else el.removeAttribute('aria-current');
     });
-    names.forEach((el, i) => el.classList.toggle('is-active', i === index));
   };
 
   lives = [];
@@ -1890,7 +1998,7 @@ function buildStage(root, isDesktop) {
 
     const obj = scene.querySelector('.obj');
     const shadow = scene.querySelector('.obj__shadow');
-    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isFirst, isLast, isDesktop });
+    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop });
     if (defs[i].preload) preloads.push(defs[i].preload(t, scene, isDesktop).catch(() => null));
     tl.addLabel(t.id, labels[i]);
   });
@@ -1938,8 +2046,10 @@ function initStage(context, isDesktop) {
   if (!root) return () => {};
 
   document.documentElement.classList.add('has-stage');
-  const { tl, preloads } = buildStage(root, isDesktop);
+  const { tl, end, preloads } = buildStage(root, isDesktop);
   gsap.ticker.add(tickLives);
+  const onScreen = new IntersectionObserver(([entry]) => { stageOnScreen = entry.isIntersecting; });
+  onScreen.observe(root);
 
   let alive = true;
   (async () => {
@@ -1957,18 +2067,41 @@ function initStage(context, isDesktop) {
 
     context.add(() => {
       const per = isDesktop ? STAGE.pinPerTreatment.desktop : STAGE.pinPerTreatment.mobile;
-      const st = ScrollTrigger.create({
+      // One scrubbed driver covers the approach and the pin. Its first part
+      // (the stage scrolling into view) plays the first entrance, up to
+      // `intro`; the pinned part plays the rest of the timeline.
+      const intro = STAGE.enterEnd * STAGE.segment;
+      let k = 0; // share of the driver's scroll taken by the approach
+      const toTime = (p) => (p <= k ? (p / k) * intro : intro + ((p - k) / (1 - k)) * (end - intro));
+      const toProgress = (time) => (time <= intro ? (time / intro) * k : k + ((time - intro) / (end - intro)) * (1 - k));
+      const proxy = { p: 0 };
+      const driver = gsap.to(proxy, { p: 1, duration: 1, ease: 'none', paused: true, onUpdate: () => tl.time(toTime(proxy.p)) });
+
+      const pin = ScrollTrigger.create({
         trigger: root,
         start: 'top top',
         end: () => `+=${per * FEATURED.length}%`,
         pin: true,
-        scrub: 1,
-        animation: tl,
         anticipatePin: 1,
-        invalidateOnRefresh: true,
-        refreshPriority: 1,
+        refreshPriority: 2,
       });
-      stage = { st, tl, ids: FEATURED.map((t) => t.id) };
+      const st = ScrollTrigger.create({
+        trigger: root,
+        start: `top ${STAGE.approach * 100}%`,
+        end: () => pin.end,
+        scrub: 1,
+        animation: driver,
+        refreshPriority: 1,
+        onRefresh: (self) => {
+          k = (pin.start - self.start) / Math.max(1, self.end - self.start);
+          // Re-measure the function-based values (e.g. the runner's exit) for the new layout.
+          const time = tl.time();
+          tl.invalidate();
+          tl.time(0, true).time(time, true);
+        },
+      });
+      const labelScroll = (id) => st.start + toProgress(tl.labels[id]) * (st.end - st.start);
+      stage = { st, pin, tl, ids: FEATURED.map((t) => t.id), labelScroll };
     });
     ScrollTrigger.refresh();
     // The pin just made the page taller; let Lenis re-measure before any jump.
@@ -1979,6 +2112,8 @@ function initStage(context, isDesktop) {
   return () => {
     alive = false;
     stage = null;
+    onScreen.disconnect();
+    stageOnScreen = true;
     lives.forEach((l) => { if (l.visible) l.stop?.(); l.visible = false; });
     lives = [];
     gsap.ticker.remove(tickLives);
@@ -2059,12 +2194,88 @@ function initMotion() {
   }
 }
 
+/* ==========================================================================
+   7. About pop-up
+   One shared <dialog> (index.html), filled with the chosen treatment each
+   time it opens. While it is open the page behind never scrolls (Lenis is
+   stopped and snapping waits); on close, focus goes back to the About
+   button that opened it.
+   ========================================================================== */
+
+const ABOUT_FALLBACK = ['Placeholder: more about this drip will go here.'];
+let aboutOpen = false;
+
+function initAbout() {
+  const dialog = document.getElementById('about');
+  if (!dialog || typeof dialog.showModal !== 'function') return;
+  const title = dialog.querySelector('.about__title');
+  const body = dialog.querySelector('.about__body');
+  const meta = dialog.querySelector('.about__meta');
+  const book = dialog.querySelector('.about__book');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let opener = null;
+  let pressedBackdrop = false;
+
+  const open = (t, button) => {
+    opener = button;
+    title.textContent = t.name;
+    body.innerHTML = (t.about?.length ? t.about : ABOUT_FALLBACK).map((p) => `<p>${esc(p)}</p>`).join('');
+    meta.innerHTML = priceHTML(t) + badgeHTML(t.badge);
+    book.href = t.bookUrl;
+    book.querySelector('.visually-hidden').textContent = ` ${t.name}`;
+    aboutOpen = true;
+    clearTimeout(snapTimer);
+    if (lenis) lenis.stop();
+    autoScrolling = false;
+    document.documentElement.classList.add('has-dialog');
+    dialog.classList.remove('is-closing');
+    dialog.showModal();
+    body.scrollTop = 0;
+  };
+
+  // Closing plays a short fade first (none with reduced motion).
+  const finish = () => { if (dialog.open) dialog.close(); };
+  const close = () => {
+    if (!dialog.open || dialog.classList.contains('is-closing')) return;
+    if (reduceMotion.matches) return finish();
+    dialog.classList.add('is-closing');
+    setTimeout(finish, 200);
+  };
+
+  dialog.addEventListener('close', () => {
+    dialog.classList.remove('is-closing');
+    document.documentElement.classList.remove('has-dialog');
+    aboutOpen = false;
+    if (lenis) lenis.start();
+    if (opener) opener.focus({ preventScroll: true });
+    opener = null;
+  });
+  // Escape closes with the same fade.
+  dialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    close();
+  });
+  // A click on the backdrop (outside the card) or on × closes it.
+  dialog.addEventListener('pointerdown', (event) => { pressedBackdrop = event.target === dialog; });
+  dialog.addEventListener('click', (event) => {
+    if ((event.target === dialog && pressedBackdrop) || event.target.closest('[data-about-close]')) close();
+  });
+
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-about]');
+    if (!button) return;
+    const t = TREATMENTS.find((x) => x.id === button.dataset.about);
+    if (t) open(t, button);
+  });
+}
+
 /* ---------- Start ---------- */
 
 render();
 initHeader();
 initAnchors();
 initSnapInputs();
+initAbout();
 initMotion();
 
 const yearEl = document.getElementById('year');
