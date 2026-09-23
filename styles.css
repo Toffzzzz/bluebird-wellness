@@ -594,24 +594,21 @@ html.lenis body { height: auto; }
 .obj--runner .obj__shadow { left: 14%; right: 12%; bottom: -1%; }
 .obj--orange .obj__shadow { left: 18%; right: 14%; bottom: -5%; height: 9%; }
 .obj--float .obj__shadow { left: 18%; right: 18%; bottom: -4%; }
-.obj--breathe .obj__shadow { left: 24%; right: 24%; bottom: 6%; height: 6%; }
+.obj--coconut .obj__shadow { left: 20%; right: 22%; bottom: -2%; height: 6%; }
 .obj--fizz .obj__shadow { left: 22%; right: 22%; bottom: -3%; }
-.obj--spin .obj__shadow { left: 22%; right: 22%; bottom: -5%; }
+.obj--spin .obj__shadow,
+.obj--molecule .obj__shadow { left: 22%; right: 22%; bottom: -5%; }
 .obj--plant .obj__shadow { left: 38%; right: 30%; bottom: 0; height: 5%; }
 .obj--wipe .obj__shadow { left: 12%; right: 12%; bottom: -2%; height: 5%; }
-.obj--zoom .obj__shadow { left: 10%; right: 10%; bottom: -6%; }
+.obj--droplet .obj__shadow { left: 10%; right: 10%; bottom: -6%; }
 .obj--glass .obj__shadow { left: 12%; right: 12%; bottom: -2%; height: 5%; }
-/* Under his feet (the shoes span about 26–60% across). */
-.obj--frames .obj__shadow { left: 18%; right: 34%; bottom: 0; height: 3.5%; }
+/* Under his feet (the feet span about 32–64% across; the soles sit at 96.3% down). */
+.obj--frames .obj__shadow { left: 28%; right: 34%; bottom: 2%; height: 3.5%; }
 
-/* Hydration placeholder: a soft pale-blue rounded shape. */
+/* Placeholder shape on the stage (the "fade" fallback, when there is no image). */
 .placeholder--stage {
   width: 72%;
   aspect-ratio: 1;
-}
-.obj--breathe .breath {
-  display: grid;
-  place-items: center;
 }
 
 /* Longevity stem: revealed upward behind a feathered mask edge (5% of the
@@ -651,16 +648,56 @@ html.lenis body { height: auto; }
   height: 100%;
 }
 
-/* Skin & Beauty: the photo in a rounded frame. */
-.obj--zoom .frame {
+/* Skin & Beauty: the photo in a rounded frame, with the falling droplet,
+   ripples and splash dots zooming together inside it. */
+.obj--droplet .frame {
   overflow: hidden;
   border-radius: var(--radius-card);
 }
-.obj--zoom .frame img {
+.obj--droplet .frame img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+.obj--droplet .ripple { overflow: visible; }
+/* The falling drop: its bottom touches 52.6% / 58.5% of the frame. */
+.drop-fall {
+  position: absolute;
+  left: calc(52.6% - 3.5%);
+  top: calc(58.5% - 10.5%);
+  width: 7%;
+  height: 10.5%;
+  overflow: visible;
+  will-change: transform, opacity;
+}
+/* Tiny splash dots, all starting where the droplet touches the skin. */
+.splash-dot {
+  position: absolute;
+  left: 52.6%;
+  top: 59.5%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(80, 60, 45, 0.3);
+  will-change: transform, opacity;
+}
+.splash-dot:nth-child(3n + 1) { width: 2px; height: 2px; margin: -1px 0 0 -1px; }
+.splash-dot:nth-child(3n) { width: 4px; height: 4px; margin: -2px 0 0 -2px; }
+
+/* NAD+: the 3D canvas replaces the image once its first frame is drawn. */
+.mol-3d,
+.mol-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mol-3d { opacity: 0; }
+.mol-fallback,
+.mol-3d { transition: opacity 0.6s var(--ease-out); }
+.obj--molecule.is-3d .mol-fallback { opacity: 0; }
+.obj--molecule.is-3d .mol-3d { opacity: 1; }
 
 /* Canvases for bubbles and the frame sequence. */
 .fx {

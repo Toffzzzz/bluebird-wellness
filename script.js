@@ -5,7 +5,8 @@
    2. STAGE TIMING        ← fine-tune the scroll film here
    3. Rendering
    4. Scenes (one per kind of featured visual)
-   5. Live effects: bubbles, frame sequence, hair sway (Three.js shader)
+   5. Live effects: bubbles, frame sequence, hair sway (Three.js shader),
+      NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
    ========================================================================== */
 
@@ -32,31 +33,36 @@
      showcase     The treatment's part of the pinned scroll stage:
                     description: 1–2 sentences shown beside the visual
                     scene:       which animation (see section 4):
-                                 "runner" | "orange" | "float" | "breathe" |
-                                 "fizz" | "spin" | "plant" | "wipe" | "zoom" |
-                                 "glass" | "frames" (anything else fades in/out)
+                                 "runner" | "orange" | "float" | "coconut" |
+                                 "fizz" | "molecule" | "spin" | "plant" |
+                                 "wipe" | "droplet" | "glass" | "frames"
+                                 (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
-                    layers:      ("orange", "plant") layer images on the image's canvas
+                    layers:      ("orange", "plant") layer images on the image's canvas;
+                                 ("coconut") layers on their own 1000 × 1056 canvas;
+                                 ("droplet") the skin without the droplet, and the droplet alone
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
                     frames:      ("frames") { path, count, size } image sequence
+                    model:       ("molecule") V2000 SDF file for the 3D glass molecule
 
    Copy rule: describe what's in each drip and the experience only. No claims
    that a treatment cures, treats, prevents, detoxes, boosts immunity,
    reverses ageing or grows hair (UK ASA/CAP).
    ========================================================================== */
 
+// Ingredients to be confirmed by prescriber and compliance review before launch.
 const TREATMENTS = [
   {
     id: 'energy',
     name: 'Energy',
-    summary: 'B vitamins and vitamin C in a saline drip.',
+    summary: 'A vitamin drip in a calm, unhurried session.',
     priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
     image: 'images/energy.webp',
     imageSize: [772, 955],
     alt: 'A runner mid-stride',
     showcase: {
-      description: 'A blend of B vitamins and vitamin C in a saline drip. Take a seat and unwind while it runs, in clinic or at home.',
+      description: 'A vitamin drip, prepared for you after your consultation. Take a seat and unwind while it runs, in clinic or at home.',
       scene: 'runner',
       tint: '#F7F4EF',
     },
@@ -64,14 +70,14 @@ const TREATMENTS = [
   {
     id: 'immunity',
     name: 'Immunity',
-    summary: 'Vitamin C, zinc and B vitamins in a saline drip.',
+    summary: 'A vitamin and mineral drip, prepared after your consultation.',
     priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
     image: 'images/immunity.webp',
     imageSize: [1040, 919],
     alt: 'Two halves of an orange with droplets of juice',
     showcase: {
-      description: 'Vitamin C, zinc and B vitamins in a gentle saline drip. Sit back and relax while it runs, in clinic or at home.',
+      description: 'A vitamin and mineral drip, prepared for you after your consultation. Sit back and relax while it runs, in clinic or at home.',
       scene: 'orange',
       tint: '#FAF1E8',
       layers: {
@@ -104,28 +110,32 @@ const TREATMENTS = [
     summary: 'Fluids and electrolytes in a saline drip.',
     priceFrom: 129, // PROVISIONAL
     bookUrl: '#',
-    // Waiting for images/hydration.webp: set image (and imageSize) when it arrives.
-    image: null,
-    imageSize: [1, 1],
-    alt: 'Hydration',
-    placeholder: { shape: 'blob', colour: '#D4E1F4' },
+    image: 'images/hydration.webp',
+    imageSize: [760, 803],
+    alt: 'A green coconut split open, with water splashing from it',
     showcase: {
       description: 'Fluids and electrolytes in a saline drip, given at an unhurried pace. Rest while it runs, in clinic or at home.',
-      scene: 'breathe',
+      scene: 'coconut',
       tint: '#EEF3F8',
+      layers: {
+        whole: 'images/coconut-whole.webp',
+        bottom: 'images/coconut-bottom.webp',
+        top: 'images/coconut-top.webp',
+        splash: 'images/coconut-splash.webp',
+      },
     },
   },
   {
     id: 'detox',
     name: 'Detox',
-    summary: 'Glutathione and vitamin C in a saline drip.',
+    summary: 'A slow, calm drip with time to rest.',
     priceFrom: 169, // PROVISIONAL
     bookUrl: '#',
     image: 'images/detox.webp',
     imageSize: [719, 800],
     alt: 'Cucumber slices and mint leaves with water droplets',
     showcase: {
-      description: 'Glutathione and vitamin C in a saline drip. A calm, unhurried session in our clinic or wherever suits you.',
+      description: 'A drip prepared for you after your consultation. A calm, unhurried session in our clinic or wherever suits you.',
       scene: 'fizz',
       tint: '#F0F4EC',
     },
@@ -141,21 +151,22 @@ const TREATMENTS = [
     alt: 'A glass model of a molecule, with clear spheres joined by rods',
     showcase: {
       description: 'NAD+ given as a slow infusion over a longer session. Settle in and rest while it runs, in clinic or at home.',
-      scene: 'spin',
+      scene: 'molecule',
       tint: '#F2F2F7',
+      model: 'models/nad.sdf',
     },
   },
   {
     id: 'longevity',
     name: 'Longevity',
-    summary: 'Vitamin C, magnesium and amino acids in a saline drip.',
+    summary: 'A vitamin, mineral and amino acid drip.',
     priceFrom: 249, // PROVISIONAL
     bookUrl: '#',
     image: 'images/longevity.webp',
     imageSize: [860, 911],
     alt: 'A young green shoot with water droplets',
     showcase: {
-      description: 'Vitamin C, magnesium, B vitamins and amino acids in a saline drip. A calm, unhurried session, in clinic or at home.',
+      description: 'A vitamin, mineral and amino acid drip, prepared after your consultation. A calm, unhurried session, in clinic or at home.',
       scene: 'plant',
       tint: '#F1F4EC',
       layers: {
@@ -169,14 +180,14 @@ const TREATMENTS = [
   {
     id: 'hair',
     name: 'Hair & Scalp',
-    summary: 'Biotin, zinc and B vitamins in a saline drip.',
+    summary: 'A vitamin and mineral drip, with quiet time to sit back.',
     priceFrom: 179, // PROVISIONAL
     bookUrl: '#',
     image: 'images/hair.webp',
     imageSize: [634, 1024],
     alt: 'Long, glossy brown hair seen from behind',
     showcase: {
-      description: 'Biotin, zinc, B vitamins and amino acids in a saline base. Quiet time to sit back, in our clinic or wherever suits you.',
+      description: 'A vitamin and mineral drip, prepared after your consultation. Quiet time to sit back, in our clinic or wherever suits you.',
       scene: 'wipe',
       tint: '#F6F0EA',
       swayMask: 'images/hair-mask.webp',
@@ -185,7 +196,7 @@ const TREATMENTS = [
   {
     id: 'skin',
     name: 'Skin & Beauty',
-    summary: 'Glutathione, vitamin C and biotin in a saline drip.',
+    summary: 'A vitamin drip with time to sit back and rest.',
     priceFrom: 179, // PROVISIONAL
     bookUrl: '#',
     image: 'images/skin.webp',
@@ -193,22 +204,26 @@ const TREATMENTS = [
     imageFit: 'cover',
     alt: 'A single water droplet resting on skin',
     showcase: {
-      description: 'Glutathione, vitamin C and biotin in a saline drip. Time to sit back and rest, in our clinic or at home.',
-      scene: 'zoom',
+      description: 'A vitamin drip, prepared after your consultation. Time to sit back and rest, in our clinic or at home.',
+      scene: 'droplet',
       tint: '#F8EFEA',
+      layers: {
+        base: 'images/skin-base.webp',
+        drop: 'images/skin-drop.webp',
+      },
     },
   },
   {
     id: 'recovery',
     name: 'Recovery (Hangover)',
-    summary: 'Fluids with electrolytes and B vitamins, in a calm, unhurried setting.',
+    summary: 'Fluids with electrolytes and vitamins, in a calm, unhurried setting.',
     priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
     image: 'images/recovery.webp',
     imageSize: [432, 800],
     alt: 'A tall glass of sparkling water',
     showcase: {
-      description: 'Fluids with electrolytes and B vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
+      description: 'Fluids with electrolytes and vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
       scene: 'glass',
       tint: '#EFF4F5',
     },
@@ -216,17 +231,17 @@ const TREATMENTS = [
   {
     id: 'muscle-recovery',
     name: 'Muscle Recovery',
-    summary: 'Magnesium, amino acids and fluids in a saline drip.',
+    summary: 'Fluids, minerals and amino acids in a saline drip.',
     priceFrom: 169, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/deadlift/deadlift-18.webp', // the finished pose: cards and reduced motion
-    imageSize: [654, 1400],
+    image: 'images/deadlift/deadlift-30.webp', // the finished pose: cards and reduced motion
+    imageSize: [792, 1310],
     alt: 'An athlete standing tall at the top of a deadlift',
     showcase: {
-      description: 'Magnesium, amino acids and fluids in a saline drip. Put your feet up while it runs, in clinic or at home.',
+      description: 'Fluids, minerals and amino acids in a saline drip. Put your feet up while it runs, in clinic or at home.',
       scene: 'frames',
       tint: '#F3F0EC',
-      frames: { path: 'images/deadlift/deadlift-{n}.webp', count: 18, size: [654, 1400] },
+      frames: { path: 'images/deadlift/deadlift-{n}.webp', count: 30, size: [792, 1310] },
     },
   },
 ];
@@ -399,6 +414,20 @@ function render() {
 /* ==========================================================================
    4. Scenes: the markup and the animation for each kind of featured visual.
 
+   runner   Energy: the runner settles beside the text, then runs off
+   orange   Immunity: the orange splits into halves and juice
+   float    Iron: the blood cell floats and turns
+   coconut  Hydration: the coconut cracks, the lid lifts, water splashes
+   fizz     Detox: cucumber and mint with bubbles
+   molecule NAD+: the 3D glass molecule turns like a turntable
+   spin     the turning image (NAD+ fallback when 3D can't run)
+   plant    Longevity: the stem grows, the bud and leaves unfold
+   wipe     Hair & Scalp: soft wipe, then the hair sways
+   droplet  Skin & Beauty: a droplet falls onto the skin
+   glass    Recovery: bubbles in the glass
+   frames   Muscle Recovery: the deadlift image sequence
+   fade     fallback for anything else
+
    animate(c) receives:
      c.t, c.scene, c.obj, c.shadow
      c.ft(target, from, to, f0, f1, ease)
@@ -440,6 +469,18 @@ const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
   ft(obj, from, to, 0.82, 1, 'power1.inOut');
   ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
 };
+
+// The turning image ("spin", and the NAD+ fallback). `tilt` receives the 3D wobble.
+const spinHTML = (t) => `<div class="layer turn"><div class="layer idle-turn">${layerImg(t.image, t.imageSize)}</div></div>`;
+function spinImage({ scene, ft, idle, label }, tilt) {
+  const turn = scene.querySelector('.turn');
+  gsap.set(tilt, { transformPerspective: 1200 });
+  ft(turn, { rotation: -360 * label }, { rotation: 360 * (1 - label) }, 0, 1);
+  ft(tilt, { rotationX: 8, rotationY: -8 }, { rotationX: -8, rotationY: 8 }, 0, 0.35, 'sine.inOut');
+  ft(tilt, { rotationX: -8, rotationY: 8 }, { rotationX: 0, rotationY: 0 }, 0.35, label, 'sine.inOut');
+  ft(tilt, { rotationX: 0, rotationY: 0 }, { rotationX: 5, rotationY: -5 }, label, 1, 'sine.inOut');
+  idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
+}
 
 const SCENES = {
   // ENERGY: starts large and centred with no text, settles beside the text
@@ -532,14 +573,52 @@ const SCENES = {
     },
   },
 
-  // HYDRATION: a soft placeholder shape (or the image, once added) that breathes slowly.
-  breathe: {
-    html: (t) => objHTML(t, 'breathe', `<div class="layer breath">${t.image ? layerImg(t.image, t.imageSize) : placeholderHTML(t, ' placeholder--stage')}</div>`, t.image ? t.imageSize : [1, 1]),
-    animate(c) {
-      const { scene, idle } = c;
-      fadeIn(c, { scale: 0.8 });
-      idle(scene.querySelector('.breath'), { scale: 1.04, duration: 2.8 });
-      fadeOut(c, { scale: 1.08 });
+  // HYDRATION: the whole coconut rises in, cracks, and its lid lifts open with
+  // a splash of water. The four layers share one 1000 × 1056 canvas.
+  coconut: {
+    html: (t) => {
+      const size = [1000, 1056];
+      return objHTML(t, 'coconut', [
+        layerImg(t.showcase.layers.bottom, size, ' data-layer="bottom"'),
+        layerImg(t.showcase.layers.splash, size, ' data-layer="splash"'),
+        layerImg(t.showcase.layers.top, size, ' data-layer="top"'),
+        layerImg(t.showcase.layers.whole, size, ' data-layer="whole"'),
+      ].join(''), size);
+    },
+    animate({ scene, shadow, ft, isLast }) {
+      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
+      const bottom = q('bottom'), splash = q('splash'), top = q('top'), whole = q('whole');
+      // Measured so the closed lid and the bottom make exactly the whole coconut's outline.
+      const closed = { xPercent: -4.0, yPercent: 30.1, rotation: -17.8, scale: 1.077 };
+      const open = { xPercent: 0, yPercent: 0, rotation: 0, scale: 1 };
+
+      gsap.set(whole, { transformOrigin: '50% 80%', autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+      gsap.set([bottom, top], { autoAlpha: 0 });
+      gsap.set(top, { transformOrigin: '53% 36%', ...closed });
+      gsap.set(splash, { transformOrigin: '48.7% 55.1%', autoAlpha: 0, scale: 0.3 }); // the shell's opening
+      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+
+      // Entrance: only the whole coconut, rising gently into place.
+      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+
+      // The crack: the split pieces are fully opaque underneath before the
+      // whole coconut fades, so nothing ever looks see-through.
+      ft([bottom, top], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.2, 0.21);
+      ft(whole, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.2, 0.26, 'power1.inOut');
+
+      // The lid lifts open while the water splashes up from the opening.
+      ft(top, closed, open, 0.22, 0.52, 'power2.out');
+      ft(splash, { autoAlpha: 0, scale: 0.3 }, { autoAlpha: 1, scale: 1 }, 0.26, 0.5, 'power2.out');
+
+      if (isLast) return;
+      // Exit: the lid keeps lifting, the bottom sinks a little, the splash spreads, all fade.
+      ft(top, { yPercent: 0, rotation: 0 }, { yPercent: -5, rotation: 5 }, 0.82, 1, 'power1.inOut');
+      ft(bottom, { yPercent: 0 }, { yPercent: 3 }, 0.82, 1, 'power1.inOut');
+      ft(splash, { scale: 1 }, { scale: 1.12 }, 0.82, 1, 'power1.inOut');
+      ft([bottom, splash, top], { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
+      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
     },
   },
 
@@ -561,20 +640,39 @@ const SCENES = {
     },
   },
 
-  // NAD+: the molecule turns a full circle across its segment (upright at
-  // rest), with a very slow idle turn and a subtle 3D wobble.
-  spin: {
-    html: (t) => objHTML(t, 'spin', `<div class="layer turn"><div class="layer idle-turn">${layerImg(t.image, t.imageSize)}</div></div>`),
+  // NAD+: the real 3D structure (section 5) in clear glass, turning like a
+  // turntable once across its segment (facing front at rest), with a very
+  // slow extra idle turn. nad.webp shows until the first 3D frame is drawn;
+  // without WebGL (or if loading fails) the image keeps the "spin" animation.
+  molecule: {
+    html: (t) => objHTML(t, 'molecule', `
+      <div class="layer mol-fallback">${spinHTML(t)}</div>
+      <div class="layer mol-3d" aria-hidden="true"></div>`),
     animate(c) {
-      const { obj, scene, ft, idle, label } = c;
-      const turn = scene.querySelector('.turn');
+      const { t, obj, scene, ft, live, start, L, label, isDesktop } = c;
       fadeIn(c, { scale: 0.9 });
-      gsap.set(obj, { transformPerspective: 1200 });
-      ft(turn, { rotation: -360 * label }, { rotation: 360 * (1 - label) }, 0, 1);
-      ft(obj, { rotationX: 8, rotationY: -8 }, { rotationX: -8, rotationY: 8 }, 0, 0.35, 'sine.inOut');
-      ft(obj, { rotationX: -8, rotationY: 8 }, { rotationX: 0, rotationY: 0 }, 0.35, label, 'sine.inOut');
-      ft(obj, { rotationX: 0, rotationY: 0 }, { rotationX: 5, rotationY: -5 }, label, 1, 'sine.inOut');
-      idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
+      spinImage(c, scene.querySelector('.mol-fallback'));
+      fadeOut(c, { scale: 0.85 });
+
+      // One full turn across the segment: -2π × label → 2π × (1 − label).
+      const turn = { y: -2 * Math.PI * label };
+      ft(turn, { y: -2 * Math.PI * label }, { y: 2 * Math.PI * (1 - label) }, 0, 1);
+      live({
+        initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
+        init: () => ensureMolecule(obj, t, isDesktop).then((m) => m && m.render(turn.y)),
+        frame: (time, dt) => { if (nadMolecule) nadMolecule.render(turn.y, dt); },
+      });
+    },
+  },
+
+  // The image version of the molecule: a full in-plane turn across the
+  // segment (upright at rest), a very slow idle turn and a subtle 3D wobble.
+  // Used by NAD+ as its fallback, and for any treatment with scene "spin".
+  spin: {
+    html: (t) => objHTML(t, 'spin', spinHTML(t)),
+    animate(c) {
+      fadeIn(c, { scale: 0.9 });
+      spinImage(c, c.obj);
       fadeOut(c, { scale: 0.85 });
     },
   },
@@ -652,15 +750,89 @@ const SCENES = {
     },
   },
 
-  // SKIN & BEAUTY (placeholder until the splash): the photo in a rounded
-  // frame with a slow, gentle zoom.
-  zoom: {
-    html: (t) => objHTML(t, 'zoom', `<div class="layer frame">${layerImg(t.image, t.imageSize)}</div>`),
+  // SKIN & BEAUTY: a clear water droplet falls onto the skin, squashes, and
+  // settles into the resting droplet with ripples and a few tiny splashes.
+  // Everything sits in one zooming layer inside the rounded frame, so it
+  // stays aligned. The droplet touches the skin at 52.6% 59.5% of the photo.
+  droplet: {
+    html: (t) => {
+      const ring = '<ellipse cx="52.6" cy="59.5" rx="11" ry="3.2" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>';
+      const dots = Array.from({ length: 6 }, () => '<span class="splash-dot"></span>').join('');
+      return objHTML(t, 'droplet', `
+        <div class="layer frame"><div class="layer zoomer">
+          ${layerImg(t.showcase.layers.base, t.imageSize, ' data-layer="base"')}
+          <svg class="layer ripple" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <g transform="rotate(-16 52.6 59.5)">${ring}${ring}</g>
+          </svg>
+          ${layerImg(t.showcase.layers.drop, t.imageSize, ' data-layer="drop"')}
+          <svg class="drop-fall" viewBox="0 0 70 105" aria-hidden="true">
+            <defs>
+              <radialGradient id="drop-fall-body" cx="50%" cy="66%" r="50%">
+                <stop offset="0" stop-color="rgba(255,255,255,0.55)"/>
+                <stop offset="1" stop-color="rgba(190,150,120,0.28)"/>
+              </radialGradient>
+            </defs>
+            <path d="M35 2 C44 22 68 44 68 70 A33 33 0 0 1 2 70 C2 44 26 22 35 2 Z" fill="url(#drop-fall-body)" stroke="rgba(80,60,45,0.35)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+            <ellipse cx="22" cy="58" rx="5" ry="8.5" transform="rotate(25 22 58)" fill="rgba(255,255,255,0.85)"/>
+          </svg>
+          <div class="layer splash-dots" aria-hidden="true">${dots}</div>
+        </div></div>`);
+    },
     animate(c) {
       const { scene, ft } = c;
-      const img = scene.querySelector('.frame img');
+      const frame = scene.querySelector('.frame');
+      const zoomer = scene.querySelector('.zoomer');
+      const drop = scene.querySelector('[data-layer="drop"]');
+      const fall = scene.querySelector('.drop-fall');
+      const ripple = scene.querySelector('.ripple');
+      const [ring1, ring2] = ripple.querySelectorAll('ellipse');
+      const splash = scene.querySelector('.splash-dots');
+      const dots = [...splash.children];
+      const CONTACT = '52.6% 59.5%';
+
       fadeIn(c, { scale: 0.94 });
-      ft(img, { scale: 1.08 }, { scale: 1 }, 0, 0.7, 'power1.out');
+      gsap.set(zoomer, { transformOrigin: CONTACT });
+      ft(zoomer, { scale: 1.08 }, { scale: 1 }, 0, 0.7, 'power1.out');
+
+      // The fall: from above the frame, accelerating and stretching slightly.
+      gsap.set(fall, { transformOrigin: '50% 100%', yPercent: -560 });
+      ft(fall, { yPercent: -560 }, { yPercent: 0 }, 0.1, 0.32, 'power2.in');
+      ft(fall, { scaleY: 1 }, { scaleY: 1.12 }, 0.1, 0.32, 'power1.in');
+      // Impact: it squashes flat and disappears into the resting droplet.
+      ft(fall, { scaleX: 1, scaleY: 1.12, autoAlpha: 1 }, { scaleX: 1.8, scaleY: 0.3, autoAlpha: 0 }, 0.32, 0.35, 'power1.out');
+
+      // The resting droplet appears quickly and settles with a small wobble.
+      gsap.set(drop, { transformOrigin: CONTACT, autoAlpha: 0, scale: 0.35 });
+      ft(drop, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.32, 0.35);
+      ft(drop, { scale: 0.35 }, { scale: 1 }, 0.32, 0.46, 'back.out(1.7)');
+
+      // Ripples spread along the skin. Their layer only shows from the impact on,
+      // so scrolling back never reveals a ring at its starting size.
+      gsap.set(ripple, { autoAlpha: 0 });
+      ft(ripple, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.318, 0.32);
+      gsap.set([ring1, ring2], { transformOrigin: '50% 50%', scale: 0.3, opacity: 0 });
+      ft(ring1, { scale: 0.3, opacity: 0.9 }, { scale: 1.8, opacity: 0 }, 0.32, 0.56, 'power2.out');
+      ft(ring2, { scale: 0.3, opacity: 0.9 }, { scale: 1.8, opacity: 0 }, 0.36, 0.62, 'power2.out');
+
+      // Splash dots fly out in low arcs along the skin (which rises 16° to the
+      // right), left and right, then fade.
+      gsap.set(splash, { autoAlpha: 0 });
+      ft(splash, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.318, 0.32);
+      const slope = Math.tan((16 * Math.PI) / 180);
+      const spread = [-0.058, -0.036, -0.021, 0.024, 0.041, 0.06]; // share of the frame's width
+      dots.forEach((dot, i) => {
+        const dx = spread[i];
+        const lift = 0.012 + 0.012 * ((i * 7) % 3) / 2; // peak height, 1.2–2.4% of the frame
+        const x = () => dx * frame.offsetWidth;
+        const yLand = () => -dx * slope * frame.offsetHeight;
+        const yPeak = () => (-dx * slope * 0.5 - lift) * frame.offsetHeight;
+        gsap.set(dot, { x: 0, y: 0, autoAlpha: 1 });
+        ft(dot, { x: 0 }, { x }, 0.32, 0.44, 'power1.out');
+        ft(dot, { y: 0 }, { y: yPeak }, 0.32, 0.37, 'power2.out');
+        ft(dot, { y: yPeak }, { y: yLand }, 0.37, 0.44, 'power2.in');
+        ft(dot, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.39, 0.44, 'power1.in');
+      });
+
       fadeOut(c, { x: -60 });
     },
   },
@@ -677,8 +849,8 @@ const SCENES = {
     },
   },
 
-  // MUSCLE RECOVERY: an 18-frame deadlift drawn on a canvas, crossfading
-  // between neighbouring frames. Frame 01 holds before, frame 18 after.
+  // MUSCLE RECOVERY: a 30-frame deadlift drawn on a canvas, crossfading
+  // between neighbouring frames. Frame 01 holds before, frame 30 after.
   frames: {
     label: 0.74,
     html: (t) => objHTML(t, 'frames', `<canvas class="layer fx--frames" aria-hidden="true"></canvas>`, t.showcase.frames.size),
@@ -903,7 +1075,14 @@ function createFrameSequence(canvas, images, isDesktop) {
   const ctx = canvas.getContext('2d');
   const cap = isDesktop ? 2 : 1.5;
   let w = 0, h = 0, position = 0, drawn = -1;
-  const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); drawn = -1; draw(); };
+  const resize = () => {
+    ({ w, h } = fitCanvas(canvas, ctx, cap));
+    // Resizing resets the context, so ask again for the sharpest scaling.
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    drawn = -1;
+    draw();
+  };
   const draw = () => {
     if (drawn === position || !w) return;
     const i0 = Math.floor(position), i1 = Math.min(images.length - 1, Math.ceil(position));
@@ -1104,6 +1283,243 @@ function ensureHairSway(content, t, isDesktop) {
     hairSway.setPixelRatioCap(cap);
   }
   return hairSwayPromise;
+}
+
+/* ---------- NAD+: a clear glass molecule on a turntable ----------
+   The real 3D structure, read from a V2000 SDF file, drawn with Three.js as
+   glass spheres (atoms) and rods (bonds). Three instanced meshes keep it to
+   three draw calls, so it stays light on phones. The canvas is transparent
+   and fills the object's box, which keeps nad.webp's proportions. */
+
+const MOLECULE = {
+  heavyRadius: 0.38,
+  hydrogenRadius: 0.22,
+  bondRadius: 0.09,
+  tilt: 0.3,          // fixed forward tilt (radians), so the turn reads as 3D
+  idleSpeed: 0.03,    // extra idle turn while the page is still (radians per second)
+  opacity: 0.4,
+  hydrogenOpacity: 0.26,
+  tints: { O: 0xEEF4FF, N: 0xF4F0FF, P: 0xFFF5E6 }, // hints only: it reads as clear glass
+};
+
+// A tiny V2000 reader: the counts line gives the number of atoms and bonds,
+// then one line per atom (x, y, z, element) and per bond (two atom numbers).
+function parseSDF(text) {
+  const lines = text.split(/\r?\n/);
+  const counts = lines[3] || '';
+  if (!counts.includes('V2000')) throw new Error('Not a V2000 molfile');
+  const atomCount = parseInt(counts.slice(0, 3), 10);
+  const bondCount = parseInt(counts.slice(3, 6), 10);
+  const atoms = lines.slice(4, 4 + atomCount).map((l) => ({
+    x: parseFloat(l.slice(0, 10)),
+    y: parseFloat(l.slice(10, 20)),
+    z: parseFloat(l.slice(20, 30)),
+    el: l.slice(31, 34).trim(),
+  }));
+  const bonds = lines.slice(4 + atomCount, 4 + atomCount + bondCount).map((l) => [
+    parseInt(l.slice(0, 3), 10) - 1,
+    parseInt(l.slice(3, 6), 10) - 1,
+  ]);
+  if (!atoms.length || atoms.some((a) => !Number.isFinite(a.x + a.y + a.z))) throw new Error('Bad atom block');
+  return { atoms, bonds };
+}
+
+// Centre the molecule on its centroid and turn it so its longest axis lies
+// across the screen and its flattest axis points at the viewer (the widest
+// view, like nad.webp, faces front at rest). Principal axes by power iteration.
+function orientMolecule(THREE, atoms) {
+  const n = atoms.length;
+  const c = atoms.reduce((s, a) => s.add(new THREE.Vector3(a.x, a.y, a.z)), new THREE.Vector3()).divideScalar(n);
+  const pts = atoms.map((a) => new THREE.Vector3(a.x, a.y, a.z).sub(c));
+  const cov = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  pts.forEach((p) => {
+    const v = [p.x, p.y, p.z];
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) cov[i][j] += v[i] * v[j];
+  });
+  const mul = (m, v) => new THREE.Vector3(
+    m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
+    m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
+    m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z);
+  const principal = (m, start) => {
+    let v = start.clone().normalize();
+    for (let k = 0; k < 64; k++) v = mul(m, v).normalize();
+    return v;
+  };
+  const e1 = principal(cov, new THREE.Vector3(1, 0.3, 0.1));
+  const l1 = mul(cov, e1).dot(e1);
+  const deflated = cov.map((row, i) => row.map((x, j) => x - l1 * e1.getComponent(i) * e1.getComponent(j)));
+  let e2 = principal(deflated, new THREE.Vector3(0.1, 1, 0.3));
+  e2.sub(e1.clone().multiplyScalar(e2.dot(e1))).normalize();
+  const e3 = new THREE.Vector3().crossVectors(e1, e2);
+  const basis = new THREE.Matrix4().makeBasis(e1, e2, e3).transpose(); // world → (e1, e2, e3)
+  return pts.map((p) => p.applyMatrix4(basis));
+}
+
+let nadMolecule = null;        // the running 3D molecule, or null (then the image is used)
+let nadMoleculePromise = null;
+
+async function createMolecule(obj, src, pixelRatioCap) {
+  const probe = document.createElement('canvas');
+  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return null;
+
+  // 3D structure: PubChem CID 5892 (NCBI)
+  const [THREE, { RoomEnvironment }, text] = await Promise.all([
+    import('three'),
+    import('three/addons/environments/RoomEnvironment.js'),
+    fetch(src).then((r) => { if (!r.ok) throw new Error(`Could not load ${src}`); return r.text(); }),
+  ]);
+  const { atoms, bonds } = parseSDF(text);
+  const pts = orientMolecule(THREE, atoms);
+  const host = obj.querySelector('.mol-3d');
+
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true });
+  renderer.setClearColor(0x000000, 0);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  const canvas = renderer.domElement;
+  canvas.className = 'mol-canvas';
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  const light = new THREE.DirectionalLight(0xffffff, 1.6);
+  light.position.set(-3, 5, 6);
+  scene.add(light);
+
+  // Clear glass: no transmission (over a transparent canvas it renders dark and
+  // muddy). Instead a soft fresnel rim gives each sphere and rod a cool,
+  // denser edge, which is how clear glass reads against a light background;
+  // the reflections supply the bright highlights.
+  const glass = (opacity) => {
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      metalness: 0,
+      roughness: 0.06,
+      clearcoat: 1,
+      clearcoatRoughness: 0.05,
+      ior: 1.5,
+      envMapIntensity: 1.3,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+    });
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
+        float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.6);
+        outgoingLight = mix(outgoingLight, vec3(0.33, 0.43, 0.58), 0.8 * rim);
+        diffuseColor.a = min(1.0, diffuseColor.a + 0.55 * rim);
+        #include <opaque_fragment>`);
+    };
+    return material;
+  };
+
+  const heavy = [], hydrogens = [];
+  atoms.forEach((a, i) => (a.el === 'H' ? hydrogens : heavy).push(i));
+  const sphere = new THREE.SphereGeometry(1, 32, 20);
+  const rod = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
+  const heavyMesh = new THREE.InstancedMesh(sphere, glass(MOLECULE.opacity), heavy.length);
+  const hydrogenMesh = new THREE.InstancedMesh(sphere, glass(MOLECULE.hydrogenOpacity), hydrogens.length);
+  const bondMesh = new THREE.InstancedMesh(rod, glass(MOLECULE.opacity), bonds.length);
+
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+  const colour = new THREE.Color();
+  const up = new THREE.Vector3(0, 1, 0);
+  const placeAtoms = (mesh, indices, radius) => indices.forEach((atomIndex, k) => {
+    mesh.setMatrixAt(k, m.compose(pts[atomIndex], q.identity(), s.setScalar(radius)));
+    mesh.setColorAt(k, colour.set(MOLECULE.tints[atoms[atomIndex].el] ?? 0xffffff));
+  });
+  placeAtoms(heavyMesh, heavy, MOLECULE.heavyRadius);
+  placeAtoms(hydrogenMesh, hydrogens, MOLECULE.hydrogenRadius);
+  bonds.forEach(([a, b], k) => {
+    const dir = pts[b].clone().sub(pts[a]);
+    const mid = pts[a].clone().add(pts[b]).multiplyScalar(0.5);
+    q.setFromUnitVectors(up, dir.clone().normalize());
+    bondMesh.setMatrixAt(k, m.compose(mid, q, s.set(MOLECULE.bondRadius, dir.length(), MOLECULE.bondRadius)));
+  });
+
+  // The rods draw first, then the atoms over them; the tilt is fixed and the
+  // turntable turns inside it, around the molecule's own vertical axis.
+  bondMesh.renderOrder = 0;
+  heavyMesh.renderOrder = 1;
+  hydrogenMesh.renderOrder = 2;
+  const spinner = new THREE.Group();
+  spinner.add(bondMesh, heavyMesh, hydrogenMesh);
+  const tilt = new THREE.Group();
+  tilt.rotation.x = MOLECULE.tilt;
+  tilt.add(spinner);
+  scene.add(tilt);
+
+  // Frame it so the whole molecule fits, with a little margin, at every angle
+  // of the turn: every atom is projected at 72 angles and the camera distance
+  // is found by bisection.
+  const radius = (i) => (atoms[i].el === 'H' ? MOLECULE.hydrogenRadius : MOLECULE.heavyRadius);
+  const turned = [];
+  for (let k = 0; k < 72; k++) {
+    tilt.rotation.x = MOLECULE.tilt;
+    spinner.rotation.y = (k / 72) * Math.PI * 2;
+    tilt.updateMatrixWorld(true);
+    pts.forEach((p, i) => turned.push([p.clone().applyMatrix4(spinner.matrixWorld), radius(i)]));
+  }
+  spinner.rotation.y = 0;
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
+  const fit = () => {
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const limit = 0.94; // share of the half-width/height the molecule may reach
+    const fits = (d) => turned.every(([v, r]) => {
+      const depth = d - v.z - r;
+      return depth > 0
+        && (Math.abs(v.x) + r) / (depth * tanV * camera.aspect) <= limit
+        && (Math.abs(v.y) + r) / (depth * tanV) <= limit;
+    });
+    let lo = 0, hi = 500;
+    for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+    camera.position.set(0, 0, hi);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  };
+
+  const resize = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    fit();
+  };
+  new ResizeObserver(resize).observe(host);
+  resize();
+
+  let idleAngle = 0;
+  const molecule = {
+    setPixelRatioCap(cap) {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+      resize();
+    },
+    render(angle, dt = 0) {
+      idleAngle += MOLECULE.idleSpeed * dt * (1 - scrollBoost());
+      spinner.rotation.y = angle + idleAngle;
+      renderer.render(scene, camera);
+    },
+  };
+
+  // Draw the first frame, then crossfade from the image to the canvas.
+  host.appendChild(canvas);
+  molecule.render(0);
+  obj.classList.add('is-3d');
+  return molecule;
+}
+
+function ensureMolecule(obj, t, isDesktop) {
+  const cap = isDesktop ? 2 : 1.5;
+  if (!nadMoleculePromise) {
+    nadMoleculePromise = createMolecule(obj, t.showcase.model, cap)
+      .catch(() => null)
+      .then((molecule) => { nadMolecule = molecule; return molecule; });
+  } else if (nadMolecule) {
+    nadMolecule.setPixelRatioCap(cap);
+  }
+  return nadMoleculePromise;
 }
 
 /* ---------- Running the live effects ---------- */
@@ -1384,8 +1800,9 @@ function initStage(context, isDesktop) {
     // Every image and frame is decoded, Three.js is fetched and the fonts are
     // in before the ScrollTrigger exists, so nothing loads mid-scroll.
     const fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
-    const three = FEATURED.some((t) => t.showcase.swayMask) ? import('three').catch(() => null) : null;
-    await Promise.all([preloadStage(root), fonts, three, ...preloads]);
+    const three = FEATURED.some((t) => t.showcase.swayMask || t.showcase.model) ? import('three').catch(() => null) : null;
+    const room = FEATURED.some((t) => t.showcase.model) ? import('three/addons/environments/RoomEnvironment.js').catch(() => null) : null;
+    await Promise.all([preloadStage(root), fonts, three, room, ...preloads]);
     if (!alive) return;
 
     context.add(() => {
