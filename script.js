@@ -1,44 +1,44 @@
 /* ==========================================================================
    Bluebird Wellness: page script
 
-   1. TREATMENT CONTENT   ← edit text, images and the featured sequence here
+   1. TREATMENT CONTENT   ← edit text, prices, images and the stage order here
    2. STAGE TIMING        ← fine-tune the scroll film here
    3. Rendering
-   4. Iron: 3D red blood cell (Three.js)
-   4b. Hair & Scalp: scroll-driven hair sway (Three.js shader)
-   5. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
+   4. Scenes (one per kind of featured visual)
+   5. Live effects: bubbles, frame sequence, hair sway (Three.js shader)
+   6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
    ========================================================================== */
 
 /* ==========================================================================
    1. TREATMENT CONTENT
 
-   Each treatment appears as a card in "All treatments", in the order below.
+   The order of this list is the order of the pinned stage AND of the
+   "All treatments" grid.
    Fields:
      id           Unique, lowercase, no spaces. Also used as the page anchor.
      name         Display name.
      summary      One line for the card.
+     priceFrom    "From £X" price in pounds.
+                  PROVISIONAL: every price below still needs confirming.
      bookUrl      Booking link (placeholder "#" for now).
-     image        Path to a transparent cut-out, e.g. "images/iron.webp".
-                  Leave as null to show the soft placeholder shape instead.
+     image        Path to the image, e.g. "images/iron.webp". Leave as null to
+                  show the soft placeholder shape instead.
      imageSize    [width, height] of the image in pixels (keeps the layout steady).
-     imageFit     Optional. "cover" for a full photo (not a cut-out): it fills
-                  the card's image well instead of floating inside it.
+     imageFit     Optional. "cover" for a full photo (not a cut-out).
      alt          Short description of the image for screen readers.
-     placeholder  Shown when there is no image:
-                    shape:  "drop" | "circle" | "pill" | "blob" | "arch"
-                    colour: any soft, muted colour
+     placeholder  Shown when there is no image: { shape, colour }
+                  shape: "drop" | "circle" | "pill" | "blob" | "arch"
      badge        Optional small label, e.g. { text: "…", variant: "sky" | "sage" }
-     showcase     Optional. Adds the treatment to the pinned scroll "stage":
-                    order:       position in the sequence (1 = first)
+     showcase     The treatment's part of the pinned scroll stage:
                     description: 1–2 sentences shown beside the visual
-                    scene:       "runner" | "orange" | "cell" | "wipe" | "plant"
-                                 (anything else gets a simple fade in and out)
+                    scene:       which animation (see section 4):
+                                 "runner" | "orange" | "float" | "breathe" |
+                                 "fizz" | "spin" | "plant" | "wipe" | "zoom" |
+                                 "glass" | "frames" (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
-                    layers:      ("orange" and "plant" only) the layer images, all
-                                 on the same canvas size as `image`
-                    swayMask:    ("wipe" only, optional) a greyscale mask the size
-                                 of `image`: white parts sway with the scroll,
-                                 black parts never move
+                    layers:      ("orange", "plant") layer images on the image's canvas
+                    swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
+                    frames:      ("frames") { path, count, size } image sequence
 
    Copy rule: describe what's in each drip and the experience only. No claims
    that a treatment cures, treats, prevents, detoxes, boosts immunity,
@@ -47,31 +47,30 @@
 
 const TREATMENTS = [
   {
-    id: 'iron',
-    name: 'Iron',
-    summary: 'For diagnosed iron deficiency. A blood test and clinical assessment are needed first.',
+    id: 'energy',
+    name: 'Energy',
+    summary: 'B vitamins and vitamin C in a saline drip.',
+    priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/iron.webp',
-    imageSize: [760, 707],
-    alt: 'A single red blood cell',
-    badge: { text: 'Blood test required first', variant: 'sky' },
+    image: 'images/energy.webp',
+    imageSize: [772, 955],
+    alt: 'A runner mid-stride',
     showcase: {
-      order: 3,
-      description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
-      scene: 'cell',
-      tint: '#F9EFEE',
+      description: 'A blend of B vitamins and vitamin C in a saline drip. Take a seat and unwind while it runs, in clinic or at home.',
+      scene: 'runner',
+      tint: '#F7F4EF',
     },
   },
   {
     id: 'immunity',
     name: 'Immunity',
     summary: 'Vitamin C, zinc and B vitamins in a saline drip.',
+    priceFrom: 149, // PROVISIONAL
     bookUrl: '#',
     image: 'images/immunity.webp',
     imageSize: [1040, 919],
     alt: 'Two halves of an orange with droplets of juice',
     showcase: {
-      order: 2,
       description: 'Vitamin C, zinc and B vitamins in a gentle saline drip. Sit back and relax while it runs, in clinic or at home.',
       scene: 'orange',
       tint: '#FAF1E8',
@@ -84,74 +83,78 @@ const TREATMENTS = [
     },
   },
   {
-    id: 'recovery',
-    name: 'Recovery (Hangover)',
-    summary: 'Fluids with electrolytes and B vitamins, in a calm, unhurried setting.',
+    id: 'iron',
+    name: 'Iron',
+    summary: 'For diagnosed iron deficiency. A blood test and clinical assessment are needed first.',
+    priceFrom: 295, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/recovery.webp',
-    imageSize: [426, 800],
-    alt: 'A tall glass of sparkling water',
+    image: 'images/iron.webp',
+    imageSize: [760, 707],
+    alt: 'A single red blood cell',
+    badge: { text: 'Blood test required first', variant: 'sky' },
+    showcase: {
+      description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
+      scene: 'float',
+      tint: '#F9EFEE',
+    },
+  },
+  {
+    id: 'hydration',
+    name: 'Hydration',
+    summary: 'Fluids and electrolytes in a saline drip.',
+    priceFrom: 129, // PROVISIONAL
+    bookUrl: '#',
+    // Waiting for images/hydration.webp: set image (and imageSize) when it arrives.
+    image: null,
+    imageSize: [1, 1],
+    alt: 'Hydration',
+    placeholder: { shape: 'blob', colour: '#D4E1F4' },
+    showcase: {
+      description: 'Fluids and electrolytes in a saline drip, given at an unhurried pace. Rest while it runs, in clinic or at home.',
+      scene: 'breathe',
+      tint: '#EEF3F8',
+    },
   },
   {
     id: 'detox',
     name: 'Detox',
     summary: 'Glutathione and vitamin C in a saline drip.',
+    priceFrom: 169, // PROVISIONAL
     bookUrl: '#',
     image: 'images/detox.webp',
     imageSize: [719, 800],
     alt: 'Cucumber slices and mint leaves with water droplets',
-  },
-  {
-    id: 'hair',
-    name: 'Hair & Scalp',
-    summary: 'Biotin, zinc and B vitamins in a saline drip.',
-    bookUrl: '#',
-    image: 'images/hair.webp',
-    imageSize: [1083, 1024],
-    alt: 'Long, glossy brown hair seen from behind',
     showcase: {
-      order: 4,
-      description: 'Biotin, zinc, B vitamins and amino acids in a saline base. Quiet time to sit back, in our clinic or wherever suits you.',
-      scene: 'wipe',
-      tint: '#F6F0EA',
-      swayMask: 'images/hair-mask.webp',
+      description: 'Glutathione and vitamin C in a saline drip. A calm, unhurried session in our clinic or wherever suits you.',
+      scene: 'fizz',
+      tint: '#F0F4EC',
     },
   },
   {
-    id: 'skin',
-    name: 'Skin & Beauty',
-    summary: 'Glutathione, vitamin C and biotin in a saline drip.',
+    id: 'nad',
+    name: 'NAD+',
+    summary: 'NAD+ given as a slow infusion over a longer, relaxed session.',
+    priceFrom: 395, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/skin.webp',
-    imageSize: [800, 800],
-    imageFit: 'cover',
-    alt: 'A single water droplet resting on skin',
-  },
-  {
-    id: 'energy',
-    name: 'Energy',
-    summary: 'B vitamins and vitamin C in a saline drip.',
-    bookUrl: '#',
-    image: 'images/energy.webp',
-    imageSize: [772, 955],
-    alt: 'A runner mid-stride',
+    image: 'images/nad.webp',
+    imageSize: [800, 730],
+    alt: 'A glass model of a molecule, with clear spheres joined by rods',
     showcase: {
-      order: 1,
-      description: 'A blend of B vitamins and vitamin C in a saline drip. Take a seat and unwind while it runs, in clinic or at home.',
-      scene: 'runner',
-      tint: '#F7F4EF',
+      description: 'NAD+ given as a slow infusion over a longer session. Settle in and rest while it runs, in clinic or at home.',
+      scene: 'spin',
+      tint: '#F2F2F7',
     },
   },
   {
     id: 'longevity',
     name: 'Longevity',
     summary: 'Vitamin C, magnesium and amino acids in a saline drip.',
+    priceFrom: 249, // PROVISIONAL
     bookUrl: '#',
     image: 'images/longevity.webp',
     imageSize: [860, 911],
     alt: 'A young green shoot with water droplets',
     showcase: {
-      order: 5,
       description: 'Vitamin C, magnesium, B vitamins and amino acids in a saline drip. A calm, unhurried session, in clinic or at home.',
       scene: 'plant',
       tint: '#F1F4EC',
@@ -164,44 +167,90 @@ const TREATMENTS = [
     },
   },
   {
-    id: 'nad',
-    name: 'NAD+',
-    summary: 'NAD+ given as a slow infusion over a longer, relaxed session.',
+    id: 'hair',
+    name: 'Hair & Scalp',
+    summary: 'Biotin, zinc and B vitamins in a saline drip.',
+    priceFrom: 179, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/nad.webp',
-    imageSize: [800, 730],
-    alt: 'A glass model of a molecule, with clear spheres joined by rods',
+    image: 'images/hair.webp',
+    imageSize: [634, 1024],
+    alt: 'Long, glossy brown hair seen from behind',
+    showcase: {
+      description: 'Biotin, zinc, B vitamins and amino acids in a saline base. Quiet time to sit back, in our clinic or wherever suits you.',
+      scene: 'wipe',
+      tint: '#F6F0EA',
+      swayMask: 'images/hair-mask.webp',
+    },
+  },
+  {
+    id: 'skin',
+    name: 'Skin & Beauty',
+    summary: 'Glutathione, vitamin C and biotin in a saline drip.',
+    priceFrom: 179, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/skin.webp',
+    imageSize: [800, 800],
+    imageFit: 'cover',
+    alt: 'A single water droplet resting on skin',
+    showcase: {
+      description: 'Glutathione, vitamin C and biotin in a saline drip. Time to sit back and rest, in our clinic or at home.',
+      scene: 'zoom',
+      tint: '#F8EFEA',
+    },
+  },
+  {
+    id: 'recovery',
+    name: 'Recovery (Hangover)',
+    summary: 'Fluids with electrolytes and B vitamins, in a calm, unhurried setting.',
+    priceFrom: 149, // PROVISIONAL
+    bookUrl: '#',
+    image: 'images/recovery.webp',
+    imageSize: [432, 800],
+    alt: 'A tall glass of sparkling water',
+    showcase: {
+      description: 'Fluids with electrolytes and B vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
+      scene: 'glass',
+      tint: '#EFF4F5',
+    },
   },
   {
     id: 'muscle-recovery',
     name: 'Muscle Recovery',
     summary: 'Magnesium, amino acids and fluids in a saline drip.',
+    priceFrom: 169, // PROVISIONAL
     bookUrl: '#',
-    image: 'images/muscle-recovery.webp',
-    imageSize: [800, 687],
-    alt: 'An athlete holding a deep lunge stretch',
+    image: 'images/deadlift/deadlift-18.webp', // the finished pose: cards and reduced motion
+    imageSize: [654, 1400],
+    alt: 'An athlete standing tall at the top of a deadlift',
+    showcase: {
+      description: 'Magnesium, amino acids and fluids in a saline drip. Put your feet up while it runs, in clinic or at home.',
+      scene: 'frames',
+      tint: '#F3F0EC',
+      frames: { path: 'images/deadlift/deadlift-{n}.webp', count: 18, size: [654, 1400] },
+    },
   },
 ];
 
 /* ==========================================================================
    2. STAGE TIMING
 
-   The stage is one master timeline. Each treatment owns a "segment" of it
-   (entrance → rest → exit). The next treatment's segment begins as soon as
-   the current one reaches its rest point, so every exit overlaps the next
-   entrance. The rest points are the timeline labels, and the places the
-   page gently settles on when scrolling stops.
+   The stage is one master timeline. Each treatment owns a segment of it:
+     0    – 0.2   entrance (overlapping the previous treatment's exit)
+     0.2  – 0.82  rest: text fully visible; signature animations play mostly
+                  in the first half, then the finished picture holds
+     0.82 – 1     exit (overlapping the next treatment's entrance)
+   The next segment therefore starts at 0.82 of the current one. Each
+   treatment's label (where scrolling gently settles) sits in its rest.
    ========================================================================== */
 
 const STAGE = {
-  pinPerTreatment: { desktop: 150, mobile: 110 }, // % of the viewport height
-  segment: 1.4,         // timeline length of one treatment's segment
-  endHold: 0.35,        // how long the last treatment holds before the stage unpins
-  // Text handovers, as fractions of a segment after the outgoing treatment's rest point.
-  textOut: [0.03, 0.19],
-  textIn: [0.14, 0.31],
-  // Desktop only: the Energy text waits until the runner has crossed the text column.
-  firstTextIn: [0.58, 0.7],
+  pinPerTreatment: { desktop: 120, mobile: 100 }, // % of the viewport height
+  segment: 1,           // timeline length of one treatment's segment
+  enterEnd: 0.2,        // end of the entrance
+  exitStart: 0.82,      // start of the exit (= start of the next segment)
+  label: 0.6,           // default rest label (scenes may override)
+  textIn: [0.03, 0.18], // text fades up during the entrance…
+  textOut: [0.82, 0.92],// …and away at the start of the exit
   finalTint: '#FBFAF7', // Porcelain, to match the "All treatments" band below
   snap: {
     idle: 150,          // ms of stillness before gliding to the nearest rest point
@@ -224,8 +273,20 @@ function badgeHTML(badge) {
   return `<span class="${cls}">${esc(badge.text)}</span>`;
 }
 
+function priceHTML(t) {
+  if (t.priceFrom == null) return '';
+  return `<p class="price"><span class="price__from">From</span> <span class="price__value">£${esc(t.priceFrom)}</span></p>`;
+}
+
+function bookHTML(t, compact = false) {
+  return `<a class="btn btn--primary${compact ? ' btn--compact' : ''}" href="${esc(t.bookUrl)}">Book<span class="visually-hidden"> ${esc(t.name)}</span></a>`;
+}
+
 const layerImg = (src, [w, h], attrs = '') =>
   `<img class="layer" src="${esc(src)}" alt="" width="${w}" height="${h}" decoding="async" draggable="false"${attrs}>`;
+
+const placeholderHTML = (t, extra = '') =>
+  `<span class="placeholder placeholder--${esc(t.placeholder?.shape || 'circle')}${extra}" style="--ph: ${esc(t.placeholder?.colour || '#E8EFFB')}" aria-hidden="true"></span>`;
 
 function objHTML(t, type, inner, ratio = t.imageSize) {
   return `
@@ -241,7 +302,7 @@ function textHTML(t, titleId) {
     <h2 class="treatment-title" id="${titleId}">${esc(t.name)}</h2>
     <p class="treatment-desc">${esc(t.showcase.description)}</p>
     ${badgeHTML(t.badge)}
-    <a class="btn btn--primary" href="${esc(t.bookUrl)}">Book<span class="visually-hidden"> ${esc(t.name)}</span></a>`;
+    <div class="treatment-actions">${bookHTML(t)}${priceHTML(t)}</div>`;
 }
 
 function stageHTML(featured) {
@@ -256,9 +317,10 @@ function stageHTML(featured) {
     `<article class="stage__copy" data-copy="${esc(t.id)}">${textHTML(t, `stage-${esc(t.id)}-title`)}</article>`).join('');
 
   const steps = featured.map((t, i) => `
-    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="${i + 1}: ${esc(t.name)}">${pad(i + 1)}</button></li>`).join('');
+    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="${i + 1}: ${esc(t.name)}"><span>${pad(i + 1)}</span></button></li>`).join('');
 
-  const names = featured.map((t) => `<span class="stage__name">${esc(t.name)}</span>`).join('');
+  const names = featured.map((t, i) =>
+    `<span class="stage__name"><span class="stage__name-num">${pad(i + 1)}</span> ${esc(t.name)}</span>`).join('');
 
   return `
     <section class="stage" id="stage" aria-label="Featured treatments">
@@ -279,12 +341,14 @@ function stageHTML(featured) {
 function staticListHTML(featured) {
   const blocks = featured.map((t, i) => {
     const [w, h] = t.imageSize;
+    let media;
+    if (!t.image) media = `<div class="treatment-block__shape">${placeholderHTML(t)}</div>`;
+    else if (t.imageFit === 'cover') media = `<img class="treatment-block__photo" src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+    else media = `<img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
     return `
       <section class="treatment-block treatment-block--image-${i % 2 ? 'left' : 'right'}" id="${esc(t.id)}" aria-labelledby="${esc(t.id)}-title">
         <div class="container treatment-block__inner">
-          <div class="treatment-block__media">
-            <img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">
-          </div>
+          <div class="treatment-block__media">${media}</div>
           <div class="treatment-block__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
         </div>
       </section>`;
@@ -296,9 +360,7 @@ function staticListHTML(featured) {
 const CARD_FILL = 0.76;
 
 function cardMediaHTML(t) {
-  if (!t.image) {
-    return `<div class="card__media" aria-hidden="true"><span class="placeholder placeholder--${esc(t.placeholder?.shape || 'circle')}" style="--ph: ${esc(t.placeholder?.colour || '#E8EFFB')}"></span></div>`;
-  }
+  if (!t.image) return `<div class="card__media" aria-hidden="true">${placeholderHTML(t)}</div>`;
   const [w, h] = t.imageSize;
   const img = `<img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
 
@@ -321,15 +383,11 @@ function cardHTML(t) {
       <h3 class="card__title">${esc(t.name)}</h3>
       <p class="card__desc">${esc(t.summary)}</p>
       ${badgeHTML(t.badge)}
-      <div class="card__action">
-        <a class="btn btn--primary btn--compact" href="${esc(t.bookUrl)}">Book<span class="visually-hidden"> ${esc(t.name)}</span></a>
-      </div>
+      <div class="card__action">${bookHTML(t, true)}${priceHTML(t)}</div>
     </article>`;
 }
 
-const FEATURED = TREATMENTS
-  .filter((t) => t.showcase && t.image)
-  .sort((a, b) => a.showcase.order - b.showcase.order);
+const FEATURED = TREATMENTS.filter((t) => t.showcase);
 
 function render() {
   const stageRoot = document.getElementById('stage-root');
@@ -339,61 +397,88 @@ function render() {
 }
 
 /* ==========================================================================
-   Scenes: the markup and the animation for each kind of featured visual.
+   4. Scenes: the markup and the animation for each kind of featured visual.
 
    animate(c) receives:
-     c.tl       the master timeline
-     c.scene    the scene element
-     c.ft()     adds a fromTo tween between two fractions of this treatment's
-                segment (0 = entrance begins, 1 = exit completes)
-     c.isFirst, c.isLast, c.isDesktop
-   Every animation reaches its natural, finished picture at `rest`.
-   Only transform, opacity and clip-path are animated.
+     c.t, c.scene, c.obj, c.shadow
+     c.ft(target, from, to, f0, f1, ease)
+                adds a scrubbed tween between two fractions of this
+                treatment's segment (0 = entrance begins, 1 = exit completes)
+     c.idle(target, vars)
+                a gentle time-based loop that only runs while on screen
+     c.live(effect)
+                a canvas/WebGL effect that only runs while on screen
+     c.tl, c.start, c.L, c.isFirst, c.isLast, c.isDesktop
+   Every scene shows its natural, finished picture during its rest.
+   Only transform, opacity, clip-path and mask position are animated.
    ========================================================================== */
 
-// Left edge of an element relative to the viewport, ignoring transforms.
-function layoutLeft(el) {
-  let left = 0;
-  for (let node = el; node; node = node.offsetParent) left += node.offsetLeft;
-  return left - window.scrollX;
+// Offset of an element inside an ancestor, ignoring transforms.
+function offsetWithin(el, ancestor) {
+  let left = 0, top = 0;
+  for (let node = el; node && node !== ancestor; node = node.offsetParent) {
+    left += node.offsetLeft;
+    top += node.offsetTop;
+  }
+  return { left, top };
 }
 
-const SCENES = {
-  // ENERGY: runs in from the left edge of the screen to the right of the visual
-  // area, then keeps running off the right edge during the handover.
-  runner: {
-    rest: 0.7,
-    html: (t) => objHTML(t, 'runner', layerImg(t.image, t.imageSize)),
-    animate({ scene, ft, isFirst, isLast }) {
-      const obj = scene.querySelector('.obj');
-      const xStart = () => -(layoutLeft(obj) + obj.offsetWidth * 0.75);
-      const xRest = () => obj.offsetWidth * 0.1;
-      const xExit = () => window.innerWidth - layoutLeft(obj) + 40;
+// Default entrance and exit. The fades are staggered (the outgoing object
+// fades mostly before the incoming one appears) while their movements overlap,
+// so a handover never shows two half-faded pictures on top of each other.
+const FADE_IN = [0.04, 0.18];
+const FADE_OUT = [0.82, 0.95];
+const fadeIn = ({ obj, ft }, from = { y: 40 }) => {
+  gsap.set(obj, { autoAlpha: 0, ...from });
+  ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+  const to = Object.fromEntries(Object.keys(from).map((k) => [k, k === 'scale' ? 1 : 0]));
+  ft(obj, from, to, 0, 0.22, 'power2.out');
+};
+const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
+  if (isLast) return;
+  const from = Object.fromEntries(Object.keys(to).map((k) => [k, k === 'scale' ? 1 : 0]));
+  ft(obj, from, to, 0.82, 1, 'power1.inOut');
+  ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
+};
 
-      gsap.set(obj, { x: xStart });
+const SCENES = {
+  // ENERGY: starts large and centred with no text, settles beside the text
+  // during the entrance, bobs very slightly at rest, then runs off the edge.
+  runner: {
+    html: (t) => objHTML(t, 'runner', layerImg(t.image, t.imageSize, ' data-layer="runner"')),
+    animate(c) {
+      const { obj, scene, ft, idle, isFirst, isLast } = c;
+      const root = document.getElementById('stage');
+      const header = 64;
+      const centreX = () => root.clientWidth / 2 - (offsetWithin(obj, root).left + obj.offsetWidth / 2);
+      const centreY = () => (root.clientHeight + header) / 2 - (offsetWithin(obj, root).top + obj.offsetHeight / 2);
+      const bigScale = () => gsap.utils.clamp(1.1, 1.8, ((root.clientHeight - header) * 0.84) / obj.offsetHeight);
+      const xExit = () => window.innerWidth - offsetWithin(obj, root).left + 40;
+
+      gsap.set(obj, { x: centreX, y: centreY, scale: bigScale });
       if (!isFirst) {
         gsap.set(obj, { autoAlpha: 0 });
-        ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, 0, 0.15, 'power1.out');
+        ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
       }
-      ft(obj, { x: xStart }, { x: xRest }, 0, 0.7);
-      if (!isLast) ft(obj, { x: xRest }, { x: xExit }, 0.7, 1);
+      ft(obj, { x: centreX, y: centreY, scale: bigScale }, { x: 0, y: 0, scale: 1 }, 0, 0.2, 'power2.inOut');
+      if (!isLast) ft(obj, { x: 0 }, { x: xExit }, 0.82, 1, 'power1.in');
+      // A very subtle forward bob while he waits.
+      idle(scene.querySelector('[data-layer="runner"]'), { y: -2.5, x: 1.5, duration: 0.42 });
     },
   },
 
   // IMMUNITY: the whole orange rises in, then splits into two halves and a
-  // burst of juice. The layers share one canvas; the halves meet at 49.8% 49.5%.
+  // burst of juice (unchanged, retimed). The halves meet at 49.8% 49.5%.
   orange: {
-    rest: 0.7,
     html: (t) => objHTML(t, 'orange', [
       layerImg(t.showcase.layers.juice, t.imageSize, ' data-layer="juice"'),
       layerImg(t.showcase.layers.left, t.imageSize, ' data-layer="left"'),
       layerImg(t.showcase.layers.right, t.imageSize, ' data-layer="right"'),
       layerImg(t.showcase.layers.whole, t.imageSize, ' data-layer="whole"'),
     ].join('')),
-    animate({ scene, ft, isLast }) {
+    animate({ scene, shadow, ft, isLast }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const juice = q('juice'), left = q('left'), right = q('right'), whole = q('whole');
-      const shadow = scene.querySelector('.obj__shadow');
       const MEET = '49.8% 49.5%';
       const leftTogether = { xPercent: 8.4, yPercent: 3.0, rotation: -6 };
       const rightTogether = { xPercent: -7.8, yPercent: -4.3, rotation: 6 };
@@ -408,83 +493,149 @@ const SCENES = {
       gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
 
       // Entrance: only the whole orange, rising gently into place.
-      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, 0, 0.22, 'power1.out');
-      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.35, 'power2.out');
-      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.35, 'power2.out');
+      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
 
       // The split: a quick crossfade from the whole orange to the pushed-together halves.
-      ft(whole, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 1.03 }, 0.35, 0.45, 'power1.inOut');
-      ft([left, right], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.35, 0.45, 'power1.inOut');
+      ft(whole, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 1.03 }, 0.2, 0.28, 'power1.inOut');
+      ft([left, right], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.2, 0.28, 'power1.inOut');
 
       // The halves settle apart while the juice bursts outward from the split.
-      ft(left, leftTogether, apart, 0.4, 0.7, 'power2.out');
-      ft(right, rightTogether, apart, 0.4, 0.7, 'power2.out');
-      ft(juice, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1 }, 0.4, 0.7, 'power2.out');
+      ft(left, leftTogether, apart, 0.24, 0.5, 'power2.out');
+      ft(right, rightTogether, apart, 0.24, 0.5, 'power2.out');
+      ft(juice, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1 }, 0.24, 0.5, 'power2.out');
 
       if (isLast) return;
-      // Exit: everything keeps drifting apart (opening a space in the centre
-      // for the next object) and fades.
-      ft(left, apart, { xPercent: -11, yPercent: -3.5, rotation: -6 }, 0.7, 1, 'power1.inOut');
-      ft(right, apart, { xPercent: 11, yPercent: 4.5, rotation: 6 }, 0.7, 1, 'power1.inOut');
-      ft(juice, { scale: 1 }, { scale: 1.15 }, 0.7, 1, 'power1.out');
-      ft([left, right, juice], { autoAlpha: 1 }, { autoAlpha: 0 }, 0.72, 0.95, 'power1.inOut');
-      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.72, 0.95, 'power1.inOut');
+      // Exit: everything keeps drifting apart (opening a space in the centre) and fades.
+      ft(left, apart, { xPercent: -11, yPercent: -3.5, rotation: -6 }, 0.82, 1, 'power1.inOut');
+      ft(right, apart, { xPercent: 11, yPercent: 4.5, rotation: 6 }, 0.82, 1, 'power1.inOut');
+      ft(juice, { scale: 1 }, { scale: 1.15 }, 0.82, 1, 'power1.out');
+      ft([left, right, juice], { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
+      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
     },
   },
 
-  // IRON: a real 3D red blood cell (see section 4), with the photo as a fallback.
-  cell: {
-    rest: 0.7,
-    html: (t) => objHTML(t, 'cell', `
-      <div class="layer cell-host"></div>
-      <img class="layer cell-fallback" src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" decoding="async" draggable="false" hidden>`,
-    [1, 1]),
-    animate({ scene, ft, tl, start, L, isLast }) {
-      const obj = scene.querySelector('.obj');
-      const fallback = scene.querySelector('.cell-fallback');
-      gsap.set(obj, { autoAlpha: 0, scale: 0.35 });
-
-      // Scales up from small in the centre, already rotating.
-      ft(obj, { autoAlpha: 0, scale: 0.35 }, { autoAlpha: 1, scale: 1 }, 0.08, 0.32, 'power2.out');
-      if (!isLast) ft(obj, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 0.85 }, 0.7, 1, 'power1.inOut');
-
-      // The spin and tilt follow the scroll through the whole segment.
-      const proxy = { p: 0 };
-      const update = () => {
-        if (ironCell) ironCell.setProgress(proxy.p);
-        else gsap.set(fallback, { rotation: -30 + 60 * proxy.p });
-      };
-      tl.fromTo(proxy, { p: 0 }, { p: 1, duration: L, ease: 'none', immediateRender: false, onUpdate: update }, start);
-      ironWindow = [start - 0.02, start + L + 0.02];
+  // IRON: the original photograph floats in and turns gently in-plane, with a
+  // subtle 3D tilt (never beyond ±12°) and a slow idle float at rest.
+  float: {
+    html: (t) => objHTML(t, 'float', `<div class="layer tilt"><div class="layer bob">${layerImg(t.image, t.imageSize)}</div></div>`),
+    animate(c) {
+      const { obj, scene, ft, idle } = c;
+      const tilt = scene.querySelector('.tilt');
+      fadeIn(c, { scale: 0.85, y: 30 });
+      gsap.set(tilt, { rotation: -20, rotationY: -12, transformPerspective: 1200 });
+      ft(tilt, { rotation: -20, rotationY: -12 }, { rotation: 15, rotationY: 8 }, 0, 1, 'sine.inOut');
+      idle(scene.querySelector('.bob'), { y: -5, duration: 3.2 });
+      fadeOut(c, { y: -30, scale: 0.94 });
+      return obj;
     },
   },
 
-  // HAIR & SCALP: a soft-edged wipe from bottom to top while easing out from 1.1× scale.
-  // With a swayMask, the hair also sways with the scroll (see section 4b); the
-  // plain image stays underneath as the fallback.
+  // HYDRATION: a soft placeholder shape (or the image, once added) that breathes slowly.
+  breathe: {
+    html: (t) => objHTML(t, 'breathe', `<div class="layer breath">${t.image ? layerImg(t.image, t.imageSize) : placeholderHTML(t, ' placeholder--stage')}</div>`, t.image ? t.imageSize : [1, 1]),
+    animate(c) {
+      const { scene, idle } = c;
+      fadeIn(c, { scale: 0.8 });
+      idle(scene.querySelector('.breath'), { scale: 1.04, duration: 2.8 });
+      fadeOut(c, { scale: 1.08 });
+    },
+  },
+
+  // DETOX: the cucumber and mint float gently while bubbles fizz around them,
+  // on one canvas behind the image and one in front for depth.
+  fizz: {
+    html: (t) => objHTML(t, 'fizz', `
+      <canvas class="fx fx--back" aria-hidden="true"></canvas>
+      <div class="layer drift">${layerImg(t.image, t.imageSize)}</div>
+      <canvas class="fx fx--front" aria-hidden="true"></canvas>`),
+    animate(c) {
+      const { obj, scene, ft, live, isDesktop } = c;
+      const drift = scene.querySelector('.drift');
+      fadeIn(c, { y: 60 });
+      ft(drift, { rotation: -2, x: -6 }, { rotation: 2, x: 6 }, 0, 0.55, 'sine.inOut');
+      ft(drift, { rotation: 2, x: 6 }, { rotation: -1, x: 0 }, 0.55, 1, 'sine.inOut');
+      fadeOut(c, { x: -60 });
+      live(createDetoxBubbles(obj, isDesktop));
+    },
+  },
+
+  // NAD+: the molecule turns a full circle across its segment (upright at
+  // rest), with a very slow idle turn and a subtle 3D wobble.
+  spin: {
+    html: (t) => objHTML(t, 'spin', `<div class="layer turn"><div class="layer idle-turn">${layerImg(t.image, t.imageSize)}</div></div>`),
+    animate(c) {
+      const { obj, scene, ft, idle, label } = c;
+      const turn = scene.querySelector('.turn');
+      fadeIn(c, { scale: 0.9 });
+      gsap.set(obj, { transformPerspective: 1200 });
+      ft(turn, { rotation: -360 * label }, { rotation: 360 * (1 - label) }, 0, 1);
+      ft(obj, { rotationX: 8, rotationY: -8 }, { rotationX: -8, rotationY: 8 }, 0, 0.35, 'sine.inOut');
+      ft(obj, { rotationX: -8, rotationY: 8 }, { rotationX: 0, rotationY: 0 }, 0.35, label, 'sine.inOut');
+      ft(obj, { rotationX: 0, rotationY: 0 }, { rotationX: 5, rotationY: -5 }, label, 1, 'sine.inOut');
+      idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
+      fadeOut(c, { scale: 0.85 });
+    },
+  },
+
+  // LONGEVITY: the stem grows upward behind a soft (feathered) mask edge, then
+  // the bud emerges and the leaves unfurl. Origins are % of the 860 × 911 canvas.
+  plant: {
+    label: 0.74,
+    html: (t) => objHTML(t, 'plant', [
+      layerImg(t.showcase.layers.stem, t.imageSize, ' data-layer="stem"'),
+      layerImg(t.showcase.layers.bud, t.imageSize, ' data-layer="bud"'),
+      layerImg(t.showcase.layers.leafLeft, t.imageSize, ' data-layer="leaf-left"'),
+      layerImg(t.showcase.layers.leafRight, t.imageSize, ' data-layer="leaf-right"'),
+    ].join('')),
+    animate(c) {
+      const { scene, shadow, ft } = c;
+      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
+      const stem = q('stem'), bud = q('bud'), leafL = q('leaf-left'), leafR = q('leaf-right');
+
+      // --reveal is how far up (from the bottom) the stem is fully visible; the
+      // mask fades out over the next 5%. −2.3% hides it all (base at 97.3%
+      // from the top); 58% shows everything above 42%.
+      gsap.set(stem, { '--reveal': '-2.3%' });
+      gsap.set(bud, { scale: 0, autoAlpha: 0, transformOrigin: '54.3% 49.0%' });
+      gsap.set(leafL, { scale: 0, rotation: 35, transformOrigin: '48.7% 48.0%' });
+      gsap.set(leafR, { scale: 0, rotation: -35, transformOrigin: '58.3% 47.6%' });
+      gsap.set(shadow, { autoAlpha: 0, scaleX: 0.3 });
+
+      // power1.out: the stem passes the stalk tops (~49% from the top) by 0.24,
+      // before the bud and leaves begin.
+      ft(stem, { '--reveal': '-2.3%' }, { '--reveal': '58%' }, 0, 0.32, 'power1.out');
+      ft(shadow, { autoAlpha: 0, scaleX: 0.3 }, { autoAlpha: 1, scaleX: 1 }, 0, 0.4, 'power1.out');
+      ft(bud, { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.24, 0.44, 'power2.out');
+      ft(leafL, { scale: 0, rotation: 35 }, { scale: 1, rotation: 0 }, 0.3, 0.64, 'power2.out');
+      ft(leafR, { scale: 0, rotation: -35 }, { scale: 1, rotation: 0 }, 0.37, 0.7, 'power2.out');
+      fadeOut(c, { y: 24 });
+    },
+  },
+
+  // HAIR & SCALP: a soft-edged wipe from bottom to top while easing out from
+  // 1.1× scale; the hair then sways with the scroll (section 5).
   wipe: {
-    rest: 0.7,
     html: (t) => objHTML(t, 'wipe', `
       <div class="wipe-frame"><div class="wipe-mask"><div class="layer wipe-content">
         <img class="wipe-img" src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" decoding="async" draggable="false">
       </div></div></div>`),
-    animate({ t, scene, ft, start, L, isLast }) {
-      const obj = scene.querySelector('.obj');
+    animate(c) {
+      const { t, scene, shadow, ft, live, start, L, isDesktop } = c;
       const mask = scene.querySelector('.wipe-mask');
       const content = mask.querySelector('.wipe-content');
-      const shadow = scene.querySelector('.obj__shadow');
 
       // The mask layer is 1.25× the image height; its top edge is a soft fade.
       // Moving it up while counter-moving the content reveals it from the bottom.
       gsap.set(mask, { yPercent: 100 });
       gsap.set(content, { yPercent: -125, scale: 1.1 });
       gsap.set(shadow, { autoAlpha: 0 });
-
-      ft(mask, { yPercent: 100 }, { yPercent: 0 }, 0, 0.7, 'power1.inOut');
-      ft(content, { yPercent: -125, scale: 1.1 }, { yPercent: 0, scale: 1 }, 0, 0.7, 'power1.inOut');
-      ft(shadow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.3, 0.7, 'power1.inOut');
-
-      if (!isLast) ft(obj, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30 }, 0.7, 1, 'power1.inOut');
+      ft(mask, { yPercent: 100 }, { yPercent: 0 }, 0, 0.3, 'power1.inOut');
+      ft(content, { yPercent: -125 }, { yPercent: 0 }, 0, 0.3, 'power1.inOut');
+      ft(content, { scale: 1.1 }, { scale: 1 }, 0, 0.4, 'power1.out');
+      ft(shadow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.1, 0.3, 'power1.inOut');
+      fadeOut(c, { y: -30 });
 
       if (!t.showcase.swayMask) return;
       // One and a half slow oscillations across the segment: 0 → +1 → −1 → +0.6 → 0.
@@ -493,253 +644,304 @@ const SCENES = {
       [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
         ft(sway, { v: from }, { v: to, onUpdate: push }, f0, f1, 'sine.inOut');
       });
-      hairWindow = [start - 0.02, start + L + 0.02];
+      live({
+        initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
+        init: () => ensureHairSway(content, t, isDesktop),
+        frame: (time) => { if (hairSway) hairSway.render(time); },
+      });
     },
   },
 
-  // LONGEVITY: the stem grows, then the bud emerges and the leaves unfurl.
-  // Layers share one canvas; origins are percentages of that canvas.
-  plant: {
-    rest: 0.85,
-    html: (t) => objHTML(t, 'plant', [
-      layerImg(t.showcase.layers.stem, t.imageSize, ' data-layer="stem"'),
-      layerImg(t.showcase.layers.bud, t.imageSize, ' data-layer="bud"'),
-      layerImg(t.showcase.layers.leafLeft, t.imageSize, ' data-layer="leaf-left"'),
-      layerImg(t.showcase.layers.leafRight, t.imageSize, ' data-layer="leaf-right"'),
-    ].join('')),
-    animate({ scene, ft, isLast }) {
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const stem = q('stem'), bud = q('bud'), leafL = q('leaf-left'), leafR = q('leaf-right');
-      const obj = scene.querySelector('.obj');
-      const shadow = scene.querySelector('.obj__shadow');
+  // SKIN & BEAUTY (placeholder until the splash): the photo in a rounded
+  // frame with a slow, gentle zoom.
+  zoom: {
+    html: (t) => objHTML(t, 'zoom', `<div class="layer frame">${layerImg(t.image, t.imageSize)}</div>`),
+    animate(c) {
+      const { scene, ft } = c;
+      const img = scene.querySelector('.frame img');
+      fadeIn(c, { scale: 0.94 });
+      ft(img, { scale: 1.08 }, { scale: 1 }, 0, 0.7, 'power1.out');
+      fadeOut(c, { x: -60 });
+    },
+  },
 
-      gsap.set(stem, { clipPath: 'inset(97% 0% 0% 0%)' });
-      gsap.set(bud, { scale: 0, autoAlpha: 0, transformOrigin: '54.2% 59.8%' });
-      gsap.set(leafL, { scale: 0, rotation: 35, transformOrigin: '52.9% 59.3%' });
-      gsap.set(leafR, { scale: 0, rotation: -35, transformOrigin: '56.4% 59.3%' });
-      gsap.set(shadow, { autoAlpha: 0, scaleX: 0.3 });
+  // RECOVERY: bubbles fizz inside the glass, clipped to the water. The glass
+  // itself only moves on its entrance and exit.
+  glass: {
+    html: (t) => objHTML(t, 'glass', `${layerImg(t.image, t.imageSize)}<canvas class="fx fx--water" aria-hidden="true"></canvas>`),
+    animate(c) {
+      const { obj, live, isDesktop } = c;
+      fadeIn(c, { y: 40 });
+      fadeOut(c, { y: -30 });
+      live(createGlassBubbles(obj, isDesktop));
+    },
+  },
 
-      ft(stem, { clipPath: 'inset(97% 0% 0% 0%)' }, { clipPath: 'inset(59% 0% 0% 0%)' }, 0, 0.35, 'power1.out');
-      ft(shadow, { autoAlpha: 0, scaleX: 0.3 }, { autoAlpha: 1, scaleX: 1 }, 0, 0.5, 'power1.out');
-      ft(bud, { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.28, 0.5, 'power2.out');
-      ft(leafL, { scale: 0, rotation: 35 }, { scale: 1, rotation: 0 }, 0.38, 0.75, 'power2.out');
-      ft(leafR, { scale: 0, rotation: -35 }, { scale: 1, rotation: 0 }, 0.46, 0.82, 'power2.out');
-
-      if (!isLast) ft(obj, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30 }, 0.85, 1, 'power1.inOut');
+  // MUSCLE RECOVERY: an 18-frame deadlift drawn on a canvas, crossfading
+  // between neighbouring frames. Frame 01 holds before, frame 18 after.
+  frames: {
+    label: 0.74,
+    html: (t) => objHTML(t, 'frames', `<canvas class="layer fx--frames" aria-hidden="true"></canvas>`, t.showcase.frames.size),
+    preload: (t, scene, isDesktop) => {
+      const { path, count } = t.showcase.frames;
+      const srcs = Array.from({ length: count }, (_, i) => path.replace('{n}', pad(i + 1)));
+      return Promise.all(srcs.map(loadImage)).then((images) => {
+        const seq = createFrameSequence(scene.querySelector('.fx--frames'), images, isDesktop);
+        scene.frameSequence = seq;
+        return seq;
+      });
+    },
+    animate(c) {
+      const { scene, tl, start, L, live } = c;
+      fadeIn(c, { x: 40 });
+      const proxy = { p: 0 };
+      const FROM = 0.12, TO = 0.7;
+      tl.fromTo(proxy, { p: 0 }, {
+        p: 1, duration: L, ease: 'none', immediateRender: false,
+        onUpdate: () => {
+          const seq = scene.frameSequence;
+          if (seq) seq.setPosition(gsap.utils.clamp(0, 1, (proxy.p - FROM) / (TO - FROM)) * (seq.count - 1));
+        },
+      }, start);
+      live({ frame: () => scene.frameSequence && scene.frameSequence.draw() });
     },
   },
 
   // Fallback for new treatments without a dedicated scene.
   fade: {
-    rest: 0.7,
-    html: (t) => objHTML(t, 'fade', layerImg(t.image, t.imageSize)),
-    animate({ scene, ft, isLast }) {
-      const obj = scene.querySelector('.obj');
-      gsap.set(obj, { autoAlpha: 0, y: 40 });
-      ft(obj, { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0 }, 0, 0.35, 'power2.out');
-      if (!isLast) ft(obj, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30 }, 0.7, 1, 'power1.inOut');
+    html: (t) => objHTML(t, 'fade', t.image ? layerImg(t.image, t.imageSize) : placeholderHTML(t, ' placeholder--stage'), t.image ? t.imageSize : [1, 1]),
+    animate(c) {
+      fadeIn(c, { y: 40 });
+      fadeOut(c, { y: -30 });
     },
   },
 };
 
 /* ==========================================================================
-   4. Iron: 3D red blood cell (Three.js, loaded as an ES module through the
-   import map in index.html)
+   5. Live effects. Each is { start?, stop?, frame?(time, dt), init? } and
+   only runs while its treatment (including the handovers) is on screen,
+   at most 60 times a second.
    ========================================================================== */
 
-let ironCell = null;        // the running 3D cell, or null (then the photo is used)
-let ironCellPromise = null;
-let ironWindow = [-1, -1];  // timeline span in which the cell is on screen
-let ironVisible = false;
+const loadImage = (src) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.onload = () => img.decode().then(() => resolve(img), () => resolve(img));
+  img.onerror = () => reject(new Error(`Could not load ${src}`));
+  img.src = src;
+});
 
-async function createIronCell(host, pixelRatioCap) {
-  const probe = document.createElement('canvas');
-  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return null;
+// Size a canvas's drawing buffer to its CSS box (device pixels, capped).
+function fitCanvas(canvas, ctx, cap) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const ratio = Math.min(window.devicePixelRatio || 1, cap);
+  canvas.width = Math.max(1, Math.round(w * ratio));
+  canvas.height = Math.max(1, Math.round(h * ratio));
+  ctx.setTransform(canvas.width / Math.max(1, w), 0, 0, canvas.height / Math.max(1, h), 0, 0);
+  return { w, h };
+}
 
-  const THREE = await import('three');
-  const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+// 0 (still) to 1 (scrolling briskly), from Lenis's current velocity.
+const scrollBoost = () => Math.min(1, Math.abs(lenis ? lenis.velocity : 0) / 30);
+const rand = (a, b) => a + Math.random() * (b - a);
+const smooth = (e0, e1, x) => { const t = gsap.utils.clamp(0, 1, (x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
 
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
-  renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.8;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.domElement.className = 'cell-canvas';
-  host.appendChild(renderer.domElement);
+// A small clear bubble: transparent centre, soft white rim, a faint darker
+// outline so it reads on cream, and a small highlight (like the photo's droplets).
+function bubbleSprite() {
+  const size = 64, r = size / 2;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  const body = g.createRadialGradient(r, r, 0, r, r, r);
+  body.addColorStop(0, 'rgba(255,255,255,0.05)');
+  body.addColorStop(0.62, 'rgba(255,255,255,0.1)');
+  body.addColorStop(0.85, 'rgba(255,255,255,0.6)');
+  body.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = body;
+  g.beginPath(); g.arc(r, r, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(70, 90, 80, 0.22)';
+  g.lineWidth = 2;
+  g.beginPath(); g.arc(r, r, r * 0.9, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.9)';
+  g.beginPath(); g.arc(r * 0.64, r * 0.6, r * 0.17, 0, Math.PI * 2); g.fill();
+  return c;
+}
 
-  const scene = new THREE.Scene();
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.35; // soft reflections only; the lights do the shaping
-  pmrem.dispose();
+// DETOX: 50–80 bubbles (about half on small screens) rise from the lower part
+// of the image and around the slices, wobbling, then fade near the top.
+function createDetoxBubbles(obj, isDesktop) {
+  const back = obj.querySelector('.fx--back');
+  const front = obj.querySelector('.fx--front');
+  const bctx = back.getContext('2d');
+  const fctx = front.getContext('2d');
+  const cap = isDesktop ? 2 : 1.5;
+  const max = isDesktop ? 72 : 36;
+  const rate = isDesktop ? 15 : 8; // bubbles per second when still
+  let sprite = null, w = 0, h = 0, parts = [], carry = 0, observer = null;
 
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-  camera.position.set(0, 0, 18);
-
-  // Evans–Fung red blood cell profile: half-thickness at normalised radius r.
-  const R = 3.91, C0 = 0.81, C2 = 7.83, C4 = -4.39;
-  const half = (r) => 0.5 * Math.sqrt(Math.max(0, 1 - r * r)) * (C0 + C2 * r * r + C4 * r ** 4);
-  const N = 72;       // points per surface (145 in the closed profile)
-  const SEGMENTS = 128;
-  const rAt = (i) => Math.sin((i / N) * Math.PI / 2); // denser towards the rounded rim
-  const profile = [];
-  // One surface from the centre out to the rim, then the mirrored surface back
-  // to the centre: a closed biconcave disc. (This winding keeps normals facing out.)
-  for (let i = 0; i <= N; i++) profile.push(new THREE.Vector2(rAt(i) * R, -half(rAt(i))));
-  for (let i = N - 1; i >= 0; i--) profile.push(new THREE.Vector2(rAt(i) * R, half(rAt(i))));
-
-  const geometry = new THREE.LatheGeometry(profile, SEGMENTS);
-  geometry.computeVertexNormals();
-  // Smooth the lathe seam and the two centre points, which computeVertexNormals leaves creased.
-  const normals = geometry.attributes.normal;
-  const P = profile.length;
-  const a = new THREE.Vector3(), b = new THREE.Vector3();
-  for (let j = 0; j < P; j++) {
-    const first = j, last = SEGMENTS * P + j;
-    a.fromBufferAttribute(normals, first).add(b.fromBufferAttribute(normals, last)).normalize();
-    normals.setXYZ(first, a.x, a.y, a.z);
-    normals.setXYZ(last, a.x, a.y, a.z);
-  }
-  for (let i = 0; i <= SEGMENTS; i++) {
-    normals.setXYZ(i * P, 0, -1, 0);
-    normals.setXYZ(i * P + P - 1, 0, 1, 0);
-  }
-  normals.needsUpdate = true;
-
-  // A very fine, soft surface grain so the cell reads as organic rather than plastic.
-  const grain = document.createElement('canvas');
-  grain.width = grain.height = 256;
-  const g = grain.getContext('2d');
-  g.fillStyle = '#808080';
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 2600; i++) {
-    const shade = 90 + Math.random() * 80;
-    g.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.35)`;
-    g.beginPath();
-    g.arc(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 3, 0, Math.PI * 2);
-    g.fill();
-  }
-  const bumpMap = new THREE.CanvasTexture(grain);
-  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.repeat.set(10, 3);
-
-  const material = new THREE.MeshPhysicalMaterial({
-    color: 0xb3121b,
-    roughness: 0.35,
-    metalness: 0,
-    clearcoat: 0.6,
-    clearcoatRoughness: 0.35,
-    sheen: 0.25,
-    sheenRoughness: 0.6,
-    sheenColor: new THREE.Color(0xd8483e),
-    bumpMap,
-    bumpScale: 2,
-  });
-
-  const mesh = new THREE.Mesh(geometry, material);
-  const tilt = new THREE.Group();   // tilts the disc towards / away from the viewer
-  const roll = new THREE.Group();   // a gentle diagonal, like the photograph
-  const spin = new THREE.Group();   // turns around the vertical axis
-  const float = new THREE.Group();  // slow idle drift
-  tilt.add(mesh);
-  roll.add(tilt);
-  roll.rotation.z = -0.45;
-  spin.add(roll);
-  float.add(spin);
-  scene.add(float);
-
-  scene.add(new THREE.HemisphereLight(0xfff4ea, 0x3a0e0e, 0.4));
-  const key = new THREE.DirectionalLight(0xfff0e0, 1.7);
-  key.position.set(-6, 7, 8);
-  scene.add(key);
-  const rim = new THREE.DirectionalLight(0xffe2d8, 1.3);
-  rim.position.set(5, 3, -8);
-  scene.add(rim);
-
-  let progress = 0;
-  const REST = SCENES.cell.rest;
-  const DEG = Math.PI / 180;
-
-  const resize = () => {
-    const w = host.clientWidth, h = host.clientHeight;
-    if (!w || !h) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+  const resize = () => { ({ w, h } = fitCanvas(back, bctx, cap)); fitCanvas(front, fctx, cap); };
+  const spawn = () => {
+    const x = rand(0.24, 0.78) * w;
+    return {
+      x0: x, x, y: rand(0.55, 0.9) * h,
+      r: rand(1, 5),                       // 2–10px across
+      vy: rand(0.07, 0.15) * h,            // px per second
+      amp: rand(1.5, 5), freq: rand(1.5, 3.5), phase: rand(0, Math.PI * 2),
+      age: 0, front: Math.random() < 0.55,
+    };
   };
-  new ResizeObserver(resize).observe(host);
-  resize();
 
-  const cell = {
-    setProgress(p) { progress = p; },
-    setPixelRatioCap(cap) {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+  return {
+    start() {
+      sprite = sprite || bubbleSprite();
+      if (!observer) { observer = new ResizeObserver(resize); observer.observe(back); }
       resize();
     },
-    render(time) {
-      // A full turn across the segment, facing the viewer at the rest point.
-      // The tilt eases from 60° (face-on, showing the dip) to 20° (the rim)
-      // and back to 60° by the rest point, so the cell settles showing its dip.
-      spin.rotation.y = (progress - REST) * Math.PI * 2;
-      const tiltDeg = progress < REST ? 40 + 20 * Math.cos((2 * Math.PI * progress) / REST) : 60;
-      tilt.rotation.x = tiltDeg * DEG;
-      float.position.y = Math.sin(time * 1.1) * 0.14;
-      float.rotation.z = Math.sin(time * 0.6) * 0.03;
-      renderer.render(scene, camera);
+    stop() {
+      parts = []; carry = 0;
+      bctx.clearRect(0, 0, w, h); fctx.clearRect(0, 0, w, h);
+    },
+    frame(time, dt) {
+      const boost = scrollBoost();
+      carry += rate * (1 + 3 * boost) * dt;
+      while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
+      const speed = 1 + 1.5 * boost;
+      bctx.clearRect(0, 0, w, h); fctx.clearRect(0, 0, w, h);
+      parts = parts.filter((p) => {
+        p.age += dt;
+        p.y -= p.vy * speed * dt;
+        p.x = p.x0 + Math.sin(p.age * p.freq + p.phase) * p.amp;
+        const alpha = Math.min(1, p.age / 0.35) * smooth(0.06 * h, 0.3 * h, p.y);
+        if (p.y < 0.04 * h) return false;
+        const ctx = p.front ? fctx : bctx;
+        ctx.globalAlpha = alpha * (p.front ? 0.95 : 0.65);
+        ctx.drawImage(sprite, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+        return true;
+      });
+      bctx.globalAlpha = fctx.globalAlpha = 1;
     },
   };
-  cell.render(0); // compile shaders now, not mid-scroll
-  return cell;
 }
 
-function ensureIronCell(root, isDesktop) {
-  const host = root.querySelector('.cell-host');
-  if (!host) return Promise.resolve(null);
+// RECOVERY: 40–80 tiny bubbles (half on small screens) rise inside the water,
+// mostly in a central stream, accelerate a little, and pop with a sparkle at
+// the surface. The canvas is clipped to the water with CSS.
+function createGlassBubbles(obj, isDesktop) {
+  const canvas = obj.querySelector('.fx--water');
+  const ctx = canvas.getContext('2d');
   const cap = isDesktop ? 2 : 1.5;
-  if (!ironCellPromise) {
-    ironCellPromise = createIronCell(host, cap)
-      .catch(() => null)
-      .then((cell) => {
-        ironCell = cell;
-        if (!cell) root.querySelector('.cell-fallback')?.removeAttribute('hidden');
-        return cell;
+  const max = isDesktop ? 80 : 40;
+  const rate = isDesktop ? 20 : 10;
+  const SURFACE = 0.16, BASE = 0.85;
+  let w = 0, h = 0, parts = [], sparks = [], carry = 0, observer = null;
+
+  const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); };
+  const spawn = () => {
+    const stream = Math.random() < 0.72;
+    return {
+      x0: (stream ? rand(0.38, 0.62) : rand(0.2, 0.8)) * w,
+      y: (BASE - rand(0, 0.02)) * h,
+      r: rand(0.5, 2),                    // 1–4px across
+      vy: rand(0.04, 0.07) * h, accel: rand(0.04, 0.07) * h,
+      amp: rand(0.3, 1.2), freq: rand(3, 6), phase: rand(0, Math.PI * 2), age: 0,
+    };
+  };
+
+  return {
+    start() {
+      if (!observer) { observer = new ResizeObserver(resize); observer.observe(canvas); }
+      resize();
+    },
+    stop() { parts = []; sparks = []; carry = 0; ctx.clearRect(0, 0, w, h); },
+    frame(time, dt) {
+      const boost = scrollBoost();
+      carry += rate * (1 + 3 * boost) * dt;
+      while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
+      const speed = 1 + 1.2 * boost;
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineWidth = 0.7;
+      parts = parts.filter((p) => {
+        p.age += dt;
+        p.vy += p.accel * dt;
+        p.y -= p.vy * speed * dt;
+        const x = p.x0 + Math.sin(p.age * p.freq + p.phase) * p.amp;
+        if (p.y - p.r <= SURFACE * h) { sparks.push({ x, y: SURFACE * h + 1, age: 0 }); return false; }
+        ctx.globalAlpha = Math.min(1, p.age / 0.25);
+        ctx.beginPath();
+        ctx.arc(x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(90,110,120,0.25)';
+        ctx.beginPath(); ctx.arc(x, p.y, p.r + 0.6, 0, Math.PI * 2); ctx.stroke();
+        return true;
       });
-  } else if (ironCell) {
-    ironCell.setPixelRatioCap(cap);
-  }
-  return ironCellPromise;
+      // Tiny sparkles where bubbles pop.
+      sparks = sparks.filter((s) => {
+        s.age += dt;
+        const life = s.age / 0.3;
+        if (life >= 1) return false;
+        const len = 1.5 + 3 * life;
+        ctx.globalAlpha = 1 - life;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        ctx.beginPath();
+        ctx.moveTo(s.x - len, s.y); ctx.lineTo(s.x + len, s.y);
+        ctx.moveTo(s.x, s.y - len); ctx.lineTo(s.x, s.y + len);
+        ctx.stroke();
+        return true;
+      });
+      ctx.globalAlpha = 1;
+    },
+  };
 }
 
-/* ==========================================================================
-   4b. Hair & Scalp: the hair sways with the scroll
+// MUSCLE RECOVERY: draw frame floor(p), then frame ceil(p) on top with the
+// fractional part as opacity. Every frame is drawn at the same position and
+// size (the feet are pre-aligned). Only redraws when the position changes.
+function createFrameSequence(canvas, images, isDesktop) {
+  const ctx = canvas.getContext('2d');
+  const cap = isDesktop ? 2 : 1.5;
+  let w = 0, h = 0, position = 0, drawn = -1;
+  const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); drawn = -1; draw(); };
+  const draw = () => {
+    if (drawn === position || !w) return;
+    const i0 = Math.floor(position), i1 = Math.min(images.length - 1, Math.ceil(position));
+    const f = position - i0;
+    ctx.clearRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(images[i0], 0, 0, w, h);
+    if (i1 !== i0 && f > 0.001) {
+      ctx.globalAlpha = f;
+      ctx.drawImage(images[i1], 0, 0, w, h);
+      ctx.globalAlpha = 1;
+    }
+    drawn = position;
+  };
+  new ResizeObserver(resize).observe(canvas);
+  resize();
+  return {
+    count: images.length,
+    setPosition(p) { position = Math.round(p * 1000) / 1000; },
+    draw,
+  };
+}
 
+/* ---------- Hair & Scalp: the hair sways with the scroll ----------
    hair.webp is drawn on a Three.js plane with a small shader that shifts the
    texture lookup sideways. The shift grows from the top of the head (still)
    to the ends of the hair (most movement) and is multiplied by
-   hair-mask.webp, so skin, ear, neck, shoulder and background never move.
-   ========================================================================== */
+   hair-mask.webp, so the face, ear and background never move. */
 
 const HAIR_SWAY = {
   amplitude: 0.02,   // main sway at the ends, as a share of image width; with the
                      // secondary wave the ends move at most about 2.5%
   idle: 0.1,         // idle sway strength, relative to a full scroll swing
   idlePeriod: 6,     // seconds per idle cycle
-  neckBand: 0.08,    // width (share of image width) over which the sway fades out
-                     // towards the neck and back
 };
 
 let hairSway = null;        // the running shader, or null (then the plain image is used)
 let hairSwayPromise = null;
-let hairWindow = [-1, -1];  // timeline span in which the hair is on screen
-let hairVisible = false;
-
-const loadImage = (src) => new Promise((resolve, reject) => {
-  const img = new Image();
-  img.onload = () => img.decode().then(() => resolve(img), () => resolve(img));
-  img.onerror = reject;
-  img.src = src;
-});
 
 async function createHairSway(content, img, maskSrc, pixelRatioCap) {
   const probe = document.createElement('canvas');
@@ -772,36 +974,6 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
     const g = c.getContext('2d', { willReadFrequently: true });
     g.imageSmoothingQuality = 'high';
     g.drawImage(source, 0, 0, w, h);
-    return c;
-  };
-  // The mask's white area also covers a strip of neck and background beside
-  // the hair. Fade the mask to black across the last part of each row on the
-  // neck/back (right) side, so hair lying against the skin moves less and
-  // that strip stays still. Rows use the nearest boundary within ±6 rows, so
-  // the fade has no steps.
-  const taperNeckSide = (c) => {
-    const g = c.getContext('2d', { willReadFrequently: true });
-    const { width: w, height: h } = c;
-    const image = g.getImageData(0, 0, w, h);
-    const d = image.data;
-    const band = Math.max(2, Math.round(w * HAIR_SWAY.neckBand));
-    const edge = new Int32Array(h).fill(-1);
-    for (let y = 0; y < h; y++) {
-      for (let x = w - 1; x >= 0; x--) {
-        if (d[(y * w + x) * 4] > 127) { edge[y] = x; break; }
-      }
-    }
-    for (let y = 0; y < h; y++) {
-      let r = w;
-      for (let k = Math.max(0, y - 6); k <= Math.min(h - 1, y + 6); k++) if (edge[k] >= 0) r = Math.min(r, edge[k]);
-      if (r === w) continue;
-      for (let x = Math.max(0, r - band); x < w; x++) {
-        const t = Math.min(1, Math.max(0, (r - x) / band));
-        const i = (y * w + x) * 4;
-        d[i] = d[i + 1] = d[i + 2] = Math.round(d[i] * t * t * (3 - 2 * t));
-      }
-    }
-    g.putImageData(image, 0, 0);
     return c;
   };
   const texture = (colorSpace, premultiply) => {
@@ -855,15 +1027,13 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
         //  - hair moves by the mask (white = hair, black = never moves);
         //  - clear background may receive hair swinging in from beside it;
         //  - skin (opaque and black in the mask) never moves, and hair never
-        //    pulls skin in, so the ear, neck and shoulder stay perfectly still.
-        // Clear background is only pulled in from the outer (left) side of the
-        // hair; on the neck and back side that would open holes beside the skin.
+        //    pulls skin in, so the face and ear stay perfectly still.
         // (Near-black mask values and near-opaque pixels count as fully still.)
         vec2 from = vec2(vUv.x - offset, vUv.y);
         float maskHere = smoothstep(0.02, 1.0, texture2D(uMask, vUv).r);
         float maskFrom = smoothstep(0.02, 1.0, texture2D(uMask, from).r);
         float clearHere = 1.0 - smoothstep(0.02, 0.6, texture2D(uMap, vUv).a);
-        float clearFrom = (1.0 - smoothstep(0.02, 0.6, texture2D(uMap, from).a)) * step(0.0, offset);
+        float clearFrom = 1.0 - smoothstep(0.02, 0.6, texture2D(uMap, from).a);
         float mask = max(maskHere, clearHere * maskFrom) * max(maskFrom, clearFrom);
 
         vec2 uv = vec2(vUv.x - offset * mask, vUv.y);
@@ -894,7 +1064,7 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
     map.dispose();
     mask.dispose();
     map.image = scaled(img, pw, ph);
-    mask.image = taperNeckSide(scaled(maskImg, pw, ph));
+    mask.image = scaled(maskImg, pw, ph);
     map.needsUpdate = mask.needsUpdate = true;
   };
   new ResizeObserver(resize).observe(content);
@@ -924,10 +1094,7 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
   return sway;
 }
 
-function ensureHairSway(root, isDesktop) {
-  const t = FEATURED.find((f) => f.showcase.swayMask);
-  const content = t && root.querySelector(`.scene[data-scene="${t.id}"] .wipe-content`);
-  if (!content) return Promise.resolve(null);
+function ensureHairSway(content, t, isDesktop) {
   const cap = isDesktop ? 2 : 1.5;
   if (!hairSwayPromise) {
     hairSwayPromise = createHairSway(content, content.querySelector('.wipe-img'), t.showcase.swayMask, cap)
@@ -939,14 +1106,38 @@ function ensureHairSway(root, isDesktop) {
   return hairSwayPromise;
 }
 
-// Each 3D element only renders while its treatment is on screen.
-const renderScenes = (time) => {
-  if (ironCell && ironVisible) ironCell.render(time);
-  if (hairSway && hairVisible) hairSway.render(time);
-};
+/* ---------- Running the live effects ---------- */
+
+let lives = [];
+
+function updateLives(time) {
+  for (const l of lives) {
+    if (l.init && !l.inited && time >= l.initFrom && time <= l.to) {
+      l.inited = true;
+      l.init();
+    }
+    const visible = time >= l.from && time <= l.to;
+    if (visible === l.visible) continue;
+    l.visible = visible;
+    l.last = 0;
+    if (visible) l.start?.();
+    else l.stop?.();
+  }
+}
+
+// Driven by gsap.ticker; each effect is capped at 60fps.
+function tickLives(time) {
+  for (const l of lives) {
+    if (!l.visible || !l.frame) continue;
+    if (l.last && time - l.last < 1 / 60 - 0.002) continue;
+    const dt = l.last ? Math.min(0.1, time - l.last) : 1 / 60;
+    l.last = time;
+    l.frame(time, dt);
+  }
+}
 
 /* ==========================================================================
-   5. Motion
+   6. Motion
    ========================================================================== */
 
 let lenis = null;
@@ -980,7 +1171,7 @@ function scrollToTreatment(id) {
   if (!stage) return;
   const y = stage.st.labelToScroll(id);
   const distance = Math.abs(y - window.scrollY) / window.innerHeight;
-  glideTo(y, gsap.utils.clamp(0.9, 1.8, 0.8 + distance * 0.25));
+  glideTo(y, gsap.utils.clamp(0.9, 2, 0.8 + distance * 0.2));
 }
 
 // In-page links scroll smoothly through Lenis. Links to a featured treatment
@@ -1072,8 +1263,9 @@ function initSnapInputs() {
 
 /* ---------- The stage ---------- */
 
-function buildStageTimeline(root, isDesktop) {
+function buildStage(root, isDesktop) {
   const L = STAGE.segment;
+  const n = FEATURED.length;
   const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
   const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
   const steps = [...root.querySelectorAll('.stage__step')];
@@ -1081,20 +1273,15 @@ function buildStageTimeline(root, isDesktop) {
   const bg = root.querySelector('.stage__bg');
   const defs = FEATURED.map((t) => SCENES[t.showcase.scene] || SCENES.fade);
 
-  // Segment starts and rest points (labels). The next segment begins at the current rest point.
-  const starts = [];
-  const rests = [];
-  let s = 0;
-  defs.forEach((def) => {
-    starts.push(s);
-    rests.push(s + def.rest * L);
-    s = rests[rests.length - 1];
-  });
-  const end = rests[rests.length - 1] + STAGE.endHold;
+  // Segment starts and rest labels. The next segment begins where this one's exit starts.
+  const starts = FEATURED.map((_, i) => i * STAGE.exitStart * L);
+  const labelAt = defs.map((d) => d.label ?? STAGE.label);
+  const labels = starts.map((s, i) => s + labelAt[i] * L);
+  const end = starts[n - 1] + L;
 
-  // The active treatment changes halfway through each text handover.
-  const textMid = ((STAGE.textOut[0] + STAGE.textOut[1]) / 2 + (STAGE.textIn[0] + STAGE.textIn[1]) / 2) / 2;
-  const switches = rests.map((r, i) => (i === 0 ? -Infinity : rests[i - 1] + textMid * L));
+  // The active treatment changes in the middle of each text handover.
+  const textMid = ((STAGE.textOut[0] + STAGE.textOut[1]) / 2 + STAGE.exitStart + (STAGE.textIn[0] + STAGE.textIn[1]) / 2) / 2;
+  const switches = starts.map((s, i) => (i === 0 ? -Infinity : starts[i - 1] + textMid * L));
 
   let active = -1;
   const setActive = (index) => {
@@ -1112,13 +1299,14 @@ function buildStageTimeline(root, isDesktop) {
     names.forEach((el, i) => el.classList.toggle('is-active', i === index));
   };
 
+  lives = [];
+  const preloads = [];
   const onUpdate = () => {
     const time = tl.time();
     let index = 0;
     switches.forEach((at, i) => { if (time >= at) index = i; });
     setActive(index);
-    ironVisible = time >= ironWindow[0] && time <= ironWindow[1];
-    hairVisible = time >= hairWindow[0] && time <= hairWindow[1];
+    updateLives(time);
   };
 
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' }, onUpdate });
@@ -1126,53 +1314,59 @@ function buildStageTimeline(root, isDesktop) {
   // Visuals
   FEATURED.forEach((t, i) => {
     const start = starts[i];
-    const ft = (target, from, to, f0, f1, ease = 'none') =>
-      tl.fromTo(target, from, { ...to, duration: (f1 - f0) * L, ease, immediateRender: false }, start + f0 * L);
+    const scene = scenes[i];
     const isFirst = i === 0;
-    const isLast = i === FEATURED.length - 1;
+    const isLast = i === n - 1;
+    const from = start, to = isLast ? end + 1 : start + L;
+    const ft = (target, a, b, f0, f1, ease = 'none') =>
+      tl.fromTo(target, a, { ...b, duration: (f1 - f0) * L, ease, immediateRender: false }, start + f0 * L);
+    const live = (effect) => lives.push({ from, to, initFrom: from, visible: false, inited: false, last: 0, ...effect });
+    const idle = (target, vars) => {
+      const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
+      live({ start: () => tween.play(), stop: () => tween.pause() });
+    };
 
     if (!isFirst) {
-      gsap.set(scenes[i], { autoAlpha: 0 });
-      tl.set(scenes[i], { autoAlpha: 1 }, start);
+      gsap.set(scene, { autoAlpha: 0 });
+      tl.set(scene, { autoAlpha: 1 }, start);
     }
-    if (!isLast) tl.set(scenes[i], { autoAlpha: 0 }, start + L);
+    if (!isLast) tl.set(scene, { autoAlpha: 0 }, start + L);
 
-    defs[i].animate({ t, tl, scene: scenes[i], ft, start, L, isFirst, isLast, isDesktop });
-    tl.addLabel(t.id, rests[i]);
+    const obj = scene.querySelector('.obj');
+    const shadow = scene.querySelector('.obj__shadow');
+    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isFirst, isLast, isDesktop });
+    if (defs[i].preload) preloads.push(defs[i].preload(t, scene, isDesktop).catch(() => null));
+    tl.addLabel(t.id, labels[i]);
   });
 
-  // Text: each block hands over to the next, overlapping slightly.
+  // Text: in during each entrance, fully visible through the rest, out at the exit.
   gsap.set(copies, { autoAlpha: 0, y: 30 });
-  const [fi0, fi1] = STAGE.firstTextIn;
-  if (isDesktop && FEATURED[0].showcase.scene === 'runner') {
-    tl.fromTo(copies[0], { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: (fi1 - fi0) * L, ease: 'power2.out', immediateRender: false }, fi0 * L);
-  } else {
-    gsap.set(copies[0], { autoAlpha: 1, y: 0 });
-  }
-  const [o0, o1] = STAGE.textOut;
-  const [i0, i1] = STAGE.textIn;
-  for (let i = 0; i < FEATURED.length - 1; i++) {
-    const h = rests[i];
-    tl.fromTo(copies[i], { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: (o1 - o0) * L, ease: 'power1.inOut', immediateRender: false }, h + o0 * L);
-    tl.fromTo(copies[i + 1], { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: (i1 - i0) * L, ease: 'power2.out', immediateRender: false }, h + i0 * L);
-  }
+  const [in0, in1] = STAGE.textIn;
+  const [out0, out1] = STAGE.textOut;
+  copies.forEach((copy, i) => {
+    tl.fromTo(copy, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: (in1 - in0) * L, ease: 'power2.out', immediateRender: false }, starts[i] + in0 * L);
+    if (i < n - 1) {
+      tl.fromTo(copy, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: (out1 - out0) * L, ease: 'power1.inOut', immediateRender: false }, starts[i] + out0 * L);
+    }
+  });
 
   // Background: a gentle cross-fade between tints during each handover,
   // then to Porcelain so the stage releases seamlessly into the grid.
   const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
   gsap.set(bg, { backgroundColor: tints[0] });
-  for (let i = 0; i < FEATURED.length - 1; i++) {
-    tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - defs[i].rest) * L, ease: 'power1.inOut', immediateRender: false }, rests[i]);
+  for (let i = 0; i < n - 1; i++) {
+    tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - STAGE.exitStart) * L, ease: 'power1.inOut', immediateRender: false }, starts[i + 1]);
   }
-  const fadeOut = STAGE.endHold * 0.8;
-  tl.fromTo(bg, { backgroundColor: tints[tints.length - 1] }, { backgroundColor: STAGE.finalTint, duration: fadeOut, ease: 'power1.inOut', immediateRender: false }, end - fadeOut);
+  const lastFade = 0.14 * L;
+  tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
 
   tl.set({}, {}, end); // the timeline runs to the very end of the pin
   setActive(0);
-  return { tl, rests, end };
+  updateLives(0);
+  return { tl, labels, end, preloads };
 }
 
-async function preloadImages(root) {
+async function preloadStage(root) {
   const images = [...root.querySelectorAll('.stage img')];
   await Promise.all(images.map((img) => img.decode().catch(() => {})));
 }
@@ -1182,13 +1376,16 @@ function initStage(context, isDesktop) {
   if (!root) return () => {};
 
   document.documentElement.classList.add('has-stage');
-  const { tl } = buildStageTimeline(root, isDesktop);
-  gsap.ticker.add(renderScenes);
+  const { tl, preloads } = buildStage(root, isDesktop);
+  gsap.ticker.add(tickLives);
 
   let alive = true;
   (async () => {
-    // Everything is decoded and the 3D scenes are ready before the ScrollTrigger exists.
-    await Promise.all([preloadImages(root), ensureIronCell(root, isDesktop), ensureHairSway(root, isDesktop)]);
+    // Every image and frame is decoded, Three.js is fetched and the fonts are
+    // in before the ScrollTrigger exists, so nothing loads mid-scroll.
+    const fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+    const three = FEATURED.some((t) => t.showcase.swayMask) ? import('three').catch(() => null) : null;
+    await Promise.all([preloadStage(root), fonts, three, ...preloads]);
     if (!alive) return;
 
     context.add(() => {
@@ -1215,9 +1412,9 @@ function initStage(context, isDesktop) {
   return () => {
     alive = false;
     stage = null;
-    ironVisible = false;
-    hairVisible = false;
-    gsap.ticker.remove(renderScenes);
+    lives.forEach((l) => { if (l.visible) l.stop?.(); l.visible = false; });
+    lives = [];
+    gsap.ticker.remove(tickLives);
     document.documentElement.classList.remove('has-stage');
   };
 }
