@@ -612,8 +612,7 @@ html.lenis body { height: auto; }
 }
 .obj--runner .obj__shadow { left: 14%; right: 12%; bottom: -1%; }
 .obj--orange .obj__shadow { left: 18%; right: 14%; bottom: -5%; height: 9%; }
-/* A soft oval under the cell lying at an angle (its low end is to the right). */
-.obj--cell3d .obj__shadow { left: 22%; right: 12%; bottom: 4%; height: 10%; }
+.obj--float .obj__shadow { left: 18%; right: 18%; bottom: -4%; }
 .obj--coconut .obj__shadow { left: 20%; right: 22%; bottom: -2%; height: 6%; }
 .obj--molecule .obj__shadow { left: 22%; right: 22%; bottom: -5%; }
 .obj--plant .obj__shadow { left: 38%; right: 30%; bottom: 0; height: 5%; }
@@ -701,7 +700,7 @@ html.lenis body { height: auto; }
   mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
 }
 
-/* Iron and NAD+: the 3D canvas replaces the photo once its first frame is drawn. */
+/* NAD+: the 3D canvas replaces the photo once its first frame is drawn. */
 .three-canvas {
   display: block;
   width: 100%;

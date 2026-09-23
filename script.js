@@ -6,7 +6,7 @@
    3. Rendering
    4. Scenes (one per kind of featured visual)
    5. Live effects: shower water, frame sequences, hair sway (Three.js
-      shader), 3D blood cell and NAD+ glass molecule (Three.js)
+      shader) and the NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
    7. About pop-up
    ========================================================================== */
@@ -38,7 +38,7 @@
      showcase     The treatment's part of the pinned scroll stage:
                     description: 1–2 sentences shown beside the visual
                     scene:       which animation (see section 4):
-                                 "runner" | "orange" | "cell3d" | "coconut" |
+                                 "runner" | "orange" | "float" | "coconut" |
                                  "cucumber" | "molecule" | "plant" | "wipe" |
                                  "droplet" | "shower" | "frames" | "bone"
                                  (anything else fades in/out)
@@ -49,8 +49,7 @@
                                  1000 × 1056 canvas
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
                     frames:      ("frames", "droplet") { path, count, size } image sequence
-                    model:       ("molecule") V2000 SDF file for the 3D glass molecule;
-                                 ("cell3d") glTF binary (.glb) of the blood cell
+                    model:       ("molecule") V2000 SDF file for the 3D glass molecule
 
    Copy rule: describe what's in each drip and the experience only. No claims
    that a treatment cures, treats, prevents, detoxes, boosts immunity,
@@ -125,9 +124,8 @@ const TREATMENTS = [
     ],
     showcase: {
       description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
-      scene: 'cell3d',
+      scene: 'float',
       tint: '#F9EFEE',
-      model: 'models/red-blood-cell.glb',
     },
   },
   {
@@ -536,8 +534,7 @@ function render() {
 
    coconut  Hydration: the coconut cracks, the lid lifts, water splashes
    runner   Energy: the runner moves in beside the text, then runs off
-   cell3d   Iron: the 3D blood cell lies at an angle, turning and rocking
-            (falls back to the photo floating and turning)
+   float    Iron: the photo floats in and turns gently in-plane
    frames   Muscle Recovery: the deadlift image sequence
    molecule NAD+: the 3D glass molecule turns like a turntable
             (falls back to the photo turning in-plane)
@@ -579,12 +576,12 @@ function offsetWithin(el, ancestor) {
   return { left, top };
 }
 
-// Default entrance and exit. The fades are staggered (the outgoing object
-// has all but gone, under 10%, when the incoming one starts to appear) while
-// their movements overlap, so a handover never shows two half-faded pictures
-// on top of each other.
+// Default entrance and exit. The fades are sequential (the outgoing object
+// has fully faded at 0.90 of its segment, exactly when the incoming one starts
+// to appear at 0.08 of its own) while their movements overlap, so a handover
+// never shows two pictures at once.
 const FADE_IN = [0.08, 0.2];
-const FADE_OUT = [0.82, 0.92];
+const FADE_OUT = [0.82, 0.9];
 const fadeIn = ({ obj, ft }, from = { y: 40 }) => {
   gsap.set(obj, { autoAlpha: 0, ...from });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
@@ -596,6 +593,11 @@ const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
   const from = Object.fromEntries(Object.keys(to).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0.82, 1, 'power1.inOut');
   ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
+};
+// Visibility only, for scenes whose entrance is a reveal (a growing stem, a wipe).
+const gateIn = ({ obj, ft }) => {
+  gsap.set(obj, { autoAlpha: 0 });
+  ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
 };
 
 // The 3D scenes draw into .three-host; until their first frame (or if 3D
@@ -617,15 +619,6 @@ function spinImage({ scene, ft, idle, label }, tilt) {
   idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
 }
 
-// The Iron fallback: the photo turns gently in-plane with a subtle 3D tilt
-// (never beyond ±12°).
-const floatHTML = (t) => `<div class="layer tilt">${layerImg(t.image, t.imageSize)}</div>`;
-function floatImage({ scene, ft }) {
-  const tilt = scene.querySelector('.tilt');
-  gsap.set(tilt, { rotation: -20, rotationY: -12, transformPerspective: 1200 });
-  ft(tilt, { rotation: -20, rotationY: -12 }, { rotation: 15, rotationY: 8 }, 0, 1, 'sine.inOut');
-}
-
 // A 3D view is created once, the first time its treatment approaches, and
 // kept on its scene element (so it survives the stage being rebuilt).
 function ensure3D(scene, create, pixelRatioCap) {
@@ -640,23 +633,18 @@ function ensure3D(scene, create, pixelRatioCap) {
   return state.promise;
 }
 
-// Hands the scrubbed `motion` ({ turn, tilt? }) to the scene's 3D view on
-// every frame.
-function scrub3D({ scene, live, start, L, isDesktop }, motion, create) {
+// A turntable across the whole segment: one full turn, facing front at the
+// rest label, handed to the scene's 3D view on every frame.
+function turntable3D(c, create) {
+  const { scene, ft, live, start, L, label, isDesktop } = c;
+  const motion = { turn: -2 * Math.PI * label };
+  ft(motion, { turn: -2 * Math.PI * label }, { turn: 2 * Math.PI * (1 - label) }, 0, 1);
   const cap = isDesktop ? 2 : 1.5;
   live({
     initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
     init: () => ensure3D(scene, () => create(cap), cap).then((view) => view && view.render(motion)),
     frame: (time, dt) => { if (scene.view3d?.view) scene.view3d.view.render(motion, dt); },
   });
-}
-
-// A turntable across the whole segment: one full turn, facing front at the
-// rest label.
-function turntable3D(c, create) {
-  const motion = { turn: -2 * Math.PI * c.label };
-  c.ft(motion, { turn: -2 * Math.PI * c.label }, { turn: 2 * Math.PI * (1 - c.label) }, 0, 1);
-  scrub3D(c, motion, create);
 }
 
 // Loads and decodes an image sequence, then draws it on the scene's
@@ -686,7 +674,7 @@ function scrubFrames({ scene, tl, start, L, live }, map) {
 
 const SCENES = {
   // ENERGY: fades in beside the text with a gentle move in from the left,
-  // bobs very slightly at rest, then runs off the right edge.
+  // bobs very slightly at rest, then runs off the right edge, fading as he goes.
   runner: {
     html: (t) => objHTML(t, 'runner', layerImg(t.image, t.imageSize, ' data-layer="runner"')),
     animate(c) {
@@ -695,7 +683,12 @@ const SCENES = {
       const xExit = () => window.innerWidth - offsetWithin(obj, root).left + 40;
 
       fadeIn(c, { x: -60 });
-      if (!isLast) ft(obj, { x: 0 }, { x: xExit }, 0.82, 1, 'power1.in');
+      if (!isLast) {
+        // The distance is measured as it plays, so it always fits the current layout.
+        const run = { p: 0 };
+        ft(run, { p: 0 }, { p: 1, onUpdate: () => gsap.set(obj, { x: run.p * xExit() }) }, 0.82, 1, 'power1.in');
+        ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
+      }
       // A very subtle forward bob while he waits.
       idle(scene.querySelector('[data-layer="runner"]'), { y: -2.5, x: 1.5, duration: 0.42 });
     },
@@ -750,36 +743,19 @@ const SCENES = {
     },
   },
 
-  // IRON: the 3D red blood cell (section 5), lit like a studio photograph,
-  // lying at an angle like a disc on a table, tipped towards the viewer so
-  // the dimple shows. It settles from nearly edge-on as it fades in, turns
-  // half a turn about its own axis across the segment (at its resting angle
-  // at the rest label) and rocks gently, with a very slow idle spin and a
-  // gentle float. iron.webp shows until the first 3D frame is drawn; without
-  // WebGL (or if loading fails) the photo keeps its gentle in-plane turn.
-  cell3d: {
-    html: (t) => objHTML(t, 'cell3d', `<div class="layer bob">${threeHTML(floatHTML(t))}</div>`),
+  // IRON: the original photograph floats in and turns gently in-plane, with a
+  // subtle 3D tilt (never beyond ±12°) and a slow idle float at rest.
+  float: {
+    html: (t) => objHTML(t, 'float', `<div class="layer tilt"><div class="layer bob">${layerImg(t.image, t.imageSize)}</div></div>`),
     animate(c) {
-      const { t, obj, scene, idle, ft, label } = c;
+      const { obj, scene, ft, idle } = c;
+      const tilt = scene.querySelector('.tilt');
       fadeIn(c, { scale: 0.85, y: 30 });
-      floatImage(c);
+      gsap.set(tilt, { rotation: -20, rotationY: -12, transformPerspective: 1200 });
+      ft(tilt, { rotation: -20, rotationY: -12 }, { rotation: 15, rotationY: 8 }, 0, 1, 'sine.inOut');
       idle(scene.querySelector('.bob'), { y: -5, duration: 3.2 });
       fadeOut(c, { y: -30, scale: 0.94 });
-      // The model (4.5 MB) downloads once the stage itself is ready.
-      if (!scene.modelBytes) {
-        scene.modelBytes = stageLoaded.then(() => fetchBytes(t.showcase.model));
-        scene.modelBytes.catch(() => {});
-      }
-
-      // The tilt is the entrance settle plus the rock (−0.96 → −0.81 → −1.06 → −0.96).
-      const { tilt, tiltEnter, rock } = BLOOD_CELL;
-      const motion = { turn: -Math.PI * label, settle: tiltEnter, rock: 0, get tilt() { return this.settle + this.rock; } };
-      ft(motion, { turn: -Math.PI * label }, { turn: Math.PI * (1 - label) }, 0, 1);
-      ft(motion, { settle: tiltEnter }, { settle: tilt }, 0, 0.2, 'power2.out');
-      ft(motion, { rock: 0 }, { rock: rock }, 0, 1 / 3, 'sine.inOut');
-      ft(motion, { rock: rock }, { rock: -rock * 2 / 3 }, 1 / 3, 2 / 3, 'sine.inOut');
-      ft(motion, { rock: -rock * 2 / 3 }, { rock: 0 }, 2 / 3, 1, 'sine.inOut');
-      scrub3D(c, motion, (cap) => createBloodCell(obj, scene.modelBytes, cap));
+      return obj;
     },
   },
 
@@ -913,6 +889,7 @@ const SCENES = {
 
       // power1.out: the stem passes the stalk tops (~49% from the top) by 0.24,
       // before the bud and leaves begin.
+      gateIn(c);
       ft(stem, { '--reveal': '-2.3%' }, { '--reveal': '58%' }, 0, 0.32, 'power1.out');
       ft(shadow, { autoAlpha: 0, scaleX: 0.3 }, { autoAlpha: 1, scaleX: 1 }, 0, 0.4, 'power1.out');
       ft(bud, { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.24, 0.44, 'power2.out');
@@ -939,6 +916,7 @@ const SCENES = {
       gsap.set(mask, { yPercent: 100 });
       gsap.set(content, { yPercent: -125, scale: 1.1 });
       gsap.set(shadow, { autoAlpha: 0 });
+      gateIn(c);
       ft(mask, { yPercent: 100 }, { yPercent: 0 }, 0, 0.3, 'power1.inOut');
       ft(content, { yPercent: -125 }, { yPercent: 0 }, 0, 0.3, 'power1.inOut');
       ft(content, { scale: 1.1 }, { scale: 1 }, 0, 0.4, 'power1.out');
@@ -1434,30 +1412,18 @@ function ensureHairSway(content, t, isDesktop) {
   return hairSwayPromise;
 }
 
-/* ---------- 3D scenes (Iron and NAD+): shared setup ----------
+/* ---------- 3D scene (NAD+): shared setup ----------
    Each 3D scene draws with Three.js into a transparent canvas that fills its
    object's .three-host (so the layout keeps the photo's proportions), lit by
-   a studio reflection map (RoomEnvironment through PMREM). The model sits in
-   three nested groups, so the rotations never interfere: a fixed in-plane
-   roll (outermost), a tilt about X (fixed, or scrubbed through the motion's
-   tilt), and the spin about the model's own axis (Y for a turntable, Z for
-   a disc lying at an angle) with the model centred inside it. */
+   a studio reflection map (RoomEnvironment through PMREM). The model sits on
+   a turntable: a fixed forward tilt, with the model turning inside it. */
 
 const hasWebGL = () => {
   const probe = document.createElement('canvas');
   return !!(probe.getContext('webgl2') || probe.getContext('webgl'));
 };
 
-const fetchBytes = (src) => fetch(src).then((r) => {
-  if (!r.ok) throw new Error(`Could not load ${src}`);
-  return r.arrayBuffer();
-});
-
-// Resolves once every stage image is decoded (large downloads wait for it).
-let markStageLoaded;
-const stageLoaded = new Promise((resolve) => { markStageLoaded = resolve; });
-
-async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1, roll = 0, axis = 'y', frameTilts = [tilt] }) {
+async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 }) {
   const [THREE, { RoomEnvironment }] = await Promise.all([
     import('three'),
     import('three/addons/environments/RoomEnvironment.js'),
@@ -1476,18 +1442,15 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1,
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
 
-  const posed = new THREE.Group();
-  const tilted = new THREE.Group();
   const spinner = new THREE.Group();
-  posed.rotation.z = roll;
+  const tilted = new THREE.Group();
   tilted.rotation.x = tilt;
   tilted.add(spinner);
-  posed.add(tilted);
-  scene.add(posed);
+  scene.add(tilted);
 
   // Frame the model so it fits, with a little margin, at every angle of the
-  // spin and every tilt it passes through: its points are projected at 72
-  // angles per tilt and the camera distance is found by bisection.
+  // turn: its points are projected at 72 angles and the camera distance is
+  // found by bisection.
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
   let samples = [];
   const fit = () => {
@@ -1520,12 +1483,10 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1,
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
       resize();
     },
-    // motion.turn: the scroll-driven spin (a very slow extra turn is added
-    // while the page is still); motion.tilt, if given, replaces the fixed tilt.
+    // motion.turn: the scroll-driven turn; a very slow extra turn is added while the page is still.
     render(motion, dt = 0) {
       idleAngle += idleSpeed * dt * (1 - scrollBoost());
-      spinner.rotation[axis] = motion.turn + idleAngle;
-      if (motion.tilt != null) tilted.rotation.x = motion.tilt;
+      spinner.rotation.y = motion.turn + idleAngle;
       renderer.render(scene, camera);
     },
   };
@@ -1535,16 +1496,11 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1,
     // points: [position, radius] pairs in the model's own frame.
     frameAround(points) {
       samples = [];
-      const pose = new THREE.Matrix4(), rollM = new THREE.Matrix4().makeRotationZ(roll);
-      const tiltM = new THREE.Matrix4(), spin = new THREE.Matrix4();
-      const spinAbout = axis === 'z' ? 'makeRotationZ' : 'makeRotationY';
-      frameTilts.forEach((angle) => {
-        tiltM.makeRotationX(angle);
-        for (let k = 0; k < 72; k++) {
-          pose.copy(rollM).multiply(tiltM).multiply(spin[spinAbout]((k / 72) * Math.PI * 2));
-          points.forEach(([p, r]) => samples.push([p.clone().applyMatrix4(pose), r]));
-        }
-      });
+      const turn = new THREE.Matrix4(), tiltM = new THREE.Matrix4().makeRotationX(tilt), spin = new THREE.Matrix4();
+      for (let k = 0; k < 72; k++) {
+        turn.multiplyMatrices(tiltM, spin.makeRotationY((k / 72) * Math.PI * 2));
+        points.forEach(([p, r]) => samples.push([p.clone().applyMatrix4(turn), r]));
+      }
       resize();
     },
     // Draw the first frame, then crossfade from the photo to the canvas.
@@ -1555,68 +1511,6 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1,
       return view;
     },
   };
-}
-
-/* ---------- Iron: the red blood cell, lit like a studio photograph ----------
-   models/red-blood-cell.glb is used exactly as loaded: its own normals,
-   tangents, textures, clearcoat, sheen and faint emissive glow. It is a disc
-   facing +Z: lying flat, seen from about 35° above so the dimple shows, and
-   leaning with its long axis from upper left to lower right. It spins about
-   its own axis (the disc's normal). */
-
-const BLOOD_CELL = {
-  roll: -0.4,                   // the lean on screen (about −23°)
-  tilt: -0.96,                  // lying flat, seen from about 35° above (the resting tilt)
-  tiltEnter: -1.4,              // nearly edge-on as it fades in
-  rock: 0.15,                   // the gentle scroll rock: −0.96 → −0.81 → −1.06 → −0.96
-  axis: 'z',
-  frameTilts: [-1.4, -1.06, -0.96, -0.81], // framed so the entrance and the rock never clip
-  idleSpeed: 0.012,             // radians per second while the page is still (about 9 min a turn)
-  exposure: 1.05,
-  environmentIntensity: 0.6,    // wet reflections without washing out the red
-  normalScale: 0.75,            // softens the model's bumps a little (its clearcoat bumps stay at 0.7)
-};
-
-async function createBloodCell(obj, modelBytes, pixelRatioCap) {
-  if (!hasWebGL()) return null;
-  const [bytes, { GLTFLoader }] = await Promise.all([
-    modelBytes,
-    import('three/addons/loaders/GLTFLoader.js'),
-  ]);
-  const studio = await createStudio(obj, pixelRatioCap, BLOOD_CELL);
-  const { THREE, scene, spinner } = studio;
-  const gltf = await new GLTFLoader().parseAsync(bytes, '');
-  const model = gltf.scene;
-
-  scene.environmentIntensity = BLOOD_CELL.environmentIntensity;
-  // Key: warm white from the upper left, in front.
-  const key = new THREE.DirectionalLight(0xfff6ee, 3.0);
-  key.position.set(-3, 4, 4);
-  // Rim: from behind and above on the right, for a bright edge along the top.
-  const rim = new THREE.DirectionalLight(0xffffff, 2.0);
-  rim.position.set(3, 2, -4);
-  // Fill: keeps the shadow side deep red, never black or flat.
-  const fill = new THREE.HemisphereLight(0xffffff, 0xe8d9d2, 0.4);
-  scene.add(key, rim, fill);
-
-  model.traverse((o) => { if (o.material?.normalScale) o.material.normalScale.multiplyScalar(BLOOD_CELL.normalScale); });
-
-  // Centre it, and frame it from a sample of its own vertices.
-  const box = new THREE.Box3().setFromObject(model);
-  model.position.sub(box.getCenter(new THREE.Vector3()));
-  model.updateMatrixWorld(true);
-  const points = [];
-  model.traverse((o) => {
-    if (!o.isMesh) return;
-    const position = o.geometry.attributes.position;
-    const step = Math.max(1, Math.floor(position.count / 800));
-    for (let i = 0; i < position.count; i += step) {
-      points.push([new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld), 0]);
-    }
-  });
-  spinner.add(model);
-  studio.frameAround(points);
-  return studio.show();
 }
 
 /* ---------- NAD+: a clear glass molecule on a turntable ----------
@@ -1963,12 +1857,32 @@ function buildStage(root, isDesktop) {
     });
   };
 
+  // Safety net: only the treatments whose segment contains the playhead (the
+  // current one, plus the one it is handing over to) may show. Every other
+  // scene (with its shadow, canvases and 3D) and text block is hidden, and
+  // live effects only run inside their own segment. Within a segment the
+  // tweens decide; re-entering a segment always crosses one of its tweens.
+  const windows = starts.map((s, i) => [s, i === n - 1 ? Infinity : s + L]);
+  const isHidden = (el) => el.style.visibility === 'hidden' && el.style.opacity === '0';
+  const sync = (time) => {
+    windows.forEach(([a, b], i) => {
+      const on = time >= a && time <= b;
+      if (on) {
+        if (isHidden(scenes[i])) gsap.set(scenes[i], { autoAlpha: 1 });
+        return;
+      }
+      if (!isHidden(scenes[i])) gsap.set(scenes[i], { autoAlpha: 0 });
+      if (!isHidden(copies[i])) gsap.set(copies[i], { autoAlpha: 0 });
+    });
+  };
+
   lives = [];
   const preloads = [];
   const onUpdate = () => {
     const time = tl.time();
     let index = 0;
     switches.forEach((at, i) => { if (time >= at) index = i; });
+    sync(time);
     setActive(index);
     updateLives(time);
   };
@@ -1979,9 +1893,9 @@ function buildStage(root, isDesktop) {
   FEATURED.forEach((t, i) => {
     const start = starts[i];
     const scene = scenes[i];
-    const isFirst = i === 0;
     const isLast = i === n - 1;
-    const from = start, to = isLast ? end + 1 : start + L;
+    // Live effects run while the treatment can be seen (after its fade in starts, until its fade out ends).
+    const from = start + FADE_IN[0] * L, to = isLast ? end + 1 : start + FADE_OUT[1] * L;
     const ft = (target, a, b, f0, f1, ease = 'none') =>
       tl.fromTo(target, a, { ...b, duration: (f1 - f0) * L, ease, immediateRender: false }, start + f0 * L);
     const live = (effect) => lives.push({ from, to, initFrom: from, visible: false, inited: false, last: 0, ...effect });
@@ -1989,12 +1903,6 @@ function buildStage(root, isDesktop) {
       const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
       live({ start: () => tween.play(), stop: () => tween.pause() });
     };
-
-    if (!isFirst) {
-      gsap.set(scene, { autoAlpha: 0 });
-      tl.set(scene, { autoAlpha: 1 }, start);
-    }
-    if (!isLast) tl.set(scene, { autoAlpha: 0 }, start + L);
 
     const obj = scene.querySelector('.obj');
     const shadow = scene.querySelector('.obj__shadow');
@@ -2025,9 +1933,12 @@ function buildStage(root, isDesktop) {
   tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
 
   tl.set({}, {}, end); // the timeline runs to the very end of the pin
+  sync(0);
   setActive(0);
   updateLives(0);
-  return { tl, labels, end, preloads };
+  // After a refresh (resize, fonts) the playhead may not move, so re-apply.
+  const resync = () => { const time = tl.time(); sync(time); updateLives(time); };
+  return { tl, labels, end, preloads, resync };
 }
 
 // Every stage image (layers, 3D fallbacks) is loaded and decoded, and every
@@ -2046,7 +1957,7 @@ function initStage(context, isDesktop) {
   if (!root) return () => {};
 
   document.documentElement.classList.add('has-stage');
-  const { tl, end, preloads } = buildStage(root, isDesktop);
+  const { tl, end, preloads, resync } = buildStage(root, isDesktop);
   gsap.ticker.add(tickLives);
   const onScreen = new IntersectionObserver(([entry]) => { stageOnScreen = entry.isIntersecting; });
   onScreen.observe(root);
@@ -2060,9 +1971,7 @@ function initStage(context, isDesktop) {
     const addon = (path) => import(`three/addons/${path}`).catch(() => null);
     const three = needs((s) => s.swayMask || s.model) ? import('three').catch(() => null) : null;
     const room = needs((s) => s.model) ? addon('environments/RoomEnvironment.js') : null;
-    const gltf = needs((s) => s.model?.endsWith('.glb')) ? addon('loaders/GLTFLoader.js') : null;
-    await Promise.all([preloadStage(root, preloads), fonts, three, room, gltf]);
-    markStageLoaded();
+    await Promise.all([preloadStage(root, preloads), fonts, three, room]);
     if (!alive) return;
 
     context.add(() => {
@@ -2094,10 +2003,7 @@ function initStage(context, isDesktop) {
         refreshPriority: 1,
         onRefresh: (self) => {
           k = (pin.start - self.start) / Math.max(1, self.end - self.start);
-          // Re-measure the function-based values (e.g. the runner's exit) for the new layout.
-          const time = tl.time();
-          tl.invalidate();
-          tl.time(0, true).time(time, true);
+          resync();
         },
       });
       const labelScroll = (id) => st.start + toProgress(tl.labels[id]) * (st.end - st.start);
