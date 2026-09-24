@@ -1,0 +1,31 @@
+Menu check: data/drips.json (16 drips) against the generated pages and the home page.
+Every string marked data-verbatim must equal data/drips.json (whitespace collapsed), and every required string must be shown.
+
+PASS  treatments/hydration-infusion/               11 strings
+PASS  treatments/immunity-infusion/                34 strings
+PASS  treatments/immunity-pro-infusion/            40 strings
+PASS  treatments/recovery-infusion/                35 strings
+PASS  treatments/recovery-pro-infusion/            43 strings
+PASS  treatments/detox-infusion/                   43 strings
+PASS  treatments/hair-and-scalp-infusion/          40 strings
+PASS  treatments/hair-and-scalp-pro-infusion/      46 strings
+PASS  treatments/beauty-and-glow-infusion/         24 strings
+PASS  treatments/myers-cocktail-infusion/          35 strings
+PASS  treatments/energy-infusion/                  38 strings
+PASS  treatments/muscle-and-fitness-infusion/      44 strings
+PASS  treatments/nad-plus-infusion/                14 strings
+PASS  treatments/longevity-infusion/               20 strings
+PASS  treatments/signature-infusion/               14 strings
+PASS  treatments/iron-infusion/                    75 strings
+PASS  index.html (home page, as script.js renders it) 100 strings
+
+Result: all passed
+
+Notes
+  - none
+
+"Blue Bird Wellness" in the menu (shown as written wherever the page shows that string):
+  - clinic.name
+  - clinic.intro.0
+  - clinic.intro.3
+  - drips.iron-infusion.sections.1.body

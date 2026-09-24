@@ -84,7 +84,7 @@
 *::after { box-sizing: border-box; }
 
 html {
-  background: var(--color-cream);
+  background: var(--page-tint, var(--color-cream));
   scroll-padding-top: var(--header-h);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -96,7 +96,7 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-cream);
+  background: var(--page-tint, var(--color-cream));
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: var(--text-body);
@@ -402,16 +402,13 @@ html.lenis body { height: auto; }
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   letter-spacing: -0.03em;
+  text-wrap: balance;
 }
+/* Longer menu names ("Muscle & Fitness Infusion") step down slightly so they
+   wrap onto two lines, not three. */
+.treatment-title--long { font-size: clamp(36px, 5vw, 64px); }
 
-.treatment-desc {
-  font-size: var(--text-body-lg);
-  line-height: 1.5;
-  color: var(--color-slate);
-  text-wrap: pretty;
-}
-
-/* Book button with a quiet "From £X" beside it. */
+/* Book and Learn more, with the menu's price label beside them. */
 .treatment-actions {
   display: flex;
   flex-wrap: wrap;
@@ -420,20 +417,15 @@ html.lenis body { height: auto; }
   margin-top: var(--space-8);
 }
 
+/* The menu's price label, exactly as written ("£119", "from £179"). */
 .price {
   margin: 0;
   font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
   line-height: 1.2;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-.price__from {
-  font-size: var(--text-caption);
-  color: var(--color-slate);
-}
-.price__value {
-  font-weight: var(--font-weight-medium);
   color: var(--color-ink);
+  white-space: nowrap;
 }
 
 /* ---------- Featured treatments: static list ----------
@@ -549,7 +541,7 @@ html.lenis body { height: auto; }
   order: 1;
   display: grid;
   justify-self: start;
-  max-width: 30rem;
+  max-width: 32rem;
 }
 
 .scene {
@@ -855,7 +847,7 @@ html.lenis body { height: auto; }
     text-align: center;
   }
   .stage__copy .treatment-title { font-size: clamp(36px, 10.5vw, 50px); }
-  .stage__copy .treatment-desc { font-size: var(--text-body); }
+  .stage__copy .treatment-title--long { font-size: clamp(30px, 9vw, 44px); }
   .stage__copy .treatment-actions { justify-content: center; margin-top: var(--space-4); }
 }
 
@@ -888,6 +880,7 @@ html.lenis body { height: auto; }
   gap: var(--space-24);
 }
 
+/* Each card is one link to the drip's page. */
 .card {
   --cols: 1;
   display: flex;
@@ -898,6 +891,8 @@ html.lenis body { height: auto; }
   background: var(--color-white);
   border: 1px solid var(--color-mist);
   border-radius: var(--radius-card);
+  color: var(--color-ink);
+  text-decoration: none;
   transition:
     transform var(--duration-base) var(--ease-out),
     box-shadow var(--duration-base) var(--ease-out);
@@ -955,31 +950,30 @@ html.lenis body { height: auto; }
   letter-spacing: -0.015em;
 }
 
-.card__desc {
-  font-size: var(--text-caption);
-  line-height: 1.45;
-  letter-spacing: -0.005em;
-  color: var(--color-slate);
-}
-
 .card .badge { align-self: flex-start; }
 
 .card__action {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-8) var(--space-16);
   margin-top: auto;
   padding-top: var(--space-12);
 }
 .card__action .price { font-size: var(--text-label); }
-.card__action .price__from { font-size: 13px; }
+
+/* Looks like a secondary button; the whole card is the link. */
+.card__more { pointer-events: none; }
+
+.card:focus-visible { outline-offset: 4px; }
 
 @media (hover: hover) {
   .card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-card);
   }
+  .card:hover .card__more { background: var(--color-sand); }
   .card:hover .card__media img,
   .card:hover .placeholder { transform: scale(1.04); }
 }
@@ -1016,130 +1010,6 @@ html.lenis body { height: auto; }
   width: 44%;
   aspect-ratio: 3 / 4;
   border-radius: 999px 999px 24px 24px;
-}
-
-/* ---------- About pop-up ----------
-   One native <dialog>, filled by script.js. The header and the bottom bar
-   stay put while long copy scrolls in between. */
-
-.about {
-  width: min(560px, calc(100% - 24px));
-  max-width: none;
-  max-height: calc(100vh - 24px);
-  max-height: calc(100dvh - 24px);
-  margin: auto;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-card);
-  background: var(--color-white);
-  color: var(--color-ink);
-  box-shadow: 0 1px 2px rgba(21, 34, 56, 0.06), 0 24px 64px rgba(21, 34, 56, 0.18);
-  overflow: hidden;
-}
-.about[open] {
-  display: flex;
-  flex-direction: column;
-}
-.about::backdrop {
-  background: rgba(21, 34, 56, 0.32);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-}
-
-.about__card {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.about__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-16);
-  padding: var(--space-32) var(--space-32) var(--space-8);
-}
-
-.about__title {
-  padding-top: 4px;
-  font-size: clamp(26px, 3vw, 32px);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
-.about__close {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  margin: -4px -8px 0 0;
-  padding: 0;
-  border: 1px solid rgba(21, 34, 56, 0.2);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--color-ink);
-  cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-.about__close:hover { background: var(--color-sand); }
-.about__close svg { width: 18px; height: 18px; }
-
-.about__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: var(--space-8) var(--space-32) var(--space-24);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  color: var(--color-slate);
-  text-wrap: pretty;
-}
-
-.about__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-16);
-  padding: var(--space-16) var(--space-32);
-  border-top: 1px solid var(--color-mist);
-}
-
-.about__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-8) var(--space-12);
-}
-
-@media (max-width: 599.98px) {
-  .about__head { padding: var(--space-24) var(--space-24) var(--space-8); }
-  .about__body { padding: var(--space-8) var(--space-24) var(--space-16); }
-  .about__foot { padding: var(--space-16) var(--space-24); }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .about[open] { animation: about-in var(--duration-fast) var(--ease-out); }
-  .about[open]::backdrop { animation: about-backdrop-in var(--duration-fast) var(--ease-out); }
-  .about.is-closing { animation: about-out var(--duration-fast) ease-in forwards; }
-  .about.is-closing::backdrop { animation: about-backdrop-out var(--duration-fast) ease-in forwards; }
-}
-@keyframes about-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
-@keyframes about-out { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
-@keyframes about-backdrop-in { from { opacity: 0; } }
-@keyframes about-backdrop-out { to { opacity: 0; } }
-
-/* The page behind never scrolls while the pop-up is open (Lenis adds its own
-   stopped class; this also covers reduced motion). The gutter stays, so
-   nothing shifts sideways. */
-html.has-dialog,
-html.has-dialog.lenis.lenis-stopped {
-  overflow: hidden;
-  scrollbar-gutter: stable;
 }
 
 /* ---------- How it works ---------- */
@@ -1346,6 +1216,424 @@ html.has-dialog.lenis.lenis-stopped {
   color: rgba(251, 250, 247, 0.7);
 }
 .site-footer__legal p:first-child { color: var(--color-porcelain); }
+
+/* ---------- Menu: accordion and price table ----------
+   Shared by the standalone section on the home page and the treatment
+   pages. Menu strings are never restyled (no uppercase, no truncation). */
+
+.accordion {
+  padding: var(--space-8) var(--space-24);
+  background: var(--color-white);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-card);
+}
+.accordion__item + .accordion__item { border-top: 1px solid var(--color-mist); }
+
+.accordion__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-16) 0;
+  border-radius: 8px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
+  list-style: none;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.accordion__summary::-webkit-details-marker { display: none; }
+.accordion__summary::after {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-3px) rotate(45deg);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.accordion__item[open] > .accordion__summary::after { transform: translateY(2px) rotate(-135deg); }
+.accordion__summary:hover { color: var(--color-bluebird); }
+.accordion__item:target > .accordion__summary { color: var(--color-bluebird); }
+
+.accordion__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  max-width: 68ch;
+  padding: 0 0 var(--space-24);
+  color: var(--color-slate);
+  text-wrap: pretty;
+}
+
+/* A white tile holding the table; on phones its two columns stay side by
+   side as full-width rows, so nothing scrolls sideways. */
+.price-table-wrap {
+  max-width: 36rem;
+  padding: var(--space-8) var(--space-24) var(--space-12);
+  background: var(--color-white);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-card);
+}
+
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.price-table caption {
+  padding: var(--space-16) 0 var(--space-4);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+}
+.price-table th,
+.price-table td {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-mist);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.35;
+  text-align: left;
+  vertical-align: baseline;
+}
+.price-table thead th {
+  padding: var(--space-12) 0;
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+}
+.price-table th:last-child,
+.price-table td:last-child {
+  padding-left: var(--space-16);
+  text-align: right;
+  white-space: nowrap;
+}
+.price-table td { font-weight: var(--font-weight-medium); }
+.price-table tbody tr:last-child > * { border-bottom: 0; }
+
+/* ---------- Standalone infusions & injections (home page) ---------- */
+
+.standalone { padding-top: 0; }
+
+.standalone__grid {
+  display: grid;
+  gap: var(--space-24);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .standalone__grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--space-48);
+  }
+}
+
+/* ---------- Treatment pages (treatments/<slug>/) ----------
+   The page background is the treatment's stage tint (--page-tint on <html>). */
+
+.drip-intro { padding: calc(var(--header-h) + var(--space-48)) 0 var(--space-64); }
+
+.drip-intro__inner {
+  display: grid;
+  gap: var(--space-32);
+  align-items: start;
+}
+
+.drip-intro__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+/* On phones the picture comes first, then the text. */
+.drip-intro__media {
+  order: -1;
+  display: grid;
+  place-items: center;
+}
+
+@media (min-width: 900px) {
+  .drip-intro { padding-bottom: var(--space-96); }
+  .drip-intro__inner {
+    grid-template-columns: minmax(0, 40rem) minmax(0, 1fr);
+    gap: var(--space-64);
+  }
+  /* The picture stays in view beside a long description. */
+  .drip-intro__media {
+    order: 0;
+    position: sticky;
+    top: calc(var(--header-h) + var(--space-48));
+    min-height: min(560px, calc(100vh - var(--header-h) - var(--space-96)));
+  }
+}
+
+.drip-picture {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+.drip-picture img {
+  width: auto;
+  height: auto;
+  max-width: min(100%, 480px);
+  max-height: min(560px, 70vh);
+  filter: var(--shadow-float);
+}
+.drip-picture--photo img {
+  width: min(100%, 440px);
+  max-height: none;
+  border-radius: var(--radius-card);
+  filter: none;
+}
+.drip-picture--placeholder {
+  width: min(100%, 440px);
+  aspect-ratio: 1;
+}
+
+@media (max-width: 899.98px) {
+  .drip-picture img { max-height: min(320px, 42vh); }
+  .drip-picture--photo img { width: min(100%, 320px); max-height: none; }
+  .drip-picture--placeholder { width: min(100%, 300px); }
+}
+
+.drip-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  border-radius: 4px;
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.drip-back svg { width: 16px; height: 16px; }
+.drip-back:hover { color: var(--color-ink); }
+
+.drip-title {
+  margin-top: var(--space-8);
+  font-size: clamp(40px, 5.2vw, 72px);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.drip-tagline {
+  font-size: var(--text-body-lg);
+  line-height: 1.5;
+  color: var(--color-slate);
+}
+
+.drip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
+
+.drip-price {
+  font-size: var(--text-card-title);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+/* The quiet link between a drip and its Pro (or standard) version. */
+.variant-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+  border-radius: 4px;
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-bluebird);
+  text-decoration: none;
+}
+.variant-link > span:first-child {
+  text-decoration: underline;
+  text-decoration-color: rgba(36, 88, 198, 0.3);
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
+}
+.variant-link:hover > span:first-child { text-decoration-color: currentColor; }
+.variant-link__price {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-slate);
+}
+.variant-link__icon {
+  width: 14px;
+  height: 14px;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.variant-link:hover .variant-link__icon { transform: translateX(2px); }
+
+/* Long reading text: about 65–75 characters a line. */
+.drip-prose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  max-width: 40rem;
+  font-size: 18px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.drip-description { margin-top: var(--space-16); }
+
+.drip-section { padding: var(--space-64) 0; }
+
+.drip-section__title {
+  margin-bottom: var(--space-32);
+  font-size: var(--text-section);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.drip-subtitle {
+  font-size: var(--text-card-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.drip-contents {
+  display: grid;
+  gap: var(--space-48);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .drip-contents { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); }
+}
+
+.drip-ingredients,
+.drip-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.drip-guide__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12) var(--space-16);
+  min-height: 40px;
+}
+
+.ingredient-list {
+  margin: 0;
+  padding: var(--space-8) var(--space-24);
+  list-style: none;
+  background: var(--color-white);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-card);
+}
+.ingredient-list li {
+  padding: 12px 0;
+  line-height: 1.4;
+}
+.ingredient-list li + li { border-top: 1px solid var(--color-mist); }
+
+.drip-prose + .price-table-wrap { margin-top: var(--space-32); }
+
+/* Iron's long read. */
+.drip-longform { padding-bottom: var(--space-32); }
+
+.toc {
+  max-width: 40rem;
+  margin: var(--space-48) 0 var(--space-16);
+  padding: var(--space-24) var(--space-32);
+  background: var(--color-white);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-card);
+}
+.toc__title {
+  margin-bottom: var(--space-12);
+  font-size: var(--text-card-title);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+.toc__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding-left: 1.4em;
+}
+.toc__list li::marker { color: var(--color-slate); }
+
+.longform-section {
+  padding-top: var(--space-48);
+  scroll-margin-top: calc(var(--header-h) + var(--space-16));
+}
+.longform-section .drip-section__title {
+  margin-bottom: var(--space-16);
+  font-size: clamp(26px, 3vw, 34px);
+}
+
+.drip-footnotes { padding-top: 0; }
+.footnotes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: 48rem;
+  margin: 0;
+  padding: var(--space-24) 0 0;
+  list-style: none;
+  border-top: 1px solid var(--color-mist);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--color-slate);
+}
+
+.drip-book { padding: var(--space-32) 0 var(--space-96); }
+
+.drip-book__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-24);
+  padding: var(--space-48) var(--space-24);
+  background: var(--color-white);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-card);
+  text-align: center;
+}
+
+.drip-disclaimer {
+  max-width: 44rem;
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--color-slate);
+  text-wrap: pretty;
+}
+
+/* Motion on the treatment pages: the picture fades up as the page loads, and
+   each block fades up as it scrolls into view (treatment.js marks the ones
+   still below the fold). Nothing moves with reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal-load] { animation: drip-fade-up 0.9s var(--ease-out) 0.1s both; }
+  .has-reveal [data-fade] {
+    transition:
+      opacity var(--duration-slow) var(--ease-out),
+      transform var(--duration-slow) var(--ease-out);
+  }
+  .has-reveal [data-fade].is-waiting {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+@keyframes drip-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+}
 
 /* ---------- Reduced motion: keep everything still ---------- */
 

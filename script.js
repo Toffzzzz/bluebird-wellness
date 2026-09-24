@@ -1,48 +1,57 @@
 /* ==========================================================================
    Bluebird Wellness: page script
 
-   1. TREATMENT CONTENT   ← edit text, prices, images and the stage order here
+   1. TREATMENT VISUALS   ← the stage order, images, scenes and tints
    2. STAGE TIMING        ← fine-tune the scroll film here
-   3. Rendering
+   3. Rendering (the stage, the "All treatments" cards, the standalone section)
    4. Scenes (one per kind of featured visual)
    5. Live effects: shower water, frame sequences, hair sway (Three.js
       shader) and the NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
-   7. About pop-up
    ========================================================================== */
 
 /* ==========================================================================
-   1. TREATMENT CONTENT
+   1. TREATMENT VISUALS
 
-   The order of this list is the order of the pinned stage (and its side
-   list), of the "All treatments" grid and of the reduced-motion list.
+   Names, prices and every word of treatment copy come from the clinic's
+   menu, data/drips.json, through data/menu.js (window.MENU). That file is
+   written by scripts/build-menu.mjs, which also builds a page per drip
+   (treatments/<slug>/) and holds the booking link (window.BOOK_URL). Edit
+   the menu there and run the script; nothing here repeats it.
+
+   TREATMENTS only holds the pinned stage's visuals, scenes and tints, and
+   the menuSlug that links each one to its drip in the menu. Its order is the
+   order of the stage, its side list and the reduced-motion list. The
+   generator reads the image, alt, tint and badge of each entry for the
+   treatment pages and the "All treatments" cards, so run it after changing
+   them.
    Fields:
-     id           Unique, lowercase, no spaces. Also used as the page anchor.
-     name         Display name.
-     short        Short label for the stage's side list; falls back to name.
-     summary      One line for the card.
-     priceFrom    "From £X" price in pounds.
-                  PROVISIONAL: every price below still needs confirming.
-     bookUrl      Booking link (placeholder "#" for now).
+     id           Unique, lowercase, no spaces. Also the stage's page anchor
+                  (e.g. #iron).
+     menuSlug     The drip's slug in data/drips.json: its name and price are
+                  shown here, and "Learn more" opens treatments/<slug>/.
+     standalone   Instead of a menuSlug, for an item in the menu's
+                  standalone section: { row, entry }. The name and price come
+                  from that row of its price table; "Learn more" goes to its
+                  entry in the standalone section, which takes this id as
+                  its anchor.
+     short        Short label for the stage's side list.
      image        Path to the image, e.g. "images/iron.webp". Leave as null to
                   show the soft placeholder shape instead.
      imageSize    [width, height] of the image in pixels (keeps the layout steady).
      imageFit     Optional. "cover" for a full photo (not a cut-out).
-     alt          Short description of the image for screen readers.
+     alt          Plain description of the image for screen readers (no claims).
      placeholder  Shown when there is no image: { shape, colour }
                   shape: "drop" | "circle" | "pill" | "blob" | "arch"
      badge        Optional small label, e.g. { text: "…", variant: "sky" | "sage" }
-     about        Paragraphs shown in the About pop-up; the same copy rules
-                  apply: no claims that a drip cures, treats, prevents,
-                  detoxes, boosts immunity, reverses ageing or grows hair.
      showcase     The treatment's part of the pinned scroll stage:
-                    description: 1–2 sentences shown beside the visual
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
                                  "cucumber" | "molecule" | "plant" | "wipe" |
                                  "droplet" | "shower" | "frames" | "bone"
                                  (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
+                                 (also the soft background of its page)
                     layers:      ("orange", "plant", "cucumber", "shower",
                                  "droplet", "bone") layer images on the image's
                                  canvas; ("coconut") layers on their own
@@ -50,31 +59,17 @@
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
                     frames:      ("frames", "droplet") { path, count, size } image sequence
                     model:       ("molecule") V2000 SDF file for the 3D glass molecule
-
-   Copy rule: describe what's in each drip and the experience only. No claims
-   that a treatment cures, treats, prevents, detoxes, boosts immunity,
-   reverses ageing or grows hair (UK ASA/CAP).
    ========================================================================== */
 
-// Ingredients to be confirmed by prescriber and compliance review before launch.
 const TREATMENTS = [
   {
     id: 'hydration',
-    name: 'Hydration',
+    menuSlug: 'hydration-infusion',
     short: 'Hydration',
-    summary: 'Fluids and electrolytes in a saline drip.',
-    priceFrom: 129, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/hydration.webp',
     imageSize: [760, 803],
     alt: 'A green coconut split open, with water splashing from it',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'Fluids and electrolytes in a saline drip, given at an unhurried pace. Rest while it runs, in clinic or at home.',
       scene: 'coconut',
       tint: '#EEF3F8',
       layers: {
@@ -87,64 +82,37 @@ const TREATMENTS = [
   },
   {
     id: 'energy',
-    name: 'Energy',
+    menuSlug: 'energy-infusion',
     short: 'Energy',
-    summary: 'A vitamin drip in a calm, unhurried session.',
-    priceFrom: 149, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/energy.webp',
     imageSize: [772, 955],
     alt: 'A runner mid-stride',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A vitamin drip, prepared for you after your consultation. Take a seat and unwind while it runs, in clinic or at home.',
       scene: 'runner',
       tint: '#F7F4EF',
     },
   },
   {
     id: 'iron',
-    name: 'Iron',
+    menuSlug: 'iron-infusion',
     short: 'Iron',
-    summary: 'For diagnosed iron deficiency. A blood test and clinical assessment are needed first.',
-    priceFrom: 295, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/iron.webp',
     imageSize: [760, 707],
     alt: 'A single red blood cell',
     badge: { text: 'Blood test required first', variant: 'sky' },
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'An iron infusion for adults with diagnosed iron deficiency. A blood test and clinical assessment are required before treatment.',
       scene: 'float',
       tint: '#F9EFEE',
     },
   },
   {
     id: 'muscle-recovery',
-    name: 'Muscle Recovery',
+    menuSlug: 'muscle-and-fitness-infusion',
     short: 'Muscle',
-    summary: 'Fluids, minerals and amino acids in a saline drip.',
-    priceFrom: 169, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/deadlift/deadlift-30.webp', // the finished pose: cards and reduced motion
     imageSize: [792, 1310],
     alt: 'An athlete standing tall at the top of a deadlift',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'Fluids, minerals and amino acids in a saline drip. Put your feet up while it runs, in clinic or at home.',
       scene: 'frames',
       tint: '#F3F0EC',
       frames: { path: 'images/deadlift/deadlift-{n}.webp', count: 30, size: [792, 1310] },
@@ -152,21 +120,12 @@ const TREATMENTS = [
   },
   {
     id: 'nad',
-    name: 'NAD+',
+    menuSlug: 'nad-plus-infusion',
     short: 'NAD+',
-    summary: 'NAD+ given as a slow infusion over a longer, relaxed session.',
-    priceFrom: 395, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/nad.webp',
     imageSize: [800, 730],
     alt: 'A glass model of a molecule, with clear spheres joined by rods',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'NAD+ given as a slow infusion over a longer session. Settle in and rest while it runs, in clinic or at home.',
       scene: 'molecule',
       tint: '#F2F2F7',
       model: 'models/nad.sdf',
@@ -174,21 +133,12 @@ const TREATMENTS = [
   },
   {
     id: 'detox',
-    name: 'Detox',
+    menuSlug: 'detox-infusion',
     short: 'Detox',
-    summary: 'A slow, calm drip with time to rest.',
-    priceFrom: 169, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/detox-card.webp',
     imageSize: [570, 1015],
     alt: 'A cucumber slice splashing into a tall glass of water',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A drip prepared for you after your consultation. A calm, unhurried session in our clinic or wherever suits you.',
       scene: 'cucumber',
       tint: '#F0F4EC',
       layers: {
@@ -202,21 +152,12 @@ const TREATMENTS = [
   },
   {
     id: 'immunity',
-    name: 'Immunity',
+    menuSlug: 'immunity-infusion',
     short: 'Immunity',
-    summary: 'A vitamin and mineral drip, prepared after your consultation.',
-    priceFrom: 149, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/immunity.webp',
     imageSize: [1040, 919],
     alt: 'Two halves of an orange with droplets of juice',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A vitamin and mineral drip, prepared for you after your consultation. Sit back and relax while it runs, in clinic or at home.',
       scene: 'orange',
       tint: '#FAF1E8',
       layers: {
@@ -229,21 +170,12 @@ const TREATMENTS = [
   },
   {
     id: 'recovery',
-    name: 'Recovery (Hangover)',
+    menuSlug: 'recovery-infusion',
     short: 'Recovery',
-    summary: 'Fluids with electrolytes and vitamins, in a calm, unhurried setting.',
-    priceFrom: 149, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/shower-wet.webp',
     imageSize: [829, 941],
     alt: 'A woman with her eyes closed, tipping her head back under a rain shower',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'Fluids with electrolytes and vitamins in a saline drip. A quiet, unhurried setting, in clinic or at home.',
       scene: 'shower',
       tint: '#EFF4F5',
       layers: {
@@ -254,21 +186,13 @@ const TREATMENTS = [
   },
   {
     id: 'vitamin-d',
-    name: 'Vitamin D',
+    menuSlug: null, // not a drip: the menu's standalone Vitamin D injection
+    standalone: { row: 'Vitamin D injection', entry: 'Vitamin D (injection)' },
     short: 'Vitamin D',
-    summary: 'A vitamin D drip, prepared after your consultation.',
-    priceFrom: 149, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/bone-whole.webp',
     imageSize: [1405, 320],
     alt: 'A human thigh bone',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A vitamin D drip, prepared for you after your consultation. Sit back and relax while it runs, in clinic or at home.',
       scene: 'bone',
       tint: '#EEF2F6',
       layers: {
@@ -282,21 +206,12 @@ const TREATMENTS = [
   },
   {
     id: 'longevity',
-    name: 'Longevity',
+    menuSlug: 'longevity-infusion',
     short: 'Longevity',
-    summary: 'A vitamin, mineral and amino acid drip.',
-    priceFrom: 249, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/longevity.webp',
     imageSize: [860, 911],
     alt: 'A young green shoot with water droplets',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A vitamin, mineral and amino acid drip, prepared after your consultation. A calm, unhurried session, in clinic or at home.',
       scene: 'plant',
       tint: '#F1F4EC',
       layers: {
@@ -309,22 +224,13 @@ const TREATMENTS = [
   },
   {
     id: 'skin',
-    name: 'Skin & Beauty',
-    short: 'Skin',
-    summary: 'A vitamin drip with time to sit back and rest.',
-    priceFrom: 179, // PROVISIONAL
-    bookUrl: '#',
+    menuSlug: 'beauty-and-glow-infusion',
+    short: 'Beauty',
     image: 'images/skin.webp',
     imageSize: [800, 800],
     imageFit: 'cover',
     alt: 'A single water droplet resting on skin',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A vitamin drip, prepared after your consultation. Time to sit back and rest, in our clinic or at home.',
       scene: 'droplet',
       tint: '#F8EFEA',
       layers: {
@@ -337,21 +243,12 @@ const TREATMENTS = [
   },
   {
     id: 'hair',
-    name: 'Hair & Scalp',
+    menuSlug: 'hair-and-scalp-infusion',
     short: 'Hair',
-    summary: 'A vitamin and mineral drip, with quiet time to sit back.',
-    priceFrom: 179, // PROVISIONAL
-    bookUrl: '#',
     image: 'images/hair.webp',
     imageSize: [720, 1024],
     alt: 'Long, glossy brown hair seen from behind',
-    about: [
-      'Placeholder: a short introduction to this drip will go here.',
-      'Placeholder: what the session involves, how long it takes, and whether it is available in clinic, as a mobile call-out, or both.',
-      'Placeholder: who it may be suitable for and anything you need to know before booking. All treatments are subject to a medical consultation.',
-    ],
     showcase: {
-      description: 'A vitamin and mineral drip, prepared after your consultation. Quiet time to sit back, in our clinic or wherever suits you.',
       scene: 'wipe',
       tint: '#F6F0EA',
       swayMask: 'images/hair-mask.webp',
@@ -392,12 +289,47 @@ const STAGE = {
 
 /* ==========================================================================
    3. Rendering
+
+   Every name, price and line of treatment copy comes from window.MENU
+   (data/menu.js) and is escaped as text. Elements that show a menu string
+   carry data-verbatim with its path in data/drips.json, so the generator's
+   check (scripts/build-menu.mjs) can compare them word for word.
    ========================================================================== */
+
+const MENU = window.MENU || null;
+// Picture, tint and badge per drip, resolved by the generator from TREATMENTS.
+const MENU_VISUALS = window.MENU_VISUALS || {};
+// Where every Book button goes. Set once, in scripts/build-menu.mjs.
+const BOOK_URL = window.BOOK_URL || '#';
 
 const esc = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const pad = (n) => String(n).padStart(2, '0');
+
+// "\n\n" in a menu string is a paragraph break.
+const parasHTML = (text) => String(text).split('\n\n').map((p) => `<p>${esc(p)}</p>`).join('\n');
+
+const dripBySlug = (slug) => (MENU ? MENU.drips.find((d) => d.slug === slug) : null) || null;
+
+// What a stage treatment shows: its drip on the menu, or its row of the
+// standalone price table. Null if the menu doesn't have it.
+function menuItem(t) {
+  if (t.menuSlug) {
+    const drip = dripBySlug(t.menuSlug);
+    if (!drip) return null;
+    const at = `drips.${drip.slug}`;
+    return { name: drip.name, price: drip.priceLabel, href: `treatments/${drip.slug}/`, namePath: `${at}.name`, pricePath: `${at}.priceLabel` };
+  }
+  if (t.standalone && MENU) {
+    const i = MENU.standalone.priceTable.rows.findIndex((row) => row[0] === t.standalone.row);
+    if (i < 0) return null;
+    const [name, price] = MENU.standalone.priceTable.rows[i];
+    const at = `standalone.priceTable.rows.${i}`;
+    return { name, price, href: `#${t.id}`, namePath: `${at}.0`, pricePath: `${at}.1` };
+  }
+  return null;
+}
 
 function badgeHTML(badge) {
   if (!badge) return '';
@@ -405,19 +337,14 @@ function badgeHTML(badge) {
   return `<span class="${cls}">${esc(badge.text)}</span>`;
 }
 
-function priceHTML(t) {
-  if (t.priceFrom == null) return '';
-  return `<p class="price"><span class="price__from">From</span> <span class="price__value">£${esc(t.priceFrom)}</span></p>`;
-}
+// The menu's price label, exactly as written ("£119", "from £179").
+const priceHTML = (label, path) => `<p class="price" data-verbatim="${esc(path)}">${esc(label)}</p>`;
 
-function bookHTML(t, compact = false) {
-  return `<a class="btn btn--primary${compact ? ' btn--compact' : ''}" href="${esc(t.bookUrl)}">Book<span class="visually-hidden"> ${esc(t.name)}</span></a>`;
-}
+const bookHTML = (name) =>
+  `<a class="btn btn--primary" href="${esc(BOOK_URL)}">Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
 
-// Opens the shared About pop-up (section 7) for this treatment.
-function aboutHTML(t, compact = false) {
-  return `<button type="button" class="btn btn--secondary${compact ? ' btn--compact' : ''}" data-about="${esc(t.id)}">About<span class="visually-hidden"> ${esc(t.name)}</span></button>`;
-}
+const learnMoreHTML = (m) =>
+  `<a class="btn btn--secondary" href="${esc(m.href)}">Learn more<span class="visually-hidden"> about ${esc(m.name)}</span></a>`;
 
 const layerImg = (src, [w, h], attrs = '') =>
   `<img class="layer" src="${esc(src)}" alt="" width="${w}" height="${h}" decoding="async" draggable="false"${attrs}>`;
@@ -427,19 +354,24 @@ const placeholderHTML = (t, extra = '') =>
 
 function objHTML(t, type, inner, ratio = t.imageSize) {
   return `
-    <div class="obj obj--${type}" style="--ratio: ${ratio[0]} / ${ratio[1]}" role="img" aria-label="${esc(t.alt || t.name)}">
+    <div class="obj obj--${type}" style="--ratio: ${ratio[0]} / ${ratio[1]}" role="img" aria-label="${esc(t.alt || '')}">
       <span class="obj__shadow" aria-hidden="true"></span>
       ${inner}
     </div>`;
 }
 
+// Names this long get a slightly smaller stage title, so they wrap onto two
+// lines rather than three.
+const LONG_TITLE = 20;
+
 function textHTML(t, titleId) {
+  const m = menuItem(t);
+  const long = m.name.length > LONG_TITLE ? ' treatment-title--long' : '';
   return `
     <p class="eyebrow">IV therapy</p>
-    <h2 class="treatment-title" id="${titleId}">${esc(t.name)}</h2>
-    <p class="treatment-desc">${esc(t.showcase.description)}</p>
+    <h2 class="treatment-title${long}" id="${titleId}" data-verbatim="${esc(m.namePath)}">${esc(m.name)}</h2>
     ${badgeHTML(t.badge)}
-    <div class="treatment-actions">${bookHTML(t)}${aboutHTML(t)}${priceHTML(t)}</div>`;
+    <div class="treatment-actions">${bookHTML(m.name)}${learnMoreHTML(m)}${priceHTML(m.price, m.pricePath)}</div>`;
 }
 
 function stageHTML(featured) {
@@ -454,7 +386,7 @@ function stageHTML(featured) {
     `<article class="stage__copy" data-copy="${esc(t.id)}">${textHTML(t, `stage-${esc(t.id)}-title`)}</article>`).join('');
 
   const steps = featured.map((t) => `
-    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="Go to ${esc(t.name)}"><span>${esc(t.short || t.name)}</span></button></li>`).join('');
+    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="Go to ${esc(menuItem(t).name)}"><span>${esc(t.short)}</span></button></li>`).join('');
 
   return `
     <section class="stage" id="stage" aria-label="Featured treatments">
@@ -470,7 +402,8 @@ function stageHTML(featured) {
 }
 
 // Calm stacked blocks with the finished images: used for reduced motion,
-// and whenever the scroll animation can't run.
+// and whenever the scroll animation can't run. A standalone item's anchor
+// belongs to its entry in the standalone section.
 function staticListHTML(featured) {
   const blocks = featured.map((t, i) => {
     const [w, h] = t.imageSize;
@@ -478,8 +411,9 @@ function staticListHTML(featured) {
     if (!t.image) media = `<div class="treatment-block__shape">${placeholderHTML(t)}</div>`;
     else if (t.imageFit === 'cover') media = `<img class="treatment-block__photo" src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
     else media = `<img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+    const anchor = t.standalone ? '' : ` id="${esc(t.id)}"`;
     return `
-      <section class="treatment-block treatment-block--image-${i % 2 ? 'left' : 'right'}" id="${esc(t.id)}" aria-labelledby="${esc(t.id)}-title">
+      <section class="treatment-block treatment-block--image-${i % 2 ? 'left' : 'right'}"${anchor} aria-labelledby="${esc(t.id)}-title">
         <div class="container treatment-block__inner">
           <div class="treatment-block__media">${media}</div>
           <div class="treatment-block__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
@@ -492,13 +426,14 @@ function staticListHTML(featured) {
 // Share of the card's image well that a cut-out may fill (12% padding on each side).
 const CARD_FILL = 0.76;
 
-function cardMediaHTML(t) {
-  if (!t.image) return `<div class="card__media" aria-hidden="true">${placeholderHTML(t)}</div>`;
-  const [w, h] = t.imageSize;
-  const img = `<img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+// The card is one link that already carries the drip's name, so its picture is decorative.
+function cardMediaHTML(v) {
+  if (!v.image) return `<div class="card__media" aria-hidden="true">${placeholderHTML(v)}</div>`;
+  const [w, h] = v.imageSize;
+  const img = `<img src="${esc(v.image)}" alt="" width="${w}" height="${h}" loading="lazy" decoding="async">`;
 
   // A full photo fills the well; it scales inside its rounded frame on hover.
-  if (t.imageFit === 'cover') return `<div class="card__media card__media--photo">${img}</div>`;
+  if (v.imageFit === 'cover') return `<div class="card__media card__media--photo">${img}</div>`;
 
   // A cut-out is contained in the padded area, with a soft ellipse shadow just
   // below where the image actually ends (tall, wide and square images differ).
@@ -509,24 +444,74 @@ function cardMediaHTML(t) {
   return `<div class="card__media"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}</div>`;
 }
 
-function cardHTML(t) {
+// One card per drip, in menu order; the whole card links to the drip's page.
+function cardHTML(drip) {
+  const v = MENU_VISUALS[drip.slug] || {};
+  const at = `drips.${drip.slug}`;
   return `
-    <article class="card" data-card>
-      ${cardMediaHTML(t)}
-      <h3 class="card__title">${esc(t.name)}</h3>
-      <p class="card__desc">${esc(t.summary)}</p>
-      ${badgeHTML(t.badge)}
-      <div class="card__action">${bookHTML(t, true)}${aboutHTML(t, true)}${priceHTML(t)}</div>
-    </article>`;
+    <a class="card" href="treatments/${esc(drip.slug)}/" data-card>
+      ${cardMediaHTML(v)}
+      <h3 class="card__title" data-verbatim="${esc(at)}.name">${esc(drip.name)}</h3>
+      ${badgeHTML(v.badge)}
+      <div class="card__action">
+        ${priceHTML(drip.priceLabel, `${at}.priceLabel`)}
+        <span class="btn btn--secondary btn--compact card__more">Learn more</span>
+      </div>
+    </a>`;
 }
 
-const FEATURED = TREATMENTS.filter((t) => t.showcase);
+// The menu's standalone infusions and injections: heading, intro, price table
+// and one accordion entry per ingredient. An entry a stage treatment points
+// to (e.g. Vitamin D) takes that treatment's id as its anchor.
+function standaloneHTML(s) {
+  const anchors = Object.fromEntries(TREATMENTS.filter((t) => t.standalone).map((t) => [t.standalone.entry, t.id]));
+  const at = 'standalone';
+  const head = s.priceTable.columns.map((c, i) =>
+    `<th scope="col" data-verbatim="${at}.priceTable.columns.${i}">${esc(c)}</th>`).join('');
+  const rows = s.priceTable.rows.map((row, i) => `
+    <tr>${row.map((cell, j) => {
+      const tag = j === 0 ? 'th scope="row"' : 'td';
+      return `<${tag} data-verbatim="${at}.priceTable.rows.${i}.${j}">${esc(cell)}</${tag.split(' ')[0]}>`;
+    }).join('')}</tr>`).join('');
+  const items = s.ingredientDescriptions.map((d, i) => {
+    const id = anchors[d.name] ? ` id="${esc(anchors[d.name])}"` : '';
+    return `
+      <details class="accordion__item"${id}>
+        <summary class="accordion__summary"><span data-verbatim="${at}.ingredientDescriptions.${i}.name">${esc(d.name)}</span></summary>
+        <div class="accordion__body" data-verbatim="${at}.ingredientDescriptions.${i}.text">${parasHTML(d.text)}</div>
+      </details>`;
+  }).join('');
+  return `
+    <section class="section section--porcelain standalone" id="standalone" aria-labelledby="standalone-title">
+      <div class="container">
+        <header class="section-head" data-fade>
+          <h2 class="section-title" id="standalone-title" data-verbatim="${at}.heading">${esc(s.heading)}</h2>
+          <p class="section-lead" data-verbatim="${at}.intro">${esc(s.intro)}</p>
+        </header>
+        <div class="standalone__grid">
+          <div class="price-table-wrap" data-fade>
+            <table class="price-table" aria-labelledby="standalone-title">
+              <thead><tr>${head}</tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <div class="accordion" data-fade>${items}</div>
+        </div>
+      </div>
+    </section>`;
+}
+
+// Stage treatments the menu has (all of them, unless data/menu.js is missing).
+const FEATURED = TREATMENTS.filter((t) => t.showcase && menuItem(t));
 
 function render() {
+  if (!MENU) return;
   const stageRoot = document.getElementById('stage-root');
   const gridRoot = document.getElementById('treatment-grid');
-  if (stageRoot) stageRoot.innerHTML = stageHTML(FEATURED) + staticListHTML(FEATURED);
-  if (gridRoot) gridRoot.innerHTML = TREATMENTS.map(cardHTML).join('');
+  const standaloneRoot = document.getElementById('standalone-root');
+  if (stageRoot && FEATURED.length) stageRoot.innerHTML = stageHTML(FEATURED) + staticListHTML(FEATURED);
+  if (gridRoot) gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
+  if (standaloneRoot && MENU.standalone) standaloneRoot.innerHTML = standaloneHTML(MENU.standalone);
 }
 
 /* ==========================================================================
@@ -1701,7 +1686,7 @@ function tickLives(time) {
    ========================================================================== */
 
 let lenis = null;
-let stage = null; // { st, pin, tl, ids, labelScroll } once the stage is live
+let stage = null; // { st, pin, tl, ids, anchors, labelScroll } once the stage is live
 
 // Header gains its divider once the page has scrolled.
 function initHeader() {
@@ -1734,6 +1719,21 @@ function scrollToTreatment(id) {
   glideTo(y, gsap.utils.clamp(0.9, 2, 0.8 + distance * 0.2));
 }
 
+// An anchor on a closed <details> (e.g. #vitamin-d in the standalone
+// section) opens it. Returns whether the target is one.
+function openTarget(target) {
+  if (!target || target.tagName !== 'DETAILS') return false;
+  target.open = true;
+  return true;
+}
+
+// Where to scroll so an accordion entry sits just below the fixed header,
+// measured without the fade-up transform its list may still be running.
+function entryScroll(target) {
+  const header = document.getElementById('site-header');
+  return offsetWithin(target, null).top - (header ? header.offsetHeight : 0) - 24;
+}
+
 // In-page links scroll smoothly through Lenis. Links to a featured treatment
 // go to its rest point on the stage. Bare "#" links are booking placeholders.
 function initAnchors() {
@@ -1752,31 +1752,37 @@ function initAnchors() {
       return;
     }
     const id = decodeURIComponent(hash.slice(1));
-    if (stage && stage.ids.includes(id)) {
+    if (stage && stage.anchors.includes(id)) {
       event.preventDefault();
       scrollToTreatment(id);
       history.pushState(null, '', hash);
       return;
     }
     const target = document.getElementById(id);
+    const isEntry = openTarget(target);
     if (target && lenis) {
       event.preventDefault();
       // Lenis honours the CSS scroll-padding-top, which clears the fixed header.
-      lenis.scrollTo(target);
+      lenis.scrollTo(isEntry ? entryScroll(target) : target);
       history.pushState(null, '', hash);
     }
   });
+  // Arriving at, or going back to, an anchor on a closed <details> opens it
+  // (with or without Lenis).
+  const openHash = () => openTarget(document.getElementById(decodeURIComponent(location.hash.slice(1))));
+  window.addEventListener('hashchange', openHash);
+  openHash();
 }
 
 // After the stage exists, honour a #hash in the address (e.g. #iron or #book).
 function jumpToHash() {
   const id = decodeURIComponent(location.hash.slice(1));
   if (!id || id === 'top' || !lenis) return;
-  if (stage && stage.ids.includes(id)) {
+  if (stage && stage.anchors.includes(id)) {
     lenis.scrollTo(stage.labelScroll(id), { immediate: true, force: true });
   } else {
     const target = document.getElementById(id);
-    if (target) lenis.scrollTo(target, { immediate: true, force: true });
+    if (target) lenis.scrollTo(openTarget(target) ? entryScroll(target) : target, { immediate: true, force: true });
   }
 }
 
@@ -1789,7 +1795,7 @@ let snapTimer = 0;
 let touching = false;
 
 function maybeSnap() {
-  if (!stage || !lenis || autoScrolling || touching || aboutOpen) return;
+  if (!stage || !lenis || autoScrolling || touching) return;
   const { pin, ids, labelScroll } = stage;
   const y = lenis.scroll;
   if (y <= pin.start + 1 || y >= pin.end - 1) return;
@@ -2007,7 +2013,11 @@ function initStage(context, isDesktop) {
         },
       });
       const labelScroll = (id) => st.start + toProgress(tl.labels[id]) * (st.end - st.start);
-      stage = { st, pin, tl, ids: FEATURED.map((t) => t.id), labelScroll };
+      // ids: every rest point; anchors: the ids that are this stage's own page
+      // anchors (a standalone item's anchor is its entry further down).
+      const ids = FEATURED.map((t) => t.id);
+      const anchors = FEATURED.filter((t) => !t.standalone).map((t) => t.id);
+      stage = { st, pin, tl, ids, anchors, labelScroll };
     });
     ScrollTrigger.refresh();
     // The pin just made the page taller; let Lenis re-measure before any jump.
@@ -2100,88 +2110,12 @@ function initMotion() {
   }
 }
 
-/* ==========================================================================
-   7. About pop-up
-   One shared <dialog> (index.html), filled with the chosen treatment each
-   time it opens. While it is open the page behind never scrolls (Lenis is
-   stopped and snapping waits); on close, focus goes back to the About
-   button that opened it.
-   ========================================================================== */
-
-const ABOUT_FALLBACK = ['Placeholder: more about this drip will go here.'];
-let aboutOpen = false;
-
-function initAbout() {
-  const dialog = document.getElementById('about');
-  if (!dialog || typeof dialog.showModal !== 'function') return;
-  const title = dialog.querySelector('.about__title');
-  const body = dialog.querySelector('.about__body');
-  const meta = dialog.querySelector('.about__meta');
-  const book = dialog.querySelector('.about__book');
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let opener = null;
-  let pressedBackdrop = false;
-
-  const open = (t, button) => {
-    opener = button;
-    title.textContent = t.name;
-    body.innerHTML = (t.about?.length ? t.about : ABOUT_FALLBACK).map((p) => `<p>${esc(p)}</p>`).join('');
-    meta.innerHTML = priceHTML(t) + badgeHTML(t.badge);
-    book.href = t.bookUrl;
-    book.querySelector('.visually-hidden').textContent = ` ${t.name}`;
-    aboutOpen = true;
-    clearTimeout(snapTimer);
-    if (lenis) lenis.stop();
-    autoScrolling = false;
-    document.documentElement.classList.add('has-dialog');
-    dialog.classList.remove('is-closing');
-    dialog.showModal();
-    body.scrollTop = 0;
-  };
-
-  // Closing plays a short fade first (none with reduced motion).
-  const finish = () => { if (dialog.open) dialog.close(); };
-  const close = () => {
-    if (!dialog.open || dialog.classList.contains('is-closing')) return;
-    if (reduceMotion.matches) return finish();
-    dialog.classList.add('is-closing');
-    setTimeout(finish, 200);
-  };
-
-  dialog.addEventListener('close', () => {
-    dialog.classList.remove('is-closing');
-    document.documentElement.classList.remove('has-dialog');
-    aboutOpen = false;
-    if (lenis) lenis.start();
-    if (opener) opener.focus({ preventScroll: true });
-    opener = null;
-  });
-  // Escape closes with the same fade.
-  dialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    close();
-  });
-  // A click on the backdrop (outside the card) or on × closes it.
-  dialog.addEventListener('pointerdown', (event) => { pressedBackdrop = event.target === dialog; });
-  dialog.addEventListener('click', (event) => {
-    if ((event.target === dialog && pressedBackdrop) || event.target.closest('[data-about-close]')) close();
-  });
-
-  document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-about]');
-    if (!button) return;
-    const t = TREATMENTS.find((x) => x.id === button.dataset.about);
-    if (t) open(t, button);
-  });
-}
-
 /* ---------- Start ---------- */
 
 render();
 initHeader();
 initAnchors();
 initSnapInputs();
-initAbout();
 initMotion();
 
 const yearEl = document.getElementById('year');

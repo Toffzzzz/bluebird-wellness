@@ -1,28 +1,36 @@
 # Bluebird Wellness
 
-Homepage for Bluebird Wellness, an IV drip clinic at Bluebird Dentists near Westfield, London, offering treatments in clinic and as a mobile call-out service.
+Website for Bluebird Wellness, an IV drip clinic at Bluebird Dentists near Westfield, London, offering treatments in clinic and as a mobile call-out service.
 
-Plain HTML, CSS and JavaScript. No build step, so it can be hosted as-is on GitHub Pages.
+Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be hosted as-is on GitHub Pages (all links are relative, so it works from a subfolder such as `/bluebird-wellness/`).
 
-- `index.html`: page structure
-- `styles.css`: design tokens and styles (see `DESIGN.md`)
-- `script.js`: treatment content and prices (the `TREATMENTS` list at the top), stage timing (`STAGE`), rendering, scenes and scroll motion
-- `images/`: treatment images, the layer images for the orange and the plant (each on the same canvas as its original), the hair mask, and the deadlift frame sequence in `images/deadlift/`
+- `index.html`: home page structure
+- `styles.css`: design tokens and styles for every page (see `DESIGN.md`)
+- `script.js`: the home page: the stage's visuals (the `TREATMENTS` list at the top), stage timing (`STAGE`), rendering, scenes and scroll motion
+- `data/drips.json`: the clinic's menu, the single source of every treatment name, price, description, ingredient, table and disclaimer
+- `scripts/build-menu.mjs`: the generator that turns the menu into `data/menu.js` and the treatment pages, and holds `BOOK_URL`
+- `data/menu.js`, `treatments/<slug>/index.html`, `data/menu-check.txt`: generated, don't edit by hand
+- `treatment.js`: the small script the treatment pages share (header border, scroll reveal, "Expand all")
+- `images/`: treatment images, the layer images for the stage scenes, the hair mask, and the deadlift frame sequence in `images/deadlift/`
 
-GSAP, ScrollTrigger, Lenis and Three.js (for the hair sway) load from jsDelivr. If they fail to load, or the visitor prefers reduced motion, the featured treatments show as calm stacked blocks with the finished images.
+GSAP, ScrollTrigger, Lenis and Three.js (for the hair sway and the NAD+ molecule) load from jsDelivr. If they fail to load, or the visitor prefers reduced motion, the featured treatments show as calm stacked blocks with the finished images.
 
-## Editing treatments
+## Updating the menu
 
-Open `script.js` and edit the `TREATMENTS` list. Its order is the order of both the pinned stage and the "All treatments" grid. Each entry has a name, a one-line card summary, a provisional `priceFrom`, an image (or a placeholder shape), a booking link and a `showcase` block for the stage. The comment above the list explains every field.
+1. Edit `data/drips.json`. Every string there is shown on the site exactly as written ("\n\n" starts a new paragraph).
+2. Run `node scripts/build-menu.mjs`. It rewrites `data/menu.js` and every page in `treatments/`, then checks each page word for word against the JSON and prints a pass/fail line per page (also saved to `data/menu-check.txt`). It stops with a message if anything fails or an image is missing.
+3. Commit the JSON and everything the script wrote.
 
-When `images/hydration.webp` is ready, set Hydration's `image` and `imageSize`; the stage and card will use it in place of the placeholder shape.
+Run the script again after changing the booking link (`BOOK_URL` at the top of `scripts/build-menu.mjs`, used by every Book button on every page) or a treatment's `image`, `alt`, `tint` or `badge` in `TREATMENTS`: the treatment pages and the "All treatments" cards use them too. `node scripts/build-menu.mjs --check` checks the files as they are without writing anything.
 
-To fine-tune the scroll film (pin length, how long each treatment takes, when text hands over), edit the `STAGE` object just below the list.
+Myers Cocktail and Signature have no picture yet: save one as `images/treatments/<slug>.webp`, add its alt text to `NEW_PICTURES` in the generator and run it. Each page has the menu's image brief in an HTML comment beside the placeholder.
+
+## The stage
+
+`TREATMENTS` in `script.js` sets the stage's order, scenes, images and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field. To fine-tune the scroll film (pin length, how long each treatment takes, when text hands over), edit the `STAGE` object just below it.
 
 ## Before going live
 
-- Replace every `#` booking and contact link with real URLs.
-- Have a clinician confirm the ingredients listed for each drip.
-- Have the copy checked against ASA/CAP rules before publishing.
-- Confirm the provisional prices.
-- Add `images/hydration.webp` (Hydration still uses a placeholder shape).
+- Remove the `noindex` robots meta tag from every page once the menu wording has had its compliance review (it's in `index.html` and in the generator's page template).
+- Set `BOOK_URL` and replace the `#` contact links with real URLs.
+- Add pictures for Myers Cocktail and Signature.
