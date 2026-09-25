@@ -1335,25 +1335,25 @@ window.MENU_VISUALS = {
     "badge": null
   },
   "recovery-infusion": {
-    "image": "images/shower-wet.webp",
+    "image": "images/treatments/recovery-infusion.webp",
     "imageSize": [
-      829,
-      941
+      1000,
+      1000
     ],
     "imageFit": null,
-    "alt": "A woman with her eyes closed, tipping her head back under a rain shower",
-    "tint": "#EFF4F5",
+    "alt": "A glowing sun",
+    "tint": "#F7F2EC",
     "badge": null
   },
   "recovery-pro-infusion": {
-    "image": "images/shower-wet.webp",
+    "image": "images/treatments/recovery-pro-infusion.webp",
     "imageSize": [
-      829,
-      941
+      1000,
+      1000
     ],
     "imageFit": null,
-    "alt": "A woman with her eyes closed, tipping her head back under a rain shower",
-    "tint": "#EFF4F5",
+    "alt": "A glowing sun",
+    "tint": "#F7F2EC",
     "badge": null
   },
   "detox-infusion": {
@@ -1390,13 +1390,13 @@ window.MENU_VISUALS = {
     "badge": null
   },
   "beauty-and-glow-infusion": {
-    "image": "images/skin.webp",
+    "image": "images/treatments/beauty-and-glow-infusion.webp",
     "imageSize": [
-      800,
+      900,
       800
     ],
     "imageFit": "cover",
-    "alt": "A single water droplet resting on skin",
+    "alt": "A pearl resting in an open seashell",
     "tint": "#F8EFEA",
     "badge": null
   },
@@ -1407,7 +1407,7 @@ window.MENU_VISUALS = {
       920
     ],
     "imageFit": null,
-    "alt": "Four small glass bottles above a round glass flask filled with golden liquid",
+    "alt": "Two small glass bottles above a round glass flask filled with golden liquid",
     "tint": "#F3F1EE",
     "badge": null
   },

@@ -5,8 +5,8 @@
    2. STAGE TIMING        ← fine-tune the scroll film here
    3. Rendering (the stage, the "All treatments" cards, the standalone section)
    4. Scenes (one per kind of featured visual)
-   5. Live effects: shower water, frame sequences, hair sway (Three.js
-      shader) and the NAD+ glass molecule (Three.js)
+   5. Live effects: frame sequences, hair sway (Three.js shader) and the
+      NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
    ========================================================================== */
 
@@ -48,18 +48,19 @@
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
                                  "cucumber" | "molecule" | "plant" | "wipe" |
-                                 "droplet" | "shower" | "frames" | "bone" |
+                                 "pearl" | "sunrise" | "frames" | "bone" |
                                  "blend" | "signature"
                                  (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
                                  (also the soft background of its page)
-                    layers:      ("orange", "plant", "cucumber", "shower",
-                                 "droplet", "bone", "blend") layer images on the
-                                 image's canvas; ("coconut") layers on their own
-                                 1000 × 1056 canvas; ("signature") the card (on
-                                 the frames' canvas), the pen and its shadow
+                    layers:      ("orange", "plant", "cucumber", "pearl",
+                                 "sunrise", "bone", "blend") layer images on the
+                                 image's canvas (the sparkles have their own);
+                                 ("coconut") layers on their own 1000 × 1056
+                                 canvas; ("signature") the card (on the frames'
+                                 canvas), the pen and its shadow
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
-                    frames:      ("frames", "droplet", "signature") { path, count, size } image sequence
+                    frames:      ("frames", "signature") { path, count, size } image sequence
                     model:       ("molecule") V2000 SDF file for the 3D glass molecule
                     penPath:     ("signature") JSON with the nib's position on every frame
    ========================================================================== */
@@ -101,17 +102,15 @@ const TREATMENTS = [
     short: 'Myers',
     image: 'images/treatments/myers-cocktail-infusion.webp',
     imageSize: [1200, 920],
-    alt: 'Four small glass bottles above a round glass flask filled with golden liquid',
+    alt: 'Two small glass bottles above a round glass flask filled with golden liquid',
     showcase: {
       scene: 'blend',
       tint: '#F3F1EE',
       // [before, after] of each part: bottles full → empty, flask empty → full
       layers: {
         flask: ['images/myers/myers-flask-a.webp', 'images/myers/myers-flask-b.webp'],
-        b1: ['images/myers/myers-b1-a.webp', 'images/myers/myers-b1-b.webp'],
-        b2: ['images/myers/myers-b2-a.webp', 'images/myers/myers-b2-b.webp'],
-        b3: ['images/myers/myers-b3-a.webp', 'images/myers/myers-b3-b.webp'],
-        b4: ['images/myers/myers-b4-a.webp', 'images/myers/myers-b4-b.webp'],
+        left: ['images/myers/myers-left-a.webp', 'images/myers/myers-left-b.webp'],
+        right: ['images/myers/myers-right-a.webp', 'images/myers/myers-right-b.webp'],
       },
     },
   },
@@ -195,15 +194,18 @@ const TREATMENTS = [
     id: 'recovery',
     menuSlug: 'recovery-infusion',
     short: 'Recovery',
-    image: 'images/shower-wet.webp',
-    imageSize: [829, 941],
-    alt: 'A woman with her eyes closed, tipping her head back under a rain shower',
+    image: 'images/treatments/recovery-infusion.webp',
+    imageSize: [1000, 1000],
+    alt: 'A glowing sun',
     showcase: {
-      scene: 'shower',
-      tint: '#EFF4F5',
+      scene: 'sunrise',
+      tint: '#F7F2EC',
       layers: {
-        dry: 'images/shower-dry.webp',
-        wet: 'images/shower-wet.webp',
+        night: 'images/recovery/ball-night.webp',
+        gold: 'images/recovery/ball-gold.webp',
+        sun: 'images/recovery/sun.webp',
+        sparkleCool: 'images/recovery/sparkle-cool.webp', // 256 × 256
+        sparkleWarm: 'images/recovery/sparkle-warm.webp', // 256 × 256
       },
     },
   },
@@ -249,19 +251,21 @@ const TREATMENTS = [
     id: 'skin',
     menuSlug: 'beauty-and-glow-infusion',
     short: 'Beauty',
-    image: 'images/skin.webp',
-    imageSize: [800, 800],
+    image: 'images/treatments/beauty-and-glow-infusion.webp',
+    imageSize: [900, 800],
     imageFit: 'cover',
-    alt: 'A single water droplet resting on skin',
+    alt: 'A pearl resting in an open seashell',
     showcase: {
-      scene: 'droplet',
+      scene: 'pearl',
       tint: '#F8EFEA',
       layers: {
-        base: 'images/skin-base.webp',
-        fallHigh: 'images/skin/drop-fall-high.webp',
-        fallLow: 'images/skin/drop-fall-low.webp',
+        closedBase: 'images/skin/shell-closed-base.webp',
+        openBase: 'images/skin/shell-open-base.webp',
+        closedLid: 'images/skin/shell-closed-lid.webp',
+        openLid: 'images/skin/shell-open-lid.webp',
+        pearl: 'images/skin/shell-pearl.webp',
+        sparkle: 'images/skin/sparkle-pearl.webp', // 256 × 256
       },
-      frames: { path: 'images/skin/skin-drop-{n}.webp', count: 14, size: [800, 800] },
     },
   },
   {
@@ -567,12 +571,12 @@ function render() {
             (falls back to the photo turning in-plane)
    cucumber Detox: a slice drops into a glass of water and splashes
    orange   Immunity: the orange splits into halves and juice
-   shower   Recovery: water from the shower soaks the hair
+   sunrise  Recovery: a mirror ball turns gold, then into the sun
    bone     Vitamin D: two halves of a bone come together as one
    plant    Longevity: the stem grows, the bud and leaves unfold
-   droplet  Skin & Beauty: a droplet falls onto the skin and settles
+   pearl    Skin & Beauty: a shell opens on a glowing pearl
    wipe     Hair & Scalp: soft wipe, then the hair sways
-   blend    Myers Cocktail: four bottles pour, in pairs, into a round flask
+   blend    Myers Cocktail: two bottles pour together into a round flask
    signature Signature: a fountain pen writes "Bluebird" on a card
    fade     fallback for anything else
 
@@ -678,11 +682,11 @@ function turntable3D(c, create) {
 
 // Loads and decodes an image sequence, then draws it on the scene's
 // .fx--frames canvas (awaited before the stage starts).
-function preloadFrames(t, scene, isDesktop, options) {
+function preloadFrames(t, scene, isDesktop) {
   const { path, count } = t.showcase.frames;
   const srcs = Array.from({ length: count }, (_, i) => path.replace('{n}', pad(i + 1)));
   return Promise.all(srcs.map(loadImage)).then((images) => {
-    scene.frameSequence = createFrameSequence(scene.querySelector('.fx--frames'), images, isDesktop, options);
+    scene.frameSequence = createFrameSequence(scene.querySelector('.fx--frames'), images, isDesktop);
     return scene.frameSequence;
   });
 }
@@ -701,23 +705,38 @@ function scrubFrames({ scene, tl, start, L, live }, map) {
   live({ frame: () => scene.frameSequence && scene.frameSequence.draw() });
 }
 
-// MYERS COCKTAIL: the four bottles, all on the 1200 × 920 canvas.
+// MYERS COCKTAIL: the two bottles, both on the 1200 × 920 canvas.
 //   origin  the bottle's mouth (its transformOrigin)
 //   pour    the pour pose: the mouth at the top of its stream, tipped over the flask
-//   level   --level (% from the top) full → empty
 //   stream  its stream (canvas px), from the mouth down into the flask's neck
-//   pourAt  when its pair starts to pour (fraction of the segment)
 //   bob     idle bob period (s) and phase, so the bottles float slightly out of step
+// Both drain the same way: --level (% from the top) full → empty. Upside
+// down, the liquid runs to the mouth, so it empties from the base end.
 const BLEND_BOTTLES = [
-  { id: 'b1', origin: '14.17% 27.17%', pour: { xPercent: 33.0, yPercent: 15.43, rotation: 120 }, level: ['34.57%', '54.24%'],
-    stream: 'M566 392 Q572 432 590 474', colour: '#E8A64A', pourAt: 0.16, bob: [3.4, 0] },
-  { id: 'b2', origin: '32.5% 13.04%', pour: { xPercent: 14.67, yPercent: 29.57, rotation: 120 }, level: ['20.43%', '40.11%'],
-    stream: 'M566 392 Q572 432 590 474', colour: '#EBD773', pourAt: 0.34, bob: [3.8, 1.9] },
-  { id: 'b3', origin: '66.5% 13.04%', pour: { xPercent: -14.67, yPercent: 29.57, rotation: -120 }, level: ['20.43%', '40.11%'],
-    stream: 'M622 392 Q616 432 598 474', colour: '#DCE5EA', pourAt: 0.34, bob: [3.6, 3.6] },
-  { id: 'b4', origin: '84.83% 27.17%', pour: { xPercent: -33.0, yPercent: 15.43, rotation: -120 }, level: ['34.57%', '54.24%'],
-    stream: 'M622 392 Q616 432 598 474', colour: '#E8A0A0', pourAt: 0.16, bob: [3.2, 5.1] },
+  { id: 'left', origin: '29.17% 16.3%', pour: { xPercent: 18.0, yPercent: 26.3, rotation: 120 },
+    stream: 'M566 392 Q572 432 590 474', colour: '#E8A64A', bob: [3.4, 0] },
+  { id: 'right', origin: '70.83% 16.3%', pour: { xPercent: -19.0, yPercent: 26.3, rotation: -120 },
+    stream: 'M622 392 Q616 432 598 474', colour: '#EBD773', bob: [3.8, 1.9] },
 ];
+const BLEND_LEVEL = ['43.37%', '23.7%'];
+
+// RECOVERY: the eight glints on the ball, [x %, y %, width %] of the
+// 1000 × 1000 canvas (centred there), and the sixteen spots of reflected
+// light that drift past behind it, [x0 %, y %, size %, speed %]: a spot's
+// centre is at x0 + speed × u (wrapping round), with u 0 → 1 over 0 → 0.52
+// of the segment; its diameter is 1.6 × size (% of the canvas width).
+const SUNRISE_SPARKLES = [
+  [32.0, 30.6, 7], [26.1, 60.7, 6], [72.8, 44.7, 8], [20.9, 40.7, 5],
+  [36.1, 65.4, 6], [67.7, 26.6, 6], [65.6, 75.4, 7], [81.4, 48.7, 5],
+];
+const DISCO_DOTS = [
+  [5, 12, 3.2, 46], [18, 86, 4.0, 38], [33, 6, 2.8, 58], [47, 92, 3.4, 42],
+  [62, 12, 4.2, 34], [78, 88, 3.0, 55], [90, 20, 3.8, 40], [8, 48, 2.6, 60],
+  [92, 62, 3.2, 48], [22, 22, 3.6, 36], [72, 5, 2.4, 62], [58, 84, 3.4, 44],
+  [96, 40, 2.8, 52], [38, 95, 3.0, 39], [6, 72, 4.0, 33], [84, 30, 2.6, 57],
+];
+const DISCO_COLOURS = ['#8FA8FF', '#B58CFF', '#E48CF0', '#9FD0FF']; // in turn
+const DISCO_WARM = '#FFC76A';
 
 // SIGNATURE: the pen (and its shadow) is a 600 × 600 image, 44.91% of the
 // 1336 × 800 canvas wide, so 75% of its height. Its nib tip (92.3, 522 px)
@@ -1000,73 +1019,187 @@ const SCENES = {
     },
   },
 
-  // SKIN & BEAUTY: a real-looking water droplet falls onto the skin (two
-  // pictures of the falling drop, crossfaded as it speeds up), then the impact
-  // plays as a 14-frame sequence, from touching the skin to resting. Everything
-  // zooms together in one layer. No frame: skin-base.webp already fades into
-  // the Skin tint at its edges. The droplet lands at 52.6% 59.5%.
-  droplet: {
-    label: 0.64,
-    html: (t) => objHTML(t, 'droplet', `
-      <div class="layer zoomer">
-        ${layerImg(t.showcase.layers.base, t.imageSize, ' data-layer="base"')}
-        ${layerImg(t.showcase.layers.fallHigh, t.imageSize, ' data-layer="fall-high"')}
-        ${layerImg(t.showcase.layers.fallLow, t.imageSize, ' data-layer="fall-low"')}
-        <canvas class="layer fx--frames" aria-hidden="true"></canvas>
-      </div>`, t.showcase.frames.size),
-    // The impact frames are soft, semi-transparent water, so neighbouring
-    // frames are blended as a true cross-dissolve.
-    preload: (t, scene, isDesktop) => preloadFrames(t, scene, isDesktop, { dissolve: true }),
+  // SKIN & BEAUTY: a closed seashell lifts slightly, letting out a line of
+  // light, then opens on its hinge in 3D: the closed top swings up and away
+  // while the open top half rises from leaning back to standing, and the
+  // bottom crossfades from closed to open, revealing the pearl. The pearl
+  // then glows, a band of light passes over it and it glints. No frame: the
+  // two base pictures already fade into the Skin tint at their edges, with
+  // the shell's own soft shadow. All layers share the 900 × 800 canvas.
+  pearl: {
+    label: 0.7,
+    html: (t) => {
+      const ly = t.showcase.layers;
+      return objHTML(t, 'pearl', `
+        ${layerImg(ly.closedBase, t.imageSize, ' data-layer="closed-base"')}
+        ${layerImg(ly.openBase, t.imageSize, ' data-layer="open-base"')}
+        <span class="shell-leak" aria-hidden="true"></span>
+        ${layerImg(ly.openLid, t.imageSize, ' data-layer="open-lid"')}
+        <span class="pearl-halo" aria-hidden="true"></span>
+        ${layerImg(ly.pearl, t.imageSize, ' data-layer="pearl"')}
+        <span class="pearl-shimmer" aria-hidden="true"><span class="pearl-shimmer__band"></span></span>
+        ${layerImg(ly.closedLid, t.imageSize, ' data-layer="closed-lid"')}
+        <img class="pearl-sparkle" src="${esc(ly.sparkle)}" alt="" width="256" height="256" decoding="async" draggable="false">`);
+    },
     animate(c) {
-      const { scene, ft } = c;
-      const zoomer = scene.querySelector('.zoomer');
-      const high = scene.querySelector('[data-layer="fall-high"]');
-      const low = scene.querySelector('[data-layer="fall-low"]');
-      const impact = scene.querySelector('.fx--frames');
+      const { obj, scene, ft } = c;
+      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
+      const closedBase = q('closed-base'), openBase = q('open-base'), openLid = q('open-lid');
+      const pearl = q('pearl'), closedLid = q('closed-lid');
+      const leak = scene.querySelector('.shell-leak'), halo = scene.querySelector('.pearl-halo');
+      const shimmer = scene.querySelector('.pearl-shimmer'), band = scene.querySelector('.pearl-shimmer__band');
+      const sparkle = scene.querySelector('.pearl-sparkle');
 
-      fadeIn(c, { scale: 0.94 });
-      gsap.set(zoomer, { transformOrigin: '52.6% 59.5%' });
-      ft(zoomer, { scale: 1.08 }, { scale: 1 }, 0, 0.7, 'power1.out');
+      fadeIn(c, { y: 30 });
 
-      // The fall, accelerating like gravity. The nearer, faster picture fades
-      // in over the first before it goes, so the drop never looks see-through.
-      gsap.set([high, low], { autoAlpha: 0, yPercent: -55 });
-      ft([high, low], { yPercent: -55 }, { yPercent: 0 }, 0.1, 0.32, 'power2.in');
-      ft(high, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.1, 0.14);
-      ft(low, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.24, 0.29);
-      ft(high, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.29, 0.3);
-      ft(low, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.32, 0.33);
+      // The lids turn in 3D, seen with a perspective of 1.6 × the object's width.
+      // Negative rotationX takes a lid's lower edge up and away from the viewer.
+      const lids = [closedLid, openLid];
+      const perspective = () => gsap.set(lids, { transformPerspective: 1.6 * obj.offsetWidth });
+      new ResizeObserver(perspective).observe(obj);
+      perspective();
+      gsap.set(closedLid, { transformOrigin: '50% 37.5%', yPercent: 0, rotationX: 0 }); // its top, near the hinge
+      gsap.set(openLid, { transformOrigin: '50% 57.25%', rotationX: 80, autoAlpha: 0 }); // the hinge line
+      gsap.set([openBase, pearl, leak, halo, shimmer], { autoAlpha: 0 });
+      gsap.set(sparkle, { x: 0, y: 0, xPercent: -50, yPercent: -50, scale: 0.5, autoAlpha: 0 });
+      // The band starts beyond the pearl's upper left and ends beyond its lower right.
+      gsap.set(band, { xPercent: -66.7 });
 
-      // The impact: a quick splash, then a slower settle (ease-out over 0.32 → 0.50).
-      gsap.set(impact, { autoAlpha: 0 });
-      ft(impact, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.32, 0.325);
-      scrubFrames(c, (p) => 1 - (1 - gsap.utils.clamp(0, 1, (p - 0.32) / 0.18)) ** 1.6);
+      // The lid lifts slightly, and a line of light escapes.
+      ft(closedLid, { yPercent: 0 }, { yPercent: -1.25 }, 0.14, 0.24, 'power2.inOut');
+      ft(leak, { autoAlpha: 0 }, { autoAlpha: 0.55 }, 0.16, 0.24);
+      ft(leak, { autoAlpha: 0.55 }, { autoAlpha: 0 }, 0.28, 0.34);
 
-      fadeOut(c, { x: -60 });
+      // The shell opens: the closed top swings up and away and fades, the
+      // bottom crossfades to the open one with the pearl, and the open top
+      // half rises from a thin sliver leaning back to standing open.
+      ft(closedLid, { rotationX: 0 }, { rotationX: -75 }, 0.22, 0.34, 'power2.inOut');
+      ft(closedLid, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.27, 0.33);
+      ft([openBase, pearl], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.24, 0.32, 'sine.inOut');
+      ft(closedBase, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.24, 0.32, 'sine.inOut');
+      ft(openLid, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.26, 0.3);
+      ft(openLid, { rotationX: 80 }, { rotationX: 0 }, 0.26, 0.44, 'power2.inOut');
+
+      // The pearl glows, a band of light passes over it, and it glints.
+      ft(halo, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.42, 0.56, 'sine.inOut');
+      ft(shimmer, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.501);
+      ft(band, { xPercent: -66.7 }, { xPercent: 0 }, 0.5, 0.62, 'sine.inOut');
+      ft(shimmer, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.619, 0.62);
+      ft(sparkle, { scale: 0.5, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.56, 0.61, 'sine.out');
+      ft(sparkle, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.61, 0.68, 'sine.in');
+
+      fadeOut(c, { y: -30 });
     },
   },
 
-  // RECOVERY: water pours from the shower head and soaks her hair and face,
-  // as a soft wipe from the top down driven by --reveal (a % from the top;
-  // see styles.css). The dry picture only fades where the wet one is already
-  // fully shown, so nothing is ever see-through. Once the water has reached
-  // her head, fine streaks keep falling from the shower (section 5).
-  shower: {
-    label: 0.72,
-    html: (t) => objHTML(t, 'shower', `
-      ${layerImg(t.showcase.layers.dry, t.imageSize, ' data-layer="dry"')}
-      ${layerImg(t.showcase.layers.wet, t.imageSize, ' data-layer="wet"')}
-      <canvas class="layer fx--shower" aria-hidden="true"></canvas>`),
+  // RECOVERY: a silver mirror ball sparkles under blue and violet party
+  // lights, with spots of reflected light drifting past behind it. Gold
+  // spreads out from its heart as the lights and glints warm, then the sun
+  // blooms out from the middle and takes over; the party fades away and the
+  // sun floats gently, turning very slowly. The gold and the sun spread
+  // through radial masks (--g and --r, see styles.css). Everything is on the
+  // 1000 × 1000 canvas (see SUNRISE_SPARKLES and DISCO_DOTS).
+  sunrise: {
+    label: 0.7,
+    html: (t) => {
+      const ly = t.showcase.layers;
+      const glint = (src, cls) => `<img class="${cls}" src="${esc(src)}" alt="" width="256" height="256" decoding="async" draggable="false">`;
+      const sparkles = SUNRISE_SPARKLES.map(([x, y, w]) => `
+          <span class="sunrise-sparkle" style="left: ${x}%; top: ${y}%; width: ${w}%">${glint(ly.sparkleWarm, 'is-warm')}${glint(ly.sparkleCool, 'is-cool')}</span>`).join('');
+      const dots = DISCO_DOTS.map(([, y, size], i) =>
+        `<span class="disco-dot" style="top: ${y}%; width: ${+(1.6 * size).toFixed(2)}%; --dot: ${DISCO_COLOURS[i % DISCO_COLOURS.length]}"></span>`).join('');
+      return objHTML(t, 'sunrise', `
+        <span class="sunrise-shadow" aria-hidden="true"></span>
+        <div class="layer disco-dots" aria-hidden="true">${dots}</div>
+        <div class="layer sunrise-sphere">
+          ${layerImg(ly.night, t.imageSize, ' data-layer="night"')}
+          ${layerImg(ly.gold, t.imageSize, ' data-layer="gold"')}
+          ${layerImg(ly.sun, t.imageSize, ' data-layer="sun"')}
+          <div class="layer sunrise-sparkles" aria-hidden="true">${sparkles}
+          </div>
+        </div>
+        <span class="sun-bloom" aria-hidden="true"></span>`);
+    },
     animate(c) {
-      const { obj, ft, live, isDesktop } = c;
-      const water = obj.querySelector('.fx--shower');
-      fadeIn(c, { y: 40 });
-      gsap.set(obj, { '--reveal': '-8%' });
-      ft(obj, { '--reveal': '-8%' }, { '--reveal': '108%' }, 0.2, 0.62, 'power1.in');
-      gsap.set(water, { autoAlpha: 0 });
-      ft(water, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.55, 0.65);
+      const { scene, ft, idle } = c;
+      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
+      const night = q('night'), gold = q('gold'), sun = q('sun');
+      const sphere = scene.querySelector('.sunrise-sphere');
+      const shadow = scene.querySelector('.sunrise-shadow');
+      const dotLayer = scene.querySelector('.disco-dots'), dots = [...dotLayer.children];
+      const sparkleLayer = scene.querySelector('.sunrise-sparkles'), sparkles = [...sparkleLayer.children];
+      const bloom = scene.querySelector('.sun-bloom');
+      const clamp01 = gsap.utils.clamp(0, 1);
+
+      fadeIn({ ...c, obj: [sphere, shadow] }, { y: 40 });
+      gsap.set([dotLayer, sparkleLayer, bloom], { autoAlpha: 0 });
+      ft(dotLayer, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.06, 0.2);
+      ft(sparkleLayer, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.08, 0.2);
+
+      // The spots drift sideways like light from a turning mirror ball (x as
+      // % of the canvas becomes % of the spot's own width), fading out near
+      // the edges instead of popping as they wrap round, and warm with the ball.
+      const rgb = gsap.utils.splitColor;
+      const warmOf = DISCO_DOTS.map((_, i) => {
+        const mix = gsap.utils.interpolate(rgb(DISCO_COLOURS[i % DISCO_COLOURS.length]), rgb(DISCO_WARM));
+        return (k) => `rgb(${mix(k).map(Math.round).join(', ')})`;
+      });
+      const party = { u: 0, warm: 0 };
+      let warmShown = -1;
+      const drift = () => {
+        const recolour = party.warm !== warmShown;
+        warmShown = party.warm;
+        DISCO_DOTS.forEach(([x0, , size, speed], i) => {
+          const x = (x0 + speed * party.u) % 100;
+          gsap.set(dots[i], { xPercent: (x / (1.6 * size)) * 100 - 50, opacity: 0.6 * clamp01(Math.min(x, 100 - x) / 10) });
+          if (recolour) dots[i].style.setProperty('--dot', warmOf[i](party.warm));
+        });
+      };
+      gsap.set(dots, { yPercent: -50 });
+      drift();
+      ft(party, { u: 0 }, { u: 1, onUpdate: drift }, 0, 0.52);
+      ft(party, { warm: 0 }, { warm: 1, onUpdate: drift }, 0.24, 0.4);
+
+      // The glints twinkle all the time, each out of step with the next, and
+      // crossfade from cool to warm with the ball.
+      const cool = sparkleLayer.querySelectorAll('.is-cool'), warm = sparkleLayer.querySelectorAll('.is-warm');
+      gsap.set(sparkles, { x: 0, y: 0, xPercent: -50, yPercent: -50 });
+      gsap.set(warm, { opacity: 0 });
+      ft(cool, { opacity: 1 }, { opacity: 0 }, 0.24, 0.4, 'sine.inOut');
+      ft(warm, { opacity: 0 }, { opacity: 1 }, 0.24, 0.4, 'sine.inOut');
+      const twinkle = { a: 0 };
+      const shine = () => sparkles.forEach((el, i) => {
+        const k = 0.5 + 0.5 * Math.sin(twinkle.a - i * 0.37 * 2 * Math.PI);
+        gsap.set(el, { scale: 0.45 + 0.55 * k, opacity: 0.4 + 0.6 * k });
+      });
+      shine();
+      idle(twinkle, { a: 2 * Math.PI, duration: 2.2, ease: 'none', yoyo: false, onUpdate: shine });
+
+      // The party light warms: gold spreads out from the heart of the ball.
+      gsap.set(gold, { '--g': '-25%' });
+      ft(gold, { '--g': '-25%' }, { '--g': '80%' }, 0.22, 0.4, 'sine.inOut');
+
+      // The sun is born from the middle and covers the ball, with a warm
+      // flash; the ball goes once the sun hides it. The sun turns very slowly.
+      gsap.set(sun, { '--r': '-22%', rotation: -3 });
+      ft(night, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.4, 0.44);
+      ft(sun, { '--r': '-22%' }, { '--r': '100%' }, 0.4, 0.58, 'sine.inOut');
+      ft(bloom, { autoAlpha: 0 }, { autoAlpha: 0.55 }, 0.44, 0.5);
+      ft(bloom, { autoAlpha: 0.55 }, { autoAlpha: 0 }, 0.5, 0.62);
+      ft(gold, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.56, 0.6);
+      ft(sun, { rotation: -3 }, { rotation: 3 }, 0.4, 0.9);
+
+      // The party ends; the sun gives off light, so its shadow softens.
+      ft(dotLayer, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.4, 0.5);
+      ft(sparkleLayer, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.42, 0.5);
+      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0.4 }, 0.42, 0.58);
+
+      // Idle: a very gentle float (±0.6% of the canvas).
+      const float = { a: 0 };
+      const bob = () => gsap.set(sphere, { yPercent: 0.6 * Math.sin(float.a) });
+      idle(float, { a: 2 * Math.PI, duration: 5, ease: 'none', yoyo: false, onUpdate: bob });
+
       fadeOut(c, { y: -30 });
-      live(createShowerWater(water, isDesktop));
     },
   },
 
@@ -1146,16 +1279,16 @@ const SCENES = {
     },
   },
 
-  // MYERS COCKTAIL: four small bottles float in an arc above a round flask.
-  // In two pairs (b1 + b4, then b2 + b3) they glide over the flask's neck
-  // and tip; a stream runs from each mouth into the neck while the bottle
-  // drains and the flask fills from the bottom, the stream runs dry, and the
-  // empty bottles float back. The full flask then glows softly. Every part
-  // fills the 1200 × 920 canvas (see BLEND_BOTTLES). Liquid levels are
-  // complementary masks (styles.css): --fill on the flask, --level on each
-  // bottle, whose masks tip with it.
+  // MYERS COCKTAIL: two small bottles float side by side above a round
+  // flask. Together they glide over the flask's neck and tip; a stream runs
+  // from each mouth into the neck while the bottles drain and the flask
+  // fills from the bottom, the streams run dry, and the empty bottles float
+  // back. The full flask then glows softly. Every part fills the 1200 × 920
+  // canvas (see BLEND_BOTTLES). Liquid levels are complementary masks
+  // (styles.css): --fill on the flask, --level on each bottle, whose masks
+  // tip with it.
   blend: {
-    label: 0.68,
+    label: 0.66,
     html: (t) => {
       const ly = t.showcase.layers;
       const pair = ([before, after], a, b) =>
@@ -1176,46 +1309,39 @@ const SCENES = {
         </svg>`);
     },
     animate(c) {
-      const { scene, tl, start, L, ft, idle } = c;
+      const { scene, ft, idle } = c;
       const flask = scene.querySelector('.myers-flask');
       const glow = scene.querySelector('.myers-glow');
-      const bottle = (id) => scene.querySelector(`[data-bottle="${id}"]`);
       const floating = { xPercent: 0, yPercent: 0, rotation: 0 };
 
       fadeIn(c, { y: 40 });
 
-      // The flask fills as each pair pours, then glows softly.
+      // The flask fills while the bottles pour, then glows softly.
       gsap.set(flask, { '--fill': '6%' });
-      ft(flask, { '--fill': '6%' }, { '--fill': '18%' }, 0.23, 0.33, 'sine.inOut');
-      ft(flask, { '--fill': '18%' }, { '--fill': '30.4%' }, 0.41, 0.51, 'sine.inOut');
+      ft(flask, { '--fill': '6%' }, { '--fill': '30.4%' }, 0.31, 0.47, 'sine.inOut');
       gsap.set(glow, { autoAlpha: 0 });
-      ft(glow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.62, 'sine.inOut');
-
-      // The pouring pair is in front of the other: b1/b4 until 0.33, then b2/b3.
-      gsap.set([bottle('b1'), bottle('b4')], { zIndex: 3 });
-      gsap.set([bottle('b2'), bottle('b3')], { zIndex: 2 });
-      tl.set([bottle('b2'), bottle('b3')], { zIndex: 4 }, start + 0.33 * L);
+      ft(glow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.47, 0.6, 'sine.inOut');
 
       BLEND_BOTTLES.forEach((b) => {
-        const outer = bottle(b.id);
+        const outer = scene.querySelector(`[data-bottle="${b.id}"]`);
         const float = outer.querySelector('.myers-float');
         const stream = scene.querySelector(`[data-stream="${b.id}"]`);
         const paths = stream.querySelectorAll('path');
-        const w = b.pourAt;
+        const [full, empty] = BLEND_LEVEL;
 
-        gsap.set(outer, { transformOrigin: b.origin, ...floating, '--level': b.level[0] });
+        gsap.set(outer, { transformOrigin: b.origin, ...floating, '--level': full });
         gsap.set(stream, { autoAlpha: 0 });
 
-        // Glide over the neck and tip; the stream grows from the mouth into
-        // the flask while the bottle drains, then its top end runs down into
-        // the flask, and the bottle floats back.
-        ft(outer, floating, b.pour, w, w + 0.08, 'power2.inOut');
-        ft(stream, { autoAlpha: 0 }, { autoAlpha: 1 }, w + 0.07, w + 0.071);
-        ft(paths, { attr: { 'stroke-dashoffset': 1 } }, { attr: { 'stroke-dashoffset': 0 } }, w + 0.07, w + 0.09);
-        ft(outer, { '--level': b.level[0] }, { '--level': b.level[1] }, w + 0.08, w + 0.15, 'sine.inOut');
-        ft(paths, { attr: { 'stroke-dashoffset': 0 } }, { attr: { 'stroke-dashoffset': -1 } }, w + 0.14, w + 0.16);
-        ft(stream, { autoAlpha: 1 }, { autoAlpha: 0 }, w + 0.159, w + 0.16);
-        ft(outer, b.pour, floating, w + 0.15, w + 0.22, 'power2.inOut');
+        // Both bottles glide over the neck and tip; each stream grows from
+        // the mouth into the flask while the bottle drains, then its top end
+        // runs down into the flask, and the bottles float back.
+        ft(outer, floating, b.pour, 0.2, 0.3, 'power2.inOut');
+        ft(stream, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.29, 0.291);
+        ft(paths, { attr: { 'stroke-dashoffset': 1 } }, { attr: { 'stroke-dashoffset': 0 } }, 0.29, 0.31);
+        ft(outer, { '--level': full }, { '--level': empty }, 0.3, 0.45, 'sine.inOut');
+        ft(paths, { attr: { 'stroke-dashoffset': 0 } }, { attr: { 'stroke-dashoffset': -1 } }, 0.44, 0.46);
+        ft(stream, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.459, 0.46);
+        ft(outer, b.pour, floating, 0.45, 0.55, 'power2.inOut');
 
         // Idle: a gentle bob (±0.5% of the canvas height) on the inner
         // element only. It calms while the bottle pours, so its mouth stays
@@ -1223,8 +1349,8 @@ const SCENES = {
         const [period, phase] = b.bob;
         const bob = { a: 0, calm: 1 };
         const apply = () => gsap.set(float, { yPercent: 0.5 * bob.calm * Math.sin(bob.a + phase) });
-        ft(bob, { calm: 1 }, { calm: 0, onUpdate: apply }, w, w + 0.06, 'sine.inOut');
-        ft(bob, { calm: 0 }, { calm: 1, onUpdate: apply }, w + 0.16, w + 0.22, 'sine.inOut');
+        ft(bob, { calm: 1 }, { calm: 0, onUpdate: apply }, 0.2, 0.26, 'sine.inOut');
+        ft(bob, { calm: 0 }, { calm: 1, onUpdate: apply }, 0.49, 0.55, 'sine.inOut');
         idle(bob, { a: 2 * Math.PI, duration: period, ease: 'none', yoyo: false, onUpdate: apply });
       });
 
@@ -1373,83 +1499,11 @@ function fitCanvas(canvas, ctx, cap) {
 
 // 0 (still) to 1 (scrolling briskly), from Lenis's current velocity.
 const scrollBoost = () => Math.min(1, Math.abs(lenis ? lenis.velocity : 0) / 30);
-const rand = (a, b) => a + Math.random() * (b - a);
-
-// A canvas whose opacity is animated to 0 is hidden: skip drawing it.
-const shown = (canvas) => canvas.style.visibility !== 'hidden';
-
-// RECOVERY: thin, bright streaks of water fall from just under the shower
-// head, accelerating, and fade out where they reach her head (lower towards
-// the right, where her face tips back). 40 at a time (20 on small screens).
-function createShowerWater(canvas, isDesktop) {
-  const ctx = canvas.getContext('2d');
-  const cap = isDesktop ? 2 : 1.5;
-  const max = isDesktop ? 40 : 20;
-  const rate = max * 2; // streaks per second (each lives about half a second)
-  const START = 0.155;  // just under the shower head, as a share of the height
-  let w = 0, h = 0, parts = [], carry = 0, observer = null, blank = true;
-
-  // Where a streak meets her head, by how far across it falls.
-  const stopAt = (x) => (x < 0.5 ? 0.36 : x < 0.65 ? rand(0.4, 0.45) : x < 0.71 ? rand(0.45, 0.55) : x < 0.76 ? rand(0.55, 0.62) : 0.64);
-  const resize = () => { ({ w, h } = fitCanvas(canvas, ctx, cap)); };
-  const spawn = () => {
-    const x = rand(0.53, 0.86);
-    return {
-      x: x * w, y: START * h, stop: stopAt(x) * h,
-      len: rand(6, 14), width: rand(1, 2),  // px
-      vy: rand(0.25, 0.4) * h, accel: rand(1.2, 1.8) * h, age: 0,
-    };
-  };
-
-  return {
-    start() {
-      if (!observer) { observer = new ResizeObserver(resize); observer.observe(canvas); }
-      resize();
-    },
-    stop() { parts = []; carry = 0; ctx.clearRect(0, 0, w, h); blank = true; },
-    frame(time, dt) {
-      carry += rate * dt;
-      while (carry >= 1) { carry -= 1; if (parts.length < max) parts.push(spawn()); }
-      parts = parts.filter((p) => {
-        p.age += dt;
-        p.vy += p.accel * dt;
-        p.y += p.vy * dt;
-        return p.y < p.stop;
-      });
-      if (!shown(canvas)) {
-        if (!blank) { ctx.clearRect(0, 0, w, h); blank = true; }
-        return;
-      }
-      blank = false;
-      ctx.clearRect(0, 0, w, h);
-      ctx.lineCap = 'round';
-      for (const p of parts) {
-        const top = Math.max(START * h, p.y - p.len);
-        // Fade in as it leaves the shower head, and out as it reaches her head.
-        ctx.globalAlpha = Math.min(1, p.age / 0.05) * gsap.utils.clamp(0, 1, (p.stop - p.y) / (0.04 * h));
-        ctx.beginPath();
-        ctx.moveTo(p.x, top);
-        ctx.lineTo(p.x, p.y);
-        ctx.lineWidth = p.width + 1.2; // a faint darker edge, so it reads on the pale background
-        ctx.strokeStyle = 'rgba(60, 85, 100, 0.18)';
-        ctx.stroke();
-        ctx.lineWidth = p.width;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    },
-  };
-}
-
-// Image sequences (Skin & Beauty, Muscle Recovery): every frame is drawn at
-// the same position and size (they are pre-aligned). Between two frames:
-//  - by default, frame floor(p) and then frame ceil(p) on top with the
-//    fractional part as opacity (the deadlift);
-//  - with { dissolve: true }, a true cross-dissolve (1 − f)·A + f·B, which
-//    suits soft, semi-transparent frames such as the water droplet.
-// Only redraws when the position changes.
-function createFrameSequence(canvas, images, isDesktop, { dissolve = false } = {}) {
+// Image sequences (Muscle Recovery, Signature): every frame is drawn at the
+// same position and size (they are pre-aligned). Between two frames, frame
+// floor(p) and then frame ceil(p) on top with the fractional part as
+// opacity. Only redraws when the position changes.
+function createFrameSequence(canvas, images, isDesktop) {
   const ctx = canvas.getContext('2d');
   const cap = isDesktop ? 2 : 1.5;
   let w = 0, h = 0, position = 0, drawn = -1;
@@ -1467,13 +1521,10 @@ function createFrameSequence(canvas, images, isDesktop, { dissolve = false } = {
     const f = position - i0;
     const blend = i1 !== i0 && f > 0.001;
     ctx.clearRect(0, 0, w, h);
-    ctx.globalAlpha = blend && dissolve ? 1 - f : 1;
     ctx.drawImage(images[i0], 0, 0, w, h);
     if (blend) {
       ctx.globalAlpha = f;
-      if (dissolve) ctx.globalCompositeOperation = 'lighter'; // adds the premultiplied colours
       ctx.drawImage(images[i1], 0, 0, w, h);
-      ctx.globalCompositeOperation = 'source-over';
     }
     ctx.globalAlpha = 1;
     drawn = position;

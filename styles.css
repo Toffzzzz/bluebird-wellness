@@ -578,10 +578,19 @@ html.lenis body { height: auto; }
 .obj--cucumber [data-layer^="splash"],
 .obj--bone .layer,
 .bone-glow,
-.obj--droplet .zoomer,
-.obj--droplet [data-layer^="fall"],
-.obj--droplet .fx--frames,
-.obj--shower .fx--shower,
+.obj--pearl .layer,
+.shell-leak,
+.pearl-halo,
+.pearl-shimmer,
+.pearl-shimmer__band,
+.pearl-sparkle,
+.sunrise-sphere,
+.sunrise-sphere .layer,
+.sunrise-shadow,
+.disco-dots,
+.disco-dot,
+.sunrise-sparkle,
+.sun-bloom,
 .myers-bottle,
 .myers-float,
 .myers-glow,
@@ -617,8 +626,8 @@ html.lenis body { height: auto; }
 .obj--plant .obj__shadow { left: 38%; right: 30%; bottom: 0; height: 5%; }
 .obj--wipe .obj__shadow { left: 12%; right: 12%; bottom: -2%; height: 5%; }
 /* Skin, Recovery and Detox bring their own soft shadows (or none). */
-.obj--droplet .obj__shadow,
-.obj--shower .obj__shadow,
+.obj--pearl .obj__shadow,
+.obj--sunrise .obj__shadow,
 .obj--cucumber .obj__shadow { display: none; }
 /* Myers Cocktail: only the flask has a shadow (the bottles float); the
    Signature card has its own. */
@@ -687,24 +696,8 @@ html.lenis body { height: auto; }
   pointer-events: none;
 }
 
-/* Recovery: the wet picture is revealed from the top down over the dry one.
-   --reveal (a % from the top) is animated on the object by script.js from
-   -8% (all dry) to 108% (all wet); each edge is 8% soft, and the dry picture
-   only fades where the wet one is fully shown, so nothing is ever
-   see-through. The default is the starting state, because scrolling back
-   before the reveal returns a custom property to its stylesheet value. */
-.obj--shower { --reveal: -8%; }
-.obj--shower [data-layer="wet"] {
-  -webkit-mask-image: linear-gradient(to bottom, #000 var(--reveal), transparent calc(var(--reveal) + 8%));
-  mask-image: linear-gradient(to bottom, #000 var(--reveal), transparent calc(var(--reveal) + 8%));
-}
-.obj--shower [data-layer="dry"] {
-  -webkit-mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
-  mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
-}
-
 /* Myers Cocktail (all on the 1200 × 920 canvas). Back to front: the flask's
-   contact shadow, a soft glow behind the flask, the flask, the four bottles,
+   contact shadow, a soft glow behind the flask, the flask, the two bottles,
    and the pour streams on top. */
 .myers-shadow {
   position: absolute;
@@ -739,8 +732,10 @@ html.lenis body { height: auto; }
 
 /* Liquid levels: complementary masks with a 1% edge, animated by script.js.
    --fill is the flask's liquid height (% from the bottom); --level is where
-   a bottle's liquid starts (% from the top), on its outer element, so the
-   masks tip with the bottle. The defaults are the starting state. */
+   a bottle's liquid ends (% from the top), on its outer element, so the
+   masks tip with the bottle. Upside down, the liquid runs to the mouth, so
+   a bottle empties from its base end: the full picture shows above --level,
+   the empty one below it. The defaults are the starting state. */
 .myers-flask { --fill: 6%; }
 .myers-flask [data-state="full"] {
   -webkit-mask-image: linear-gradient(to top, #000 var(--fill), transparent calc(var(--fill) + 1%));
@@ -750,18 +745,140 @@ html.lenis body { height: auto; }
   -webkit-mask-image: linear-gradient(to top, transparent var(--fill), #000 calc(var(--fill) + 1%));
   mask-image: linear-gradient(to top, transparent var(--fill), #000 calc(var(--fill) + 1%));
 }
-[data-bottle="b1"],
-[data-bottle="b4"] { --level: 34.57%; }
-[data-bottle="b2"],
-[data-bottle="b3"] { --level: 20.43%; }
-.myers-bottle [data-state="empty"] {
+.myers-bottle { --level: 43.37%; }
+.myers-bottle [data-state="full"] {
   -webkit-mask-image: linear-gradient(to bottom, #000 var(--level), transparent calc(var(--level) + 1%));
   mask-image: linear-gradient(to bottom, #000 var(--level), transparent calc(var(--level) + 1%));
 }
-.myers-bottle [data-state="full"] {
+.myers-bottle [data-state="empty"] {
   -webkit-mask-image: linear-gradient(to bottom, transparent var(--level), #000 calc(var(--level) + 1%));
   mask-image: linear-gradient(to bottom, transparent var(--level), #000 calc(var(--level) + 1%));
 }
+
+/* Skin & Beauty (all on the 900 × 800 canvas; no frame: the base pictures
+   fade into the Skin tint at their edges). Back to front: the closed and the
+   open bottom, a line of light escaping as the shell opens, the open top
+   half, a glow around the pearl, the pearl, a band of light passing over the
+   pearl, the closed top, and a glint on the pearl's highlight. Everything
+   but the closed shell starts hidden. */
+.shell-leak,
+.pearl-halo,
+.pearl-sparkle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.shell-leak {
+  left: 50%;
+  top: 80%;
+  width: 58%;
+  height: 3.5%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 250, 240, 0.9), rgba(255, 250, 240, 0));
+}
+.pearl-halo {
+  left: 49.67%;
+  top: 67.25%;
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 246, 248, 0.45) 50%, rgba(255, 246, 248, 0) 100%);
+}
+.pearl-sparkle {
+  left: 46.4%;
+  top: 63.25%;
+  width: 16.7%;
+  height: auto;
+  aspect-ratio: 1;
+  user-select: none;
+}
+/* Exactly over the pearl. Its band, 3× as wide, slides across it (script.js). */
+.pearl-shimmer {
+  position: absolute;
+  left: 39.78%;
+  top: 56.13%;
+  width: 19.78%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.pearl-shimmer__band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 300%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.55) 50%, transparent 60%);
+}
+.obj--pearl [data-layer="open-base"],
+.obj--pearl [data-layer="open-lid"],
+.obj--pearl [data-layer="pearl"],
+.shell-leak,
+.pearl-halo,
+.pearl-shimmer,
+.pearl-sparkle { opacity: 0; visibility: hidden; }
+
+/* Recovery (all on the 1000 × 1000 canvas; no frame). Back to front: a soft
+   contact shadow, spots of reflected light drifting past, the sphere (the
+   mirror ball, the gold ball, the sun and the glints, which float
+   together), and a warm flash as the sun is born. */
+.sunrise-shadow {
+  position: absolute;
+  left: 22%;
+  top: 91%;
+  width: 56%;
+  height: 5%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(90, 70, 60, 0.28), rgba(90, 70, 60, 0));
+}
+/* Each spot is centred at its top (y) and, through its transform, its x. */
+.disco-dot {
+  position: absolute;
+  left: 0;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--dot), transparent);
+  opacity: 0;
+}
+/* The gold and the sun spread out from the centre of the ball: --g and --r
+   are the radii (a share of the canvas's half-width) inside which they
+   show, each with a soft edge. The defaults hide them. */
+.obj--sunrise [data-layer="gold"] {
+  --g: -25%;
+  -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%, #000 var(--g), transparent calc(var(--g) + 25%));
+  mask-image: radial-gradient(circle closest-side at 50% 50%, #000 var(--g), transparent calc(var(--g) + 25%));
+}
+.obj--sunrise [data-layer="sun"] {
+  --r: -22%;
+  -webkit-mask-image: radial-gradient(circle closest-side at 50% 50%, #000 var(--r), transparent calc(var(--r) + 22%));
+  mask-image: radial-gradient(circle closest-side at 50% 50%, #000 var(--r), transparent calc(var(--r) + 22%));
+}
+/* A glint, centred at its left/top; the warm one starts hidden under the cool one. */
+.sunrise-sparkle {
+  position: absolute;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+.sunrise-sparkle img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+.sunrise-sparkle .is-warm { opacity: 0; }
+.sun-bloom {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 237, 191, 1) 0%, rgba(255, 237, 191, 0.4) 45%, rgba(255, 237, 191, 0) 90%);
+  pointer-events: none;
+}
+.disco-dots,
+.sunrise-sparkles,
+.sun-bloom { opacity: 0; visibility: hidden; }
 
 /* Signature: the resting pen reaches 18% of the card's width past its right
    edge, so the card is narrowed to leave room for it inside the visual area
@@ -803,8 +920,7 @@ html.lenis body { height: auto; }
 .is-3d .three-host { opacity: 1; }
 
 /* Canvases for image sequences and effects (sized in device pixels by script.js). */
-.fx--frames,
-.fx--shower { display: block; }
+.fx--frames { display: block; }
 
 /* Text blocks share one grid cell; only the active one takes clicks. */
 .stage__copy {
