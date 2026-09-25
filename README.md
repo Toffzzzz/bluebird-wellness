@@ -11,7 +11,7 @@ Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be
 - `scripts/build-menu.mjs`: the generator that turns the menu into `data/menu.js` and the treatment pages, and holds `BOOK_URL`
 - `data/menu.js`, `treatments/<slug>/index.html`, `data/menu-check.txt`: generated, don't edit by hand
 - `treatment.js`: the small script the treatment pages share (header border, scroll reveal, "Expand all")
-- `images/`: treatment images, the layer images for the stage scenes, the hair mask, and the deadlift frame sequence in `images/deadlift/`
+- `images/`: treatment images, the layer images for the stage scenes, the hair mask, the deadlift frame sequence in `images/deadlift/`, the Myers Cocktail bottles and flask in `images/myers/`, the Signature card, pen, pen path and ink frames in `images/signature/`, and the finished Myers Cocktail and Signature pictures in `images/treatments/`
 
 GSAP, ScrollTrigger, Lenis and Three.js (for the hair sway and the NAD+ molecule) load from jsDelivr. If they fail to load, or the visitor prefers reduced motion, the featured treatments show as calm stacked blocks with the finished images.
 
@@ -23,7 +23,7 @@ GSAP, ScrollTrigger, Lenis and Three.js (for the hair sway and the NAD+ molecule
 
 Run the script again after changing the booking link (`BOOK_URL` at the top of `scripts/build-menu.mjs`, used by every Book button on every page) or a treatment's `image`, `alt`, `tint` or `badge` in `TREATMENTS`: the treatment pages and the "All treatments" cards use them too. `node scripts/build-menu.mjs --check` checks the files as they are without writing anything.
 
-Myers Cocktail and Signature have no picture yet: save one as `images/treatments/<slug>.webp`, add its alt text to `NEW_PICTURES` in the generator and run it. Each page has the menu's image brief in an HTML comment beside the placeholder.
+A new drip that isn't on the stage needs an entry in `NEW_PICTURES` in the generator: it shows a placeholder until `images/treatments/<slug>.webp` exists (with the menu's image brief in an HTML comment beside it).
 
 ## The stage
 
@@ -33,4 +33,3 @@ Myers Cocktail and Signature have no picture yet: save one as `images/treatments
 
 - Remove the `noindex` robots meta tag from every page once the menu wording has had its compliance review (it's in `index.html` and in the generator's page template).
 - Set `BOOK_URL` and replace the `#` contact links with real URLs.
-- Add pictures for Myers Cocktail and Signature.

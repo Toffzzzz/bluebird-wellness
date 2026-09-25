@@ -48,17 +48,20 @@
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
                                  "cucumber" | "molecule" | "plant" | "wipe" |
-                                 "droplet" | "shower" | "frames" | "bone"
+                                 "droplet" | "shower" | "frames" | "bone" |
+                                 "blend" | "signature"
                                  (anything else fades in/out)
                     tint:        the stage's background colour for this treatment
                                  (also the soft background of its page)
                     layers:      ("orange", "plant", "cucumber", "shower",
-                                 "droplet", "bone") layer images on the image's
-                                 canvas; ("coconut") layers on their own
-                                 1000 × 1056 canvas
+                                 "droplet", "bone", "blend") layer images on the
+                                 image's canvas; ("coconut") layers on their own
+                                 1000 × 1056 canvas; ("signature") the card (on
+                                 the frames' canvas), the pen and its shadow
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
-                    frames:      ("frames", "droplet") { path, count, size } image sequence
+                    frames:      ("frames", "droplet", "signature") { path, count, size } image sequence
                     model:       ("molecule") V2000 SDF file for the 3D glass molecule
+                    penPath:     ("signature") JSON with the nib's position on every frame
    ========================================================================== */
 
 const TREATMENTS = [
@@ -90,6 +93,26 @@ const TREATMENTS = [
     showcase: {
       scene: 'runner',
       tint: '#F7F4EF',
+    },
+  },
+  {
+    id: 'myers',
+    menuSlug: 'myers-cocktail-infusion',
+    short: 'Myers',
+    image: 'images/treatments/myers-cocktail-infusion.webp',
+    imageSize: [1200, 920],
+    alt: 'Four small glass bottles above a round glass flask filled with golden liquid',
+    showcase: {
+      scene: 'blend',
+      tint: '#F3F1EE',
+      // [before, after] of each part: bottles full → empty, flask empty → full
+      layers: {
+        flask: ['images/myers/myers-flask-a.webp', 'images/myers/myers-flask-b.webp'],
+        b1: ['images/myers/myers-b1-a.webp', 'images/myers/myers-b1-b.webp'],
+        b2: ['images/myers/myers-b2-a.webp', 'images/myers/myers-b2-b.webp'],
+        b3: ['images/myers/myers-b3-a.webp', 'images/myers/myers-b3-b.webp'],
+        b4: ['images/myers/myers-b4-a.webp', 'images/myers/myers-b4-b.webp'],
+      },
     },
   },
   {
@@ -252,6 +275,25 @@ const TREATMENTS = [
       scene: 'wipe',
       tint: '#F6F0EA',
       swayMask: 'images/hair-mask.webp',
+    },
+  },
+  {
+    id: 'signature',
+    menuSlug: 'signature-infusion',
+    short: 'Signature',
+    image: 'images/treatments/signature-infusion.webp',
+    imageSize: [1534, 797],
+    alt: 'A fountain pen beside a card signed "Bluebird" in ink',
+    showcase: {
+      scene: 'signature',
+      tint: '#F7F2EA',
+      layers: {
+        card: 'images/signature/signature-card.webp',
+        pen: 'images/signature/signature-pen.webp',
+        penShadow: 'images/signature/signature-pen-shadow.webp',
+      },
+      frames: { path: 'images/signature/signature-{n}.webp', count: 72, size: [1336, 800] },
+      penPath: 'images/signature/signature-path.json',
     },
   },
 ];
@@ -530,6 +572,8 @@ function render() {
    plant    Longevity: the stem grows, the bud and leaves unfold
    droplet  Skin & Beauty: a droplet falls onto the skin and settles
    wipe     Hair & Scalp: soft wipe, then the hair sways
+   blend    Myers Cocktail: four bottles pour, in pairs, into a round flask
+   signature Signature: a fountain pen writes "Bluebird" on a card
    fade     fallback for anything else
 
    animate(c) receives:
@@ -656,6 +700,39 @@ function scrubFrames({ scene, tl, start, L, live }, map) {
   }, start);
   live({ frame: () => scene.frameSequence && scene.frameSequence.draw() });
 }
+
+// MYERS COCKTAIL: the four bottles, all on the 1200 × 920 canvas.
+//   origin  the bottle's mouth (its transformOrigin)
+//   pour    the pour pose: the mouth at the top of its stream, tipped over the flask
+//   level   --level (% from the top) full → empty
+//   stream  its stream (canvas px), from the mouth down into the flask's neck
+//   pourAt  when its pair starts to pour (fraction of the segment)
+//   bob     idle bob period (s) and phase, so the bottles float slightly out of step
+const BLEND_BOTTLES = [
+  { id: 'b1', origin: '14.17% 27.17%', pour: { xPercent: 33.0, yPercent: 15.43, rotation: 120 }, level: ['34.57%', '54.24%'],
+    stream: 'M566 392 Q572 432 590 474', colour: '#E8A64A', pourAt: 0.16, bob: [3.4, 0] },
+  { id: 'b2', origin: '32.5% 13.04%', pour: { xPercent: 14.67, yPercent: 29.57, rotation: 120 }, level: ['20.43%', '40.11%'],
+    stream: 'M566 392 Q572 432 590 474', colour: '#EBD773', pourAt: 0.34, bob: [3.8, 1.9] },
+  { id: 'b3', origin: '66.5% 13.04%', pour: { xPercent: -14.67, yPercent: 29.57, rotation: -120 }, level: ['20.43%', '40.11%'],
+    stream: 'M622 392 Q616 432 598 474', colour: '#DCE5EA', pourAt: 0.34, bob: [3.6, 3.6] },
+  { id: 'b4', origin: '84.83% 27.17%', pour: { xPercent: -33.0, yPercent: 15.43, rotation: -120 }, level: ['34.57%', '54.24%'],
+    stream: 'M622 392 Q616 432 598 474', colour: '#E8A0A0', pourAt: 0.16, bob: [3.2, 5.1] },
+];
+
+// SIGNATURE: the pen (and its shadow) is a 600 × 600 image, 44.91% of the
+// 1336 × 800 canvas wide, so 75% of its height. Its nib tip (92.3, 522 px)
+// sits 6.909% across and 65.25% down the canvas from the image's top left.
+// Lifted, it rises by (−0.6%, −2%) and grows 2%; its shadow falls further away.
+const PEN = {
+  w: 44.91, h: 75,
+  tip: [6.909, 65.25],
+  origin: '15.383% 87%', // the nib tip, as a share of the pen image
+  lift: { x: -0.6, y: -2, scale: 0.02 },
+  shadow: { down: [1.05, 2.25], lifted: [2.25, 6], liftedOpacity: 0.65 },
+  from: [95, -12],       // where the nib glides in from (off the top right)
+  rest: [80, 84],        // where the nib rests once the card is signed
+  write: [0.2, 0.62],    // the writing, as fractions of the segment
+};
 
 const SCENES = {
   // ENERGY: fades in beside the text with a gentle move in from the left,
@@ -1066,6 +1143,198 @@ const SCENES = {
       ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.54, 'sine.inOut');
       ft([halfL, halfR], { autoAlpha: 1 }, { autoAlpha: 0 }, 0.54, 0.58, 'sine.inOut');
       fadeOut(c, { y: -30 });
+    },
+  },
+
+  // MYERS COCKTAIL: four small bottles float in an arc above a round flask.
+  // In two pairs (b1 + b4, then b2 + b3) they glide over the flask's neck
+  // and tip; a stream runs from each mouth into the neck while the bottle
+  // drains and the flask fills from the bottom, the stream runs dry, and the
+  // empty bottles float back. The full flask then glows softly. Every part
+  // fills the 1200 × 920 canvas (see BLEND_BOTTLES). Liquid levels are
+  // complementary masks (styles.css): --fill on the flask, --level on each
+  // bottle, whose masks tip with it.
+  blend: {
+    label: 0.68,
+    html: (t) => {
+      const ly = t.showcase.layers;
+      const pair = ([before, after], a, b) =>
+        layerImg(before, t.imageSize, ` data-state="${a}"`) + layerImg(after, t.imageSize, ` data-state="${b}"`);
+      // Each bottle: an outer element for the pour, an inner one for the idle bob.
+      const bottles = BLEND_BOTTLES.map((b) => `
+        <div class="layer myers-bottle" data-bottle="${b.id}"><div class="layer myers-float">${pair(ly[b.id], 'full', 'empty')}</div></div>`).join('');
+      // Each stream, with a thin highlight; pathLength="1" so the dash offset is a share of it.
+      const path = (b, attrs) => `<path d="${b.stream}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"${attrs}/>`;
+      const streams = BLEND_BOTTLES.map((b) => `
+        <g data-stream="${b.id}">${path(b, ` stroke="${b.colour}" stroke-width="10" stroke-opacity="0.9"`)}${path(b, ' stroke="#fff" stroke-width="2" stroke-opacity="0.5" transform="translate(-2 0)"')}</g>`).join('');
+      return objHTML(t, 'blend', `
+        <span class="myers-shadow" aria-hidden="true"></span>
+        <span class="myers-glow" aria-hidden="true"></span>
+        <div class="layer myers-flask">${pair(ly.flask, 'empty', 'full')}</div>
+        ${bottles}
+        <svg class="layer myers-streams" viewBox="0 0 1200 920" fill="none" stroke-linecap="round" aria-hidden="true">${streams}
+        </svg>`);
+    },
+    animate(c) {
+      const { scene, tl, start, L, ft, idle } = c;
+      const flask = scene.querySelector('.myers-flask');
+      const glow = scene.querySelector('.myers-glow');
+      const bottle = (id) => scene.querySelector(`[data-bottle="${id}"]`);
+      const floating = { xPercent: 0, yPercent: 0, rotation: 0 };
+
+      fadeIn(c, { y: 40 });
+
+      // The flask fills as each pair pours, then glows softly.
+      gsap.set(flask, { '--fill': '6%' });
+      ft(flask, { '--fill': '6%' }, { '--fill': '18%' }, 0.23, 0.33, 'sine.inOut');
+      ft(flask, { '--fill': '18%' }, { '--fill': '30.4%' }, 0.41, 0.51, 'sine.inOut');
+      gsap.set(glow, { autoAlpha: 0 });
+      ft(glow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.62, 'sine.inOut');
+
+      // The pouring pair is in front of the other: b1/b4 until 0.33, then b2/b3.
+      gsap.set([bottle('b1'), bottle('b4')], { zIndex: 3 });
+      gsap.set([bottle('b2'), bottle('b3')], { zIndex: 2 });
+      tl.set([bottle('b2'), bottle('b3')], { zIndex: 4 }, start + 0.33 * L);
+
+      BLEND_BOTTLES.forEach((b) => {
+        const outer = bottle(b.id);
+        const float = outer.querySelector('.myers-float');
+        const stream = scene.querySelector(`[data-stream="${b.id}"]`);
+        const paths = stream.querySelectorAll('path');
+        const w = b.pourAt;
+
+        gsap.set(outer, { transformOrigin: b.origin, ...floating, '--level': b.level[0] });
+        gsap.set(stream, { autoAlpha: 0 });
+
+        // Glide over the neck and tip; the stream grows from the mouth into
+        // the flask while the bottle drains, then its top end runs down into
+        // the flask, and the bottle floats back.
+        ft(outer, floating, b.pour, w, w + 0.08, 'power2.inOut');
+        ft(stream, { autoAlpha: 0 }, { autoAlpha: 1 }, w + 0.07, w + 0.071);
+        ft(paths, { attr: { 'stroke-dashoffset': 1 } }, { attr: { 'stroke-dashoffset': 0 } }, w + 0.07, w + 0.09);
+        ft(outer, { '--level': b.level[0] }, { '--level': b.level[1] }, w + 0.08, w + 0.15, 'sine.inOut');
+        ft(paths, { attr: { 'stroke-dashoffset': 0 } }, { attr: { 'stroke-dashoffset': -1 } }, w + 0.14, w + 0.16);
+        ft(stream, { autoAlpha: 1 }, { autoAlpha: 0 }, w + 0.159, w + 0.16);
+        ft(outer, b.pour, floating, w + 0.15, w + 0.22, 'power2.inOut');
+
+        // Idle: a gentle bob (±0.5% of the canvas height) on the inner
+        // element only. It calms while the bottle pours, so its mouth stays
+        // on the stream.
+        const [period, phase] = b.bob;
+        const bob = { a: 0, calm: 1 };
+        const apply = () => gsap.set(float, { yPercent: 0.5 * bob.calm * Math.sin(bob.a + phase) });
+        ft(bob, { calm: 1 }, { calm: 0, onUpdate: apply }, w, w + 0.06, 'sine.inOut');
+        ft(bob, { calm: 0 }, { calm: 1, onUpdate: apply }, w + 0.16, w + 0.22, 'sine.inOut');
+        idle(bob, { a: 2 * Math.PI, duration: period, ease: 'none', yoyo: false, onUpdate: apply });
+      });
+
+      fadeOut(c, { y: -30 });
+    },
+  },
+
+  // SIGNATURE: a fountain pen glides in over a cream card and writes
+  // "Bluebird". The ink is a 72-frame sequence (crossfaded like the
+  // deadlift); the nib follows penPath, the nib's position on every frame (%
+  // of the 1336 × 800 canvas), and lifts between strokes. Then it glides to
+  // rest at the lower right. The pen's whole path is a function of the
+  // segment fraction, so scrubbing either way always agrees with the ink.
+  signature: {
+    label: 0.76,
+    html: (t) => {
+      const ly = t.showcase.layers;
+      const pen = (src, cls) => `<img class="sig-pen${cls}" src="${esc(src)}" alt="" width="600" height="600" decoding="async" draggable="false">`;
+      return objHTML(t, 'signature', `
+        ${layerImg(ly.card, t.showcase.frames.size, ' data-layer="card"')}
+        <canvas class="layer fx--frames" aria-hidden="true"></canvas>
+        ${pen(ly.penShadow, ' sig-pen--shadow')}
+        ${pen(ly.pen, '')}`, t.showcase.frames.size);
+    },
+    preload: (t, scene, isDesktop) => Promise.all([
+      fetch(t.showcase.penPath).then((r) => { if (!r.ok) throw new Error(`Could not load ${t.showcase.penPath}`); return r.json(); }),
+      preloadFrames(t, scene, isDesktop),
+    ]).then(([data]) => {
+      scene.penPath = data.penPath;
+      if (scene.placePen) scene.placePen();
+    }),
+    animate(c) {
+      const { scene, ft } = c;
+      const card = scene.querySelector('[data-layer="card"]');
+      const ink = scene.querySelector('.fx--frames');
+      const pen = scene.querySelector('.sig-pen:not(.sig-pen--shadow)');
+      const shadow = scene.querySelector('.sig-pen--shadow');
+      const [W0, W1] = PEN.write;
+      const clamp01 = gsap.utils.clamp(0, 1);
+      const sine = gsap.parseEase('sine.inOut');
+      const lerp = (a, b, k) => a + (b - a) * k;
+      const smooth = (k) => k * k * (3 - 2 * k);
+
+      // Only the card and the ink fade up; the pen has its own entrance.
+      fadeIn({ ...c, obj: [card, ink] }, { y: 30 });
+      scrubFrames(c, (f) => clamp01((f - W0) / (W1 - W0)));
+
+      // How lifted the pen is at frame position p (0 down, 1 lifted): a
+      // stretch between two frames is lifted if either end is, and that is
+      // blended over one frame, so the pen never jumps.
+      let flags = null;
+      const liftAt = (path, p) => {
+        const n = path.length;
+        if (!flags) flags = path.slice(0, -1).map((pt, i) => (pt.down && path[i + 1].down ? 0 : 1));
+        const flag = (i) => flags[Math.max(0, Math.min(n - 2, i))];
+        let sum = 0;
+        for (let i = Math.floor(p - 0.5); i <= Math.floor(p + 0.5); i++) {
+          sum += Math.max(0, Math.min(p + 0.5, i + 1) - Math.max(p - 0.5, i)) * flag(i);
+        }
+        return smooth(clamp01(sum));
+      };
+
+      // The nib's position (% of the canvas), lift and opacity at segment fraction f.
+      const penAt = (path, f) => {
+        const first = path[0], last = path[path.length - 1];
+        if (f < W0) {
+          // Glides in, lifted, fading in, and settles onto the first point.
+          const k = sine(clamp01((f - 0.06) / (W0 - 0.06)));
+          return {
+            x: lerp(PEN.from[0], first.x, k), y: lerp(PEN.from[1], first.y, k),
+            lift: 1 - sine(clamp01((f - 0.16) / (W0 - 0.16))),
+            alpha: clamp01((f - 0.06) / 0.06),
+          };
+        }
+        if (f <= W1) {
+          // Writes: linear in frame position, like the ink.
+          const p = ((f - W0) / (W1 - W0)) * (path.length - 1);
+          const i0 = Math.floor(p), i1 = Math.min(path.length - 1, i0 + 1), k = p - i0;
+          return { x: lerp(path[i0].x, path[i1].x, k), y: lerp(path[i0].y, path[i1].y, k), lift: liftAt(path, p), alpha: 1 };
+        }
+        // Leaves, lifted, and settles down to rest at the lower right.
+        const k = sine(clamp01((f - W1) / 0.1));
+        return {
+          x: lerp(last.x, PEN.rest[0], k), y: lerp(last.y, PEN.rest[1], k),
+          lift: lerp(liftAt(path, path.length - 1), 0, sine(clamp01((f - 0.69) / 0.05))),
+          alpha: 1,
+        };
+      };
+
+      // Transforms only: x/y as % of the canvas become % of the pen's own box.
+      const place = (el, x, y, scale, alpha) =>
+        gsap.set(el, { xPercent: (x / PEN.w) * 100, yPercent: (y / PEN.h) * 100, scale, autoAlpha: alpha });
+      const drive = { f: 0 };
+      const update = () => {
+        const path = scene.penPath;
+        if (!path || !path.length) return;
+        const { x, y, lift, alpha } = penAt(path, drive.f);
+        const left = x - PEN.tip[0] + PEN.lift.x * lift;
+        const top = y - PEN.tip[1] + PEN.lift.y * lift;
+        const { down, lifted, liftedOpacity } = PEN.shadow;
+        place(pen, left, top, 1 + PEN.lift.scale * lift, alpha);
+        place(shadow, left + lerp(down[0], lifted[0], lift), top + lerp(down[1], lifted[1], lift), 1, alpha * lerp(1, liftedOpacity, lift));
+      };
+
+      gsap.set([pen, shadow], { transformOrigin: PEN.origin, autoAlpha: 0 });
+      ft(drive, { f: 0 }, { f: 1, onUpdate: update }, 0, 1);
+      scene.placePen = update;
+      update();
+
+      fadeOut(c, { y: -30 }); // skipped while it is the last treatment
     },
   },
 

@@ -582,6 +582,13 @@ html.lenis body { height: auto; }
 .obj--droplet [data-layer^="fall"],
 .obj--droplet .fx--frames,
 .obj--shower .fx--shower,
+.myers-bottle,
+.myers-float,
+.myers-glow,
+.myers-streams g,
+.obj--signature [data-layer="card"],
+.obj--signature .fx--frames,
+.sig-pen,
 .turn,
 .idle-turn,
 .tilt,
@@ -613,6 +620,10 @@ html.lenis body { height: auto; }
 .obj--droplet .obj__shadow,
 .obj--shower .obj__shadow,
 .obj--cucumber .obj__shadow { display: none; }
+/* Myers Cocktail: only the flask has a shadow (the bottles float); the
+   Signature card has its own. */
+.obj--blend .obj__shadow,
+.obj--signature .obj__shadow { display: none; }
 /* A long soft shadow under the bone. */
 .obj--bone .obj__shadow { left: 8%; right: 8%; bottom: -10%; height: 16%; }
 /* Under his feet (the feet span about 32–64% across; the soles sit at 96.3% down). */
@@ -690,6 +701,93 @@ html.lenis body { height: auto; }
 .obj--shower [data-layer="dry"] {
   -webkit-mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
   mask-image: linear-gradient(to bottom, transparent calc(var(--reveal) - 8%), #000 var(--reveal));
+}
+
+/* Myers Cocktail (all on the 1200 × 920 canvas). Back to front: the flask's
+   contact shadow, a soft glow behind the flask, the flask, the four bottles,
+   and the pour streams on top. */
+.myers-shadow {
+  position: absolute;
+  left: 37.4%;
+  bottom: 5%;
+  width: 24%;
+  height: 1.6%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(21, 34, 56, 0.16), rgba(21, 34, 56, 0));
+  filter: blur(3px);
+}
+.myers-glow {
+  position: absolute;
+  left: 49.4%;
+  top: 82.3%;
+  width: 44%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 230, 153, 0.35), rgba(255, 230, 153, 0));
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.myers-flask { z-index: 1; }
+.myers-bottle { z-index: 2; }
+.myers-streams {
+  z-index: 10;
+  overflow: visible;
+}
+.myers-streams g { opacity: 0; visibility: hidden; }
+
+/* Liquid levels: complementary masks with a 1% edge, animated by script.js.
+   --fill is the flask's liquid height (% from the bottom); --level is where
+   a bottle's liquid starts (% from the top), on its outer element, so the
+   masks tip with the bottle. The defaults are the starting state. */
+.myers-flask { --fill: 6%; }
+.myers-flask [data-state="full"] {
+  -webkit-mask-image: linear-gradient(to top, #000 var(--fill), transparent calc(var(--fill) + 1%));
+  mask-image: linear-gradient(to top, #000 var(--fill), transparent calc(var(--fill) + 1%));
+}
+.myers-flask [data-state="empty"] {
+  -webkit-mask-image: linear-gradient(to top, transparent var(--fill), #000 calc(var(--fill) + 1%));
+  mask-image: linear-gradient(to top, transparent var(--fill), #000 calc(var(--fill) + 1%));
+}
+[data-bottle="b1"],
+[data-bottle="b4"] { --level: 34.57%; }
+[data-bottle="b2"],
+[data-bottle="b3"] { --level: 20.43%; }
+.myers-bottle [data-state="empty"] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 var(--level), transparent calc(var(--level) + 1%));
+  mask-image: linear-gradient(to bottom, #000 var(--level), transparent calc(var(--level) + 1%));
+}
+.myers-bottle [data-state="full"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent var(--level), #000 calc(var(--level) + 1%));
+  mask-image: linear-gradient(to bottom, transparent var(--level), #000 calc(var(--level) + 1%));
+}
+
+/* Signature: the resting pen reaches 18% of the card's width past its right
+   edge, so the card is narrowed to leave room for it inside the visual area
+   (clear of the side list), and the card and pen are centred together. */
+.obj--signature {
+  --sig-w: min(calc(var(--vis-w) / 1.18), calc(var(--vis-h) * var(--ratio)));
+  width: var(--sig-w);
+  margin-right: calc(var(--sig-w) * 0.18);
+}
+/* The pen and its shadow, 44.91% of the card's canvas wide (a square
+   image). script.js moves them with transforms only, putting the nib tip
+   (15.383% 87% of the image) on the ink. They may overhang the card; the
+   stage clips them at its edges. */
+.sig-pen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44.91%;
+  height: auto;
+  aspect-ratio: 1;
+  max-width: none;
+  transform-origin: 15.383% 87%;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* NAD+: the 3D canvas replaces the photo once its first frame is drawn. */

@@ -1401,12 +1401,14 @@ window.MENU_VISUALS = {
     "badge": null
   },
   "myers-cocktail-infusion": {
-    "image": null,
-    "placeholder": {
-      "shape": "drop",
-      "colour": "#E8EFFB"
-    },
-    "tint": null,
+    "image": "images/treatments/myers-cocktail-infusion.webp",
+    "imageSize": [
+      1200,
+      920
+    ],
+    "imageFit": null,
+    "alt": "Four small glass bottles above a round glass flask filled with golden liquid",
+    "tint": "#F3F1EE",
     "badge": null
   },
   "energy-infusion": {
@@ -1454,12 +1456,14 @@ window.MENU_VISUALS = {
     "badge": null
   },
   "signature-infusion": {
-    "image": null,
-    "placeholder": {
-      "shape": "blob",
-      "colour": "#E8EFFB"
-    },
-    "tint": null,
+    "image": "images/treatments/signature-infusion.webp",
+    "imageSize": [
+      1534,
+      797
+    ],
+    "imageFit": null,
+    "alt": "A fountain pen beside a card signed \"Bluebird\" in ink",
+    "tint": "#F7F2EA",
     "badge": null
   },
   "iron-infusion": {

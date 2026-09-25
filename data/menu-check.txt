@@ -17,7 +17,7 @@ PASS  treatments/nad-plus-infusion/                14 strings
 PASS  treatments/longevity-infusion/               20 strings
 PASS  treatments/signature-infusion/               14 strings
 PASS  treatments/iron-infusion/                    75 strings
-PASS  index.html (home page, as script.js renders it) 100 strings
+PASS  index.html (home page, as script.js renders it) 108 strings
 
 Result: all passed
 
