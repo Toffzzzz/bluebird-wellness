@@ -698,7 +698,9 @@ html.lenis body { height: auto; }
 
 /* Myers Cocktail (all on the 1200 × 920 canvas). Back to front: the flask's
    contact shadow, a soft glow behind the flask, the flask, the two bottles,
-   and the pour streams on top. */
+   and the pour streams on top. The object is 20% smaller than the visual
+   area allows (still centred); every part is a % of it, so all stay aligned. */
+.obj--blend { width: calc(0.8 * min(var(--vis-w), calc(var(--vis-h) * var(--ratio)))); }
 .myers-shadow {
   position: absolute;
   left: 37.4%;

@@ -44,6 +44,10 @@
      placeholder  Shown when there is no image: { shape, colour }
                   shape: "drop" | "circle" | "pill" | "blob" | "arch"
      badge        Optional small label, e.g. { text: "…", variant: "sky" | "sage" }
+     length       Optional. How long its part of the stage is, relative to the
+                  others (default 1): 1.5 gives it half as much scroll again.
+                  Its entrance and exit keep the normal length, so every
+                  handover matches; only the part in between is stretched.
      showcase     The treatment's part of the pinned scroll stage:
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
@@ -100,6 +104,7 @@ const TREATMENTS = [
     id: 'myers',
     menuSlug: 'myers-cocktail-infusion',
     short: 'Myers',
+    length: 1.5, // more scroll, so the pour is unhurried
     image: 'images/treatments/myers-cocktail-infusion.webp',
     imageSize: [1200, 920],
     alt: 'Two small glass bottles above a round glass flask filled with golden liquid',
@@ -312,6 +317,9 @@ const TREATMENTS = [
      0.82 – 1     exit (overlapping the next treatment's entrance)
    The next segment therefore starts at 0.82 of the current one. Each
    treatment's label (where scrolling gently settles) sits in its rest.
+   A treatment with a `length` (see TREATMENTS) has a longer rest: its
+   entrance and exit take the normal time, and every scroll distance is in
+   proportion to the timeline, so the other treatments are unaffected.
    The first treatment's entrance plays while the stage scrolls into view
    (its top moving from `approach` of the viewport height to the top), so
    the pinned stage opens on its entered picture, text and tint.
@@ -1288,7 +1296,7 @@ const SCENES = {
   // (styles.css): --fill on the flask, --level on each bottle, whose masks
   // tip with it.
   blend: {
-    label: 0.66,
+    label: 0.78,
     html: (t) => {
       const ly = t.showcase.layers;
       const pair = ([before, after], a, b) =>
@@ -1318,9 +1326,9 @@ const SCENES = {
 
       // The flask fills while the bottles pour, then glows softly.
       gsap.set(flask, { '--fill': '6%' });
-      ft(flask, { '--fill': '6%' }, { '--fill': '30.4%' }, 0.31, 0.47, 'sine.inOut');
+      ft(flask, { '--fill': '6%' }, { '--fill': '30.4%' }, 0.33, 0.64, 'sine.inOut');
       gsap.set(glow, { autoAlpha: 0 });
-      ft(glow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.47, 0.6, 'sine.inOut');
+      ft(glow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.6, 0.76, 'sine.inOut');
 
       BLEND_BOTTLES.forEach((b) => {
         const outer = scene.querySelector(`[data-bottle="${b.id}"]`);
@@ -1333,15 +1341,16 @@ const SCENES = {
         gsap.set(stream, { autoAlpha: 0 });
 
         // Both bottles glide over the neck and tip; each stream grows from
-        // the mouth into the flask while the bottle drains, then its top end
-        // runs down into the flask, and the bottles float back.
-        ft(outer, floating, b.pour, 0.2, 0.3, 'power2.inOut');
-        ft(stream, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.29, 0.291);
-        ft(paths, { attr: { 'stroke-dashoffset': 1 } }, { attr: { 'stroke-dashoffset': 0 } }, 0.29, 0.31);
-        ft(outer, { '--level': full }, { '--level': empty }, 0.3, 0.45, 'sine.inOut');
-        ft(paths, { attr: { 'stroke-dashoffset': 0 } }, { attr: { 'stroke-dashoffset': -1 } }, 0.44, 0.46);
-        ft(stream, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.459, 0.46);
-        ft(outer, b.pour, floating, 0.45, 0.55, 'power2.inOut');
+        // the mouth into the flask while the bottle slowly drains, then its
+        // top end runs down into the flask, and the bottles float back. All
+        // of it is still before the exit (0.82).
+        ft(outer, floating, b.pour, 0.18, 0.32, 'power2.inOut');
+        ft(stream, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.3, 0.301);
+        ft(paths, { attr: { 'stroke-dashoffset': 1 } }, { attr: { 'stroke-dashoffset': 0 } }, 0.3, 0.34, 'power2.out');
+        ft(outer, { '--level': full }, { '--level': empty }, 0.32, 0.62, 'sine.inOut');
+        ft(paths, { attr: { 'stroke-dashoffset': 0 } }, { attr: { 'stroke-dashoffset': -1 } }, 0.6, 0.65, 'power2.in');
+        ft(stream, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.649, 0.65);
+        ft(outer, b.pour, floating, 0.63, 0.76, 'power2.inOut');
 
         // Idle: a gentle bob (±0.5% of the canvas height) on the inner
         // element only. It calms while the bottle pours, so its mouth stays
@@ -1349,8 +1358,8 @@ const SCENES = {
         const [period, phase] = b.bob;
         const bob = { a: 0, calm: 1 };
         const apply = () => gsap.set(float, { yPercent: 0.5 * bob.calm * Math.sin(bob.a + phase) });
-        ft(bob, { calm: 1 }, { calm: 0, onUpdate: apply }, 0.2, 0.26, 'sine.inOut');
-        ft(bob, { calm: 0 }, { calm: 1, onUpdate: apply }, 0.49, 0.55, 'sine.inOut');
+        ft(bob, { calm: 1 }, { calm: 0, onUpdate: apply }, 0.18, 0.24, 'sine.inOut');
+        ft(bob, { calm: 0 }, { calm: 1, onUpdate: apply }, 0.7, 0.76, 'sine.inOut');
         idle(bob, { a: 2 * Math.PI, duration: period, ease: 'none', yoyo: false, onUpdate: apply });
       });
 
@@ -2158,15 +2167,27 @@ function buildStage(root, isDesktop) {
   const bg = root.querySelector('.stage__bg');
   const defs = FEATURED.map((t) => SCENES[t.showcase.scene] || SCENES.fade);
 
+  // Where fraction f of treatment i's segment falls, from the segment's
+  // start. A longer treatment keeps the normal entrance and exit and
+  // stretches its rest in between; at length 1 this is simply f × L.
+  const lengths = FEATURED.map((t) => (t.length || 1) * L);
+  const E = STAGE.enterEnd, X = STAGE.exitStart;
+  const at = (i, f) => {
+    if (f <= E) return f * L;
+    if (f >= X) return lengths[i] - (1 - f) * L;
+    return E * L + ((f - E) / (X - E)) * (lengths[i] - (E + 1 - X) * L);
+  };
+
   // Segment starts and rest labels. The next segment begins where this one's exit starts.
-  const starts = FEATURED.map((_, i) => i * STAGE.exitStart * L);
+  const starts = [0];
+  for (let i = 1; i < n; i++) starts.push(starts[i - 1] + at(i - 1, X));
   const labelAt = defs.map((d) => d.label ?? STAGE.label);
-  const labels = starts.map((s, i) => s + labelAt[i] * L);
-  const end = starts[n - 1] + L;
+  const labels = starts.map((s, i) => s + at(i, labelAt[i]));
+  const end = starts[n - 1] + lengths[n - 1];
 
   // The active treatment changes in the middle of each text handover.
-  const textMid = ((STAGE.textOut[0] + STAGE.textOut[1]) / 2 + STAGE.exitStart + (STAGE.textIn[0] + STAGE.textIn[1]) / 2) / 2;
-  const switches = starts.map((s, i) => (i === 0 ? -Infinity : starts[i - 1] + textMid * L));
+  const mid = ([a, b]) => (a + b) / 2;
+  const switches = starts.map((s, i) => (i === 0 ? -Infinity : (starts[i - 1] + at(i - 1, mid(STAGE.textOut)) + s + at(i, mid(STAGE.textIn))) / 2));
 
   let active = -1;
   const setActive = (index) => {
@@ -2188,7 +2209,7 @@ function buildStage(root, isDesktop) {
   // scene (with its shadow, canvases and 3D) and text block is hidden, and
   // live effects only run inside their own segment. Within a segment the
   // tweens decide; re-entering a segment always crosses one of its tweens.
-  const windows = starts.map((s, i) => [s, i === n - 1 ? Infinity : s + L]);
+  const windows = starts.map((s, i) => [s, i === n - 1 ? Infinity : s + lengths[i]]);
   const isHidden = (el) => el.style.visibility === 'hidden' && el.style.opacity === '0';
   const sync = (time) => {
     windows.forEach(([a, b], i) => {
@@ -2221,9 +2242,9 @@ function buildStage(root, isDesktop) {
     const scene = scenes[i];
     const isLast = i === n - 1;
     // Live effects run while the treatment can be seen (after its fade in starts, until its fade out ends).
-    const from = start + FADE_IN[0] * L, to = isLast ? end + 1 : start + FADE_OUT[1] * L;
+    const from = start + at(i, FADE_IN[0]), to = isLast ? end + 1 : start + at(i, FADE_OUT[1]);
     const ft = (target, a, b, f0, f1, ease = 'none') =>
-      tl.fromTo(target, a, { ...b, duration: (f1 - f0) * L, ease, immediateRender: false }, start + f0 * L);
+      tl.fromTo(target, a, { ...b, duration: at(i, f1) - at(i, f0), ease, immediateRender: false }, start + at(i, f0));
     const live = (effect) => lives.push({ from, to, initFrom: from, visible: false, inited: false, last: 0, ...effect });
     const idle = (target, vars) => {
       const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
@@ -2242,9 +2263,9 @@ function buildStage(root, isDesktop) {
   const [in0, in1] = STAGE.textIn;
   const [out0, out1] = STAGE.textOut;
   copies.forEach((copy, i) => {
-    tl.fromTo(copy, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: (in1 - in0) * L, ease: 'power2.out', immediateRender: false }, starts[i] + in0 * L);
+    tl.fromTo(copy, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: at(i, in1) - at(i, in0), ease: 'power2.out', immediateRender: false }, starts[i] + at(i, in0));
     if (i < n - 1) {
-      tl.fromTo(copy, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: (out1 - out0) * L, ease: 'power1.inOut', immediateRender: false }, starts[i] + out0 * L);
+      tl.fromTo(copy, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: at(i, out1) - at(i, out0), ease: 'power1.inOut', immediateRender: false }, starts[i] + at(i, out0));
     }
   });
 
@@ -2312,10 +2333,15 @@ function initStage(context, isDesktop) {
       const proxy = { p: 0 };
       const driver = gsap.to(proxy, { p: 1, duration: 1, ease: 'none', paused: true, onUpdate: () => tl.time(toTime(proxy.p)) });
 
+      // Every treatment's rest-to-rest scroll is `per`, as if all had length
+      // 1; the pin grows with the timeline, so a longer treatment only adds
+      // its own extra scroll.
+      const baseEnd = STAGE.exitStart * STAGE.segment * (FEATURED.length - 1) + STAGE.segment;
+      const pinLength = (per * FEATURED.length * (end - intro)) / (baseEnd - intro);
       const pin = ScrollTrigger.create({
         trigger: root,
         start: 'top top',
-        end: () => `+=${per * FEATURED.length}%`,
+        end: () => `+=${pinLength}%`,
         pin: true,
         anticipatePin: 1,
         refreshPriority: 2,
