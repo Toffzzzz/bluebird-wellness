@@ -1,12 +1,15 @@
 /* ==========================================================================
-   Bluebird Wellness: treatment page script (treatments/<slug>/)
+   Bluebird Wellness: treatment page and glossary script
+   (treatments/<slug>/, ingredients/)
 
    The pages are complete without it: every word is in the HTML and every
    accordion works on its own. This only adds
      - the header's bottom border once the page has scrolled,
      - the gentle fade-up of each block as it scrolls into view (not with
        reduced motion),
-     - the "Expand all" button of the ingredient guide,
+     - the "Expand all" button of the ingredients list and the glossary,
+     - the glossary's search box (it filters the entries by name),
+     - opening a glossary entry arrived at by its link (#vitamin-b1-thiamine),
      - the current year in the footer.
    ========================================================================== */
 
@@ -45,7 +48,7 @@
     below.forEach((el) => observer.observe(el));
   }
 
-  // "Expand all" / "Collapse all" for the ingredient guide.
+  // "Expand all" / "Collapse all" for the ingredients list and the glossary.
   document.querySelectorAll('[data-expand-all]').forEach((button) => {
     const list = document.getElementById(button.getAttribute('aria-controls'));
     if (!list) return;
@@ -64,6 +67,41 @@
     sync();
     button.hidden = false;
   });
+
+  // The glossary's search: shows only the entries whose name contains what
+  // is typed (ignoring case and accents), and only the categories with one.
+  const search = document.querySelector('[data-glossary-search]');
+  const input = search && search.querySelector('input');
+  if (input) {
+    const fold = (text) => text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const entries = [...document.querySelectorAll('[data-glossary-item]')].map((el) => ({ el, name: fold(el.dataset.name || '') }));
+    const categories = [...document.querySelectorAll('[data-glossary-category]')];
+    const filter = () => {
+      const query = fold(input.value);
+      entries.forEach(({ el, name }) => { el.hidden = !!query && !name.includes(query); });
+      categories.forEach((section) => { section.hidden = !section.querySelector('[data-glossary-item]:not([hidden])'); });
+    };
+    input.addEventListener('input', filter);
+    filter(); // a value the browser restored
+    search.hidden = false;
+  }
+
+  // A link to a closed entry (a <details> with that id) opens it, showing it
+  // again first if the search had hidden it.
+  const openTarget = (event) => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const target = id && document.getElementById(id);
+    if (!target || target.tagName !== 'DETAILS') return;
+    if (input && (target.hidden || target.closest('[hidden]'))) {
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+    }
+    target.open = true;
+    // Arriving on the page, jump straight there; following a link on it, glide.
+    target.scrollIntoView({ behavior: event && !reduceMotion ? 'smooth' : 'instant' });
+  };
+  window.addEventListener('hashchange', openTarget);
+  if (location.hash) openTarget();
 
   const year = document.getElementById('year');
   if (year) year.textContent = new Date().getFullYear();

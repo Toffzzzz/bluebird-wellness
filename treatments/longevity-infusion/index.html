@@ -23,6 +23,7 @@
       <a class="wordmark" href="../../">Bluebird Wellness</a>
       <nav class="site-nav" aria-label="Main">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
       </nav>
@@ -35,7 +36,7 @@
       <div class="container drip-intro__inner">
         <div class="drip-intro__text">
           <a class="drip-back" href="../../#treatments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg>Back to all treatments</a>
-          <h1 class="drip-title" data-verbatim="drips.longevity-infusion.name">Longevity Infusion</h1>
+          <h1 class="drip-title"><span data-verbatim="drips.longevity-infusion.name">Longevity Infusion</span></h1>
           <div class="drip-meta">
             <p class="drip-price" data-verbatim="drips.longevity-infusion.priceLabel">from £350</p>
             
@@ -52,44 +53,49 @@
       </div>
     </div>
 
-    <section class="drip-section" aria-labelledby="whats-in-it">
+    <section class="drip-section" aria-labelledby="ingredients-title">
       <div class="container">
-        <h2 class="drip-section__title" id="whats-in-it" data-fade>What's in it</h2>
-        <div class="drip-contents">
-          <div class="drip-ingredients" data-fade>
-            <h3 class="drip-subtitle">Ingredients</h3>
-            <ul class="ingredient-list">
-              <li data-verbatim="drips.longevity-infusion.ingredients.0">NAD+ (dose below)</li>
-              <li data-verbatim="drips.longevity-infusion.ingredients.1">Vitamin C (7500mg)</li>
-              <li data-verbatim="drips.longevity-infusion.ingredients.2">Glutathione (1200mg)</li>
-            </ul>
+        <div class="ingredients" data-fade>
+          <div class="ingredients__head">
+            <h2 class="drip-section__title" id="ingredients-title">Ingredients</h2>
+            <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-list" hidden>Expand all</button>
           </div>
-          <div class="drip-guide" data-fade>
-            <div class="drip-guide__head">
-              <h3 class="drip-subtitle">Ingredient guide</h3>
-              <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-guide" hidden>Expand all</button>
-            </div>
-            <div class="accordion" id="ingredient-guide">
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.longevity-infusion.ingredientDescriptions.0.name">NAD+ (Nicotinamide Adenine Dinucleotide)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.longevity-infusion.ingredientDescriptions.0.text">
-                  <p>A coenzyme found in every cell of the body and essential for energy production. It works inside the mitochondria, the tiny structures within each cell that turn nutrients into usable energy. It is also needed by the enzymes that repair damaged DNA and help keep cells healthy. Levels of NAD+ fall naturally as we age and can also be depleted by stress, illness and alcohol. Research has linked this decline to lower cellular energy and a reduced ability to repair DNA. These changes contribute to common signs of ageing such as fatigue, reduced mental clarity and changes in the skin. Skin cells rely on NAD+ to produce the energy needed for renewal and to repair DNA damage caused by UV exposure. NAD+ has become one of the most popular treatments in wellness and longevity medicine, with people choosing it to support their energy levels, mental clarity, cellular repair and healthy ageing. Our NAD+ is sourced from a UK-registered supplier and each batch is supplied with a certificate of analysis confirming its quality and sterility.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.longevity-infusion.ingredientDescriptions.1.name">Vitamin C (Ascorbic Acid)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.longevity-infusion.ingredientDescriptions.1.text">
-                  <p>A water-soluble antioxidant that humans cannot produce and must obtain from their diet. It is needed by the enzymes that build and stabilise collagen, the main structural protein in skin and blood vessels. It neutralises free radicals and is found in high concentrations in white blood cells. It contributes to the normal function of the immune system, normal collagen formation for the normal function of the skin, the protection of cells from oxidative stress and the reduction of tiredness and fatigue. Intravenous delivery bypasses the limits of gut absorption and achieves blood levels many times higher than oral supplements.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.longevity-infusion.ingredientDescriptions.2.name">Glutathione</span></summary>
-                <div class="accordion__body" data-verbatim="drips.longevity-infusion.ingredientDescriptions.2.text">
-                  <p>Glutathione is often described as the body&#39;s most powerful antioxidant. It is made naturally from three amino acids: glutamic acid, cysteine and glycine. Most of it is produced in the liver, although almost every cell in the body makes its own supply. It neutralises free radicals, the unstable molecules that damage cells. Because oxidative stress is closely linked to inflammation, glutathione also helps regulate the body&#39;s inflammatory response. For the skin it protects cells from the oxidative stress caused by UV exposure and pollution, and it acts on the enzyme that controls pigmentation, which contributes to a brighter and more even complexion. Levels decline with age and can be depleted by alcohol, illness and oxidative stress. An infusion delivers glutathione directly into the bloodstream to boost your levels. Its effects have made it one of the most popular ingredients in the health, wellness and beauty industry.</p>
-                </div>
-              </details>
-            </div>
-          </div>
+          <ul class="ingredients__list" id="ingredient-list">
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.longevity-infusion.ingredients.0">NAD+ (dose below)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#nad-nicotinamide-adenine-dinucleotide"><span data-verbatim="drips.longevity-infusion.ingredientDescriptions.0.name">NAD+ (Nicotinamide Adenine Dinucleotide)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.longevity-infusion.ingredientDescriptions.0.text">
+                      <p>A coenzyme found in every cell of the body and essential for energy production. It works inside the mitochondria, the tiny structures within each cell that turn nutrients into usable energy. It is also needed by the enzymes that repair damaged DNA and help keep cells healthy. Levels of NAD+ fall naturally as we age and can also be depleted by stress, illness and alcohol. Research has linked this decline to lower cellular energy and a reduced ability to repair DNA. These changes contribute to common signs of ageing such as fatigue, reduced mental clarity and changes in the skin. Skin cells rely on NAD+ to produce the energy needed for renewal and to repair DNA damage caused by UV exposure. NAD+ has become one of the most popular treatments in wellness and longevity medicine, with people choosing it to support their energy levels, mental clarity, cellular repair and healthy ageing. Our NAD+ is sourced from a UK-registered supplier and each batch is supplied with a certificate of analysis confirming its quality and sterility.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.longevity-infusion.ingredients.1">Vitamin C (7500mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-c-ascorbic-acid"><span data-verbatim="drips.longevity-infusion.ingredientDescriptions.1.name">Vitamin C (Ascorbic Acid)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.longevity-infusion.ingredientDescriptions.1.text">
+                      <p>A water-soluble antioxidant that humans cannot produce and must obtain from their diet. It is needed by the enzymes that build and stabilise collagen, the main structural protein in skin and blood vessels. It neutralises free radicals and is found in high concentrations in white blood cells. It contributes to the normal function of the immune system, normal collagen formation for the normal function of the skin, the protection of cells from oxidative stress and the reduction of tiredness and fatigue. Intravenous delivery bypasses the limits of gut absorption and achieves blood levels many times higher than oral supplements.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.longevity-infusion.ingredients.2">Glutathione (1200mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#glutathione"><span data-verbatim="drips.longevity-infusion.ingredientDescriptions.2.name">Glutathione</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.longevity-infusion.ingredientDescriptions.2.text">
+                      <p>Glutathione is often described as the body&#39;s most powerful antioxidant. It is made naturally from three amino acids: glutamic acid, cysteine and glycine. Most of it is produced in the liver, although almost every cell in the body makes its own supply. It neutralises free radicals, the unstable molecules that damage cells. Because oxidative stress is closely linked to inflammation, glutathione also helps regulate the body&#39;s inflammatory response. For the skin it protects cells from the oxidative stress caused by UV exposure and pollution, and it acts on the enzyme that controls pigmentation, which contributes to a brighter and more even complexion. Levels decline with age and can be depleted by alcohol, illness and oxidative stress. An infusion delivers glutathione directly into the bloodstream to boost your levels. Its effects have made it one of the most popular ingredients in the health, wellness and beauty industry.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+          </ul>
+          <p class="ingredients__glossary"><a class="link" href="../../ingredients/">Ingredient glossary</a></p>
         </div>
       </div>
     </section>
@@ -128,6 +134,7 @@
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
         <a href="#" data-book>Book now</a>

@@ -23,6 +23,7 @@
       <a class="wordmark" href="../../">Bluebird Wellness</a>
       <nav class="site-nav" aria-label="Main">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
       </nav>
@@ -35,7 +36,7 @@
       <div class="container drip-intro__inner">
         <div class="drip-intro__text">
           <a class="drip-back" href="../../#treatments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg>Back to all treatments</a>
-          <h1 class="drip-title" data-verbatim="drips.hydration-infusion.name">Hydration Infusion</h1>
+          <h1 class="drip-title"><span data-verbatim="drips.hydration-infusion.name">Hydration Infusion</span></h1>
           <div class="drip-meta">
             <p class="drip-price" data-verbatim="drips.hydration-infusion.priceLabel">£119</p>
             
@@ -52,34 +53,33 @@
       </div>
     </div>
 
-    <section class="drip-section" aria-labelledby="whats-in-it">
+    <section class="drip-section" aria-labelledby="ingredients-title">
       <div class="container">
-        <h2 class="drip-section__title" id="whats-in-it" data-fade>What's in it</h2>
-        <div class="drip-contents">
-          <div class="drip-ingredients" data-fade>
-            <h3 class="drip-subtitle">Ingredients</h3>
-            <ul class="ingredient-list">
-              <li data-verbatim="drips.hydration-infusion.ingredients.0">Electrolyte-Rich Solution (1 litre)</li>
-              <li data-verbatim="drips.hydration-infusion.ingredients.1">Sodium Chloride (242mmol)</li>
-              <li data-verbatim="drips.hydration-infusion.ingredients.2">Potassium (5mmol)</li>
-              <li data-verbatim="drips.hydration-infusion.ingredients.3">Calcium (2mmol)</li>
-              <li data-verbatim="drips.hydration-infusion.ingredients.4">Bicarbonate (29mmol)</li>
-            </ul>
+        <div class="ingredients" data-fade>
+          <div class="ingredients__head">
+            <h2 class="drip-section__title" id="ingredients-title">Ingredients</h2>
+            <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-list" hidden>Expand all</button>
           </div>
-          <div class="drip-guide" data-fade>
-            <div class="drip-guide__head">
-              <h3 class="drip-subtitle">Ingredient guide</h3>
-              <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-guide" hidden>Expand all</button>
-            </div>
-            <div class="accordion" id="ingredient-guide">
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.hydration-infusion.ingredientDescriptions.0.name">Electrolyte-Rich Solution</span></summary>
-                <div class="accordion__body" data-verbatim="drips.hydration-infusion.ingredientDescriptions.0.text">
-                  <p>A balanced solution whose sodium, potassium, calcium, chloride and lactate content closely reflects that of blood plasma. It replenishes the electrolytes the body relies on for nerve signalling, muscle contraction and fluid balance.</p>
-                </div>
-              </details>
-            </div>
-          </div>
+          <ul class="ingredients__list" id="ingredient-list">
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.hydration-infusion.ingredients.0">Electrolyte-Rich Solution (1 litre)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#electrolyte-rich-solution"><span data-verbatim="drips.hydration-infusion.ingredientDescriptions.0.name">Electrolyte-Rich Solution</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.hydration-infusion.ingredientDescriptions.0.text">
+                      <p>A balanced solution whose sodium, potassium, calcium, chloride and lactate content closely reflects that of blood plasma. It replenishes the electrolytes the body relies on for nerve signalling, muscle contraction and fluid balance.</p>
+                    </div>
+                  </div>
+                </details>
+                <ul class="ingredients__group">
+                  <li><span data-verbatim="drips.hydration-infusion.ingredients.1">Sodium Chloride (242mmol)</span></li>
+                  <li><span data-verbatim="drips.hydration-infusion.ingredients.2">Potassium (5mmol)</span></li>
+                  <li><span data-verbatim="drips.hydration-infusion.ingredients.3">Calcium (2mmol)</span></li>
+                  <li><span data-verbatim="drips.hydration-infusion.ingredients.4">Bicarbonate (29mmol)</span></li>
+                </ul>
+              </li>
+          </ul>
+          <p class="ingredients__glossary"><a class="link" href="../../ingredients/">Ingredient glossary</a></p>
         </div>
       </div>
     </section>
@@ -103,6 +103,7 @@
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
         <a href="#" data-book>Book now</a>

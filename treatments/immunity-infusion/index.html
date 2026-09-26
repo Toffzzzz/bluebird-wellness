@@ -23,6 +23,7 @@
       <a class="wordmark" href="../../">Bluebird Wellness</a>
       <nav class="site-nav" aria-label="Main">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
       </nav>
@@ -35,14 +36,22 @@
       <div class="container drip-intro__inner">
         <div class="drip-intro__text">
           <a class="drip-back" href="../../#treatments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg>Back to all treatments</a>
-          <h1 class="drip-title" data-verbatim="drips.immunity-infusion.name">Immunity Infusion</h1>
+          <h1 class="drip-title"><span data-verbatim="drips.immunity-infusion.name">Immunity Infusion</span></h1>
           <div class="drip-meta">
             <p class="drip-price" data-verbatim="drips.immunity-infusion.priceLabel">from £179</p>
             
           </div>
-          <p class="drip-variant">
-            <a class="variant-link" href="../immunity-pro-infusion/"><span data-verbatim="drips.immunity-pro-infusion.name">Immunity Pro Infusion</span> <span class="variant-link__price" data-verbatim="drips.immunity-pro-infusion.priceLabel">£229</span><svg class="variant-link__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
-          </p>
+          <aside class="upgrade" aria-labelledby="upgrade-title">
+            <p class="eyebrow">Upgrade to Pro</p>
+            <h2 class="upgrade__title" id="upgrade-title"><span data-verbatim="drips.immunity-pro-infusion.name">Immunity Pro Infusion</span> <span class="pro-badge" aria-hidden="true">Pro</span></h2>
+            <p class="upgrade__price" data-verbatim="drips.immunity-pro-infusion.priceLabel">£229</p>
+            <p class="upgrade__adds-title" id="upgrade-adds">Pro adds</p>
+            <ul class="upgrade__adds" aria-labelledby="upgrade-adds">
+              <li data-verbatim="drips.immunity-pro-infusion.ingredients.12">Selenium (0.1mg)</li>
+              <li data-verbatim="drips.immunity-pro-infusion.ingredients.13">Vitamin B12 (1mg)</li>
+            </ul>
+            <a class="btn btn--secondary btn--compact" href="../immunity-pro-infusion/">Learn more<span class="visually-hidden"> about Immunity Pro Infusion</span></a>
+          </aside>
           <div class="drip-prose drip-description" data-verbatim="drips.immunity-infusion.description">
             <p>Your immune system works hardest when life is at its busiest. Colder months, travel and stress all place extra demands on the body. The Immunity Infusion is designed to support you through these times. High-dose vitamin C sits at its core and contributes to the normal function of the immune system and the protection of cells from oxidative stress. The added zinc also contributes to normal immune function and to the process of cell division, which the body relies on to produce new immune cells. The B vitamins contribute to normal energy-yielding metabolism and the reduction of tiredness and fatigue. Vitamin B6 in particular also contributes to the normal function of the immune system. It is all delivered in a litre of electrolyte-rich solution so you stay hydrated at the same time.</p>
           </div>
@@ -55,83 +64,110 @@
       </div>
     </div>
 
-    <section class="drip-section" aria-labelledby="whats-in-it">
+    <section class="drip-section" aria-labelledby="ingredients-title">
       <div class="container">
-        <h2 class="drip-section__title" id="whats-in-it" data-fade>What's in it</h2>
-        <div class="drip-contents">
-          <div class="drip-ingredients" data-fade>
-            <h3 class="drip-subtitle">Ingredients</h3>
-            <ul class="ingredient-list">
-              <li data-verbatim="drips.immunity-infusion.ingredients.0">Electrolyte-Rich Solution (1 litre)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.1">Sodium Chloride (242mmol)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.2">Potassium (5mmol)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.3">Calcium (2mmol)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.4">Bicarbonate (29mmol)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.5">Vitamin B1 (25mg)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.6">Vitamin B2 (2mg)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.7">Vitamin B3 (50mg)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.8">Vitamin B5 (8.6mg)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.9">Vitamin B6 (5mg)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.10">Vitamin C (7500mg)</li>
-              <li data-verbatim="drips.immunity-infusion.ingredients.11">Zinc (6mg)</li>
-            </ul>
+        <div class="ingredients" data-fade>
+          <div class="ingredients__head">
+            <h2 class="drip-section__title" id="ingredients-title">Ingredients</h2>
+            <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-list" hidden>Expand all</button>
           </div>
-          <div class="drip-guide" data-fade>
-            <div class="drip-guide__head">
-              <h3 class="drip-subtitle">Ingredient guide</h3>
-              <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-guide" hidden>Expand all</button>
-            </div>
-            <div class="accordion" id="ingredient-guide">
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.0.name">Electrolyte-Rich Solution</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.0.text">
-                  <p>A balanced solution whose sodium, potassium, calcium, chloride and lactate content closely reflects that of blood plasma. It replenishes the electrolytes the body relies on for nerve signalling, muscle contraction and fluid balance.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.1.name">Vitamin B1 (Thiamine)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.1.text">
-                  <p>A water-soluble vitamin that the body converts into an active coenzyme needed to break down glucose for energy. This process takes place in the mitochondria, the energy-producing structures within our cells. Tissues with high energy demands such as the brain, nerves and heart are particularly reliant on it. The body stores very little thiamine so a regular supply is needed. It contributes to normal energy-yielding metabolism, the normal functioning of the nervous system and the normal function of the heart.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.2.name">Vitamin B2 (Riboflavin)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.2.text">
-                  <p>A water-soluble vitamin that the body uses to make coenzymes needed by the mitochondria to produce energy. It also helps recycle glutathione, one of the body&#39;s main antioxidants, so it can continue protecting cells. It contributes to normal energy-yielding metabolism, the maintenance of normal skin, the protection of cells from oxidative stress and the reduction of tiredness and fatigue.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.3.name">Vitamin B3 (Niacin)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.3.text">
-                  <p>A water-soluble vitamin that the body uses to make NAD, one of the most important coenzymes in the body. NAD is involved in hundreds of reactions that convert food into cellular energy and help repair and maintain cells. It contributes to normal energy-yielding metabolism, normal psychological function, the maintenance of normal skin and the reduction of tiredness and fatigue.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.4.name">Vitamin B5 (Pantothenic Acid)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.4.text">
-                  <p>A water-soluble vitamin that the body uses to make coenzyme A, a molecule at the centre of metabolism. Coenzyme A is needed to release energy from carbohydrates, fats and proteins and to produce certain hormones. It contributes to normal energy-yielding metabolism, normal mental performance, the normal synthesis of steroid hormones and some neurotransmitters and the reduction of tiredness and fatigue.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.5.name">Vitamin B6 (Pyridoxine)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.5.text">
-                  <p>A water-soluble vitamin that is converted into an active coenzyme used by more than 100 enzymes, most of them involved in protein metabolism. It is needed to produce neurotransmitters (chemical messengers that carry signals between nerve cells) such as serotonin and dopamine, and to form haemoglobin, the protein in red blood cells that carries oxygen. It contributes to normal red blood cell formation, the normal function of the immune system and the regulation of hormonal activity.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.6.name">Vitamin C (Ascorbic Acid)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.6.text">
-                  <p>A water-soluble antioxidant that humans cannot produce and must obtain from their diet. It is needed by the enzymes that build and stabilise collagen, the main structural protein in skin and blood vessels. It neutralises free radicals and is found in high concentrations in white blood cells. It contributes to the normal function of the immune system, normal collagen formation for the normal function of the skin, the protection of cells from oxidative stress and the reduction of tiredness and fatigue. Intravenous delivery bypasses the limits of gut absorption and achieves blood levels many times higher than oral supplements.</p>
-                </div>
-              </details>
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.7.name">Zinc</span></summary>
-                <div class="accordion__body" data-verbatim="drips.immunity-infusion.ingredientDescriptions.7.text">
-                  <p>An essential trace mineral required for the activity of more than 300 enzymes. It is needed for the development and function of immune cells and for making DNA and new proteins. Because the body has no dedicated store of zinc a regular supply is important. It contributes to the normal function of the immune system, normal protein synthesis, the maintenance of normal hair, skin and nails and the protection of cells from oxidative stress.</p>
-                </div>
-              </details>
-            </div>
-          </div>
+          <ul class="ingredients__list" id="ingredient-list">
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.0">Electrolyte-Rich Solution (1 litre)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#electrolyte-rich-solution"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.0.name">Electrolyte-Rich Solution</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.0.text">
+                      <p>A balanced solution whose sodium, potassium, calcium, chloride and lactate content closely reflects that of blood plasma. It replenishes the electrolytes the body relies on for nerve signalling, muscle contraction and fluid balance.</p>
+                    </div>
+                  </div>
+                </details>
+                <ul class="ingredients__group">
+                  <li><span data-verbatim="drips.immunity-infusion.ingredients.1">Sodium Chloride (242mmol)</span></li>
+                  <li><span data-verbatim="drips.immunity-infusion.ingredients.2">Potassium (5mmol)</span></li>
+                  <li><span data-verbatim="drips.immunity-infusion.ingredients.3">Calcium (2mmol)</span></li>
+                  <li><span data-verbatim="drips.immunity-infusion.ingredients.4">Bicarbonate (29mmol)</span></li>
+                </ul>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.5">Vitamin B1 (25mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-b1-thiamine"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.1.name">Vitamin B1 (Thiamine)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.1.text">
+                      <p>A water-soluble vitamin that the body converts into an active coenzyme needed to break down glucose for energy. This process takes place in the mitochondria, the energy-producing structures within our cells. Tissues with high energy demands such as the brain, nerves and heart are particularly reliant on it. The body stores very little thiamine so a regular supply is needed. It contributes to normal energy-yielding metabolism, the normal functioning of the nervous system and the normal function of the heart.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.6">Vitamin B2 (2mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-b2-riboflavin"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.2.name">Vitamin B2 (Riboflavin)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.2.text">
+                      <p>A water-soluble vitamin that the body uses to make coenzymes needed by the mitochondria to produce energy. It also helps recycle glutathione, one of the body&#39;s main antioxidants, so it can continue protecting cells. It contributes to normal energy-yielding metabolism, the maintenance of normal skin, the protection of cells from oxidative stress and the reduction of tiredness and fatigue.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.7">Vitamin B3 (50mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-b3-niacin"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.3.name">Vitamin B3 (Niacin)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.3.text">
+                      <p>A water-soluble vitamin that the body uses to make NAD, one of the most important coenzymes in the body. NAD is involved in hundreds of reactions that convert food into cellular energy and help repair and maintain cells. It contributes to normal energy-yielding metabolism, normal psychological function, the maintenance of normal skin and the reduction of tiredness and fatigue.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.8">Vitamin B5 (8.6mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-b5-pantothenic-acid"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.4.name">Vitamin B5 (Pantothenic Acid)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.4.text">
+                      <p>A water-soluble vitamin that the body uses to make coenzyme A, a molecule at the centre of metabolism. Coenzyme A is needed to release energy from carbohydrates, fats and proteins and to produce certain hormones. It contributes to normal energy-yielding metabolism, normal mental performance, the normal synthesis of steroid hormones and some neurotransmitters and the reduction of tiredness and fatigue.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.9">Vitamin B6 (5mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-b6-pyridoxine"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.5.name">Vitamin B6 (Pyridoxine)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.5.text">
+                      <p>A water-soluble vitamin that is converted into an active coenzyme used by more than 100 enzymes, most of them involved in protein metabolism. It is needed to produce neurotransmitters (chemical messengers that carry signals between nerve cells) such as serotonin and dopamine, and to form haemoglobin, the protein in red blood cells that carries oxygen. It contributes to normal red blood cell formation, the normal function of the immune system and the regulation of hormonal activity.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.10">Vitamin C (7500mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#vitamin-c-ascorbic-acid"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.6.name">Vitamin C (Ascorbic Acid)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.6.text">
+                      <p>A water-soluble antioxidant that humans cannot produce and must obtain from their diet. It is needed by the enzymes that build and stabilise collagen, the main structural protein in skin and blood vessels. It neutralises free radicals and is found in high concentrations in white blood cells. It contributes to the normal function of the immune system, normal collagen formation for the normal function of the skin, the protection of cells from oxidative stress and the reduction of tiredness and fatigue. Intravenous delivery bypasses the limits of gut absorption and achieves blood levels many times higher than oral supplements.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.immunity-infusion.ingredients.11">Zinc (6mg)</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#zinc"><span data-verbatim="drips.immunity-infusion.ingredientDescriptions.7.name">Zinc</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.immunity-infusion.ingredientDescriptions.7.text">
+                      <p>An essential trace mineral required for the activity of more than 300 enzymes. It is needed for the development and function of immune cells and for making DNA and new proteins. Because the body has no dedicated store of zinc a regular supply is important. It contributes to the normal function of the immune system, normal protein synthesis, the maintenance of normal hair, skin and nails and the protection of cells from oxidative stress.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+          </ul>
+          <p class="ingredients__glossary"><a class="link" href="../../ingredients/">Ingredient glossary</a></p>
         </div>
       </div>
     </section>
@@ -155,6 +191,7 @@
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
         <a href="#" data-book>Book now</a>

@@ -23,6 +23,7 @@
       <a class="wordmark" href="../../">Bluebird Wellness</a>
       <nav class="site-nav" aria-label="Main">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
       </nav>
@@ -35,7 +36,7 @@
       <div class="container drip-intro__inner">
         <div class="drip-intro__text">
           <a class="drip-back" href="../../#treatments"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4 3 8l4 4"/></svg>Back to all treatments</a>
-          <h1 class="drip-title" data-verbatim="drips.iron-infusion.name">Iron Infusion</h1>
+          <h1 class="drip-title"><span data-verbatim="drips.iron-infusion.name">Iron Infusion</span></h1>
           <div class="drip-meta">
             <p class="drip-price" data-verbatim="drips.iron-infusion.priceLabel">from £235</p>
             <span class="badge">Blood test required first</span>
@@ -117,30 +118,27 @@
         </section>
       </div>
     </div>
-    <section class="drip-section" aria-labelledby="whats-in-it">
+    <section class="drip-section" aria-labelledby="ingredients-title">
       <div class="container">
-        <h2 class="drip-section__title" id="whats-in-it" data-fade>What's in it</h2>
-        <div class="drip-contents">
-          <div class="drip-ingredients" data-fade>
-            <h3 class="drip-subtitle">Ingredients</h3>
-            <ul class="ingredient-list">
-              <li data-verbatim="drips.iron-infusion.ingredients.0">Monofer (ferric derisomaltose), dose calculated according to your weight and iron levels</li>
-            </ul>
+        <div class="ingredients" data-fade>
+          <div class="ingredients__head">
+            <h2 class="drip-section__title" id="ingredients-title">Ingredients</h2>
+            <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-list" hidden>Expand all</button>
           </div>
-          <div class="drip-guide" data-fade>
-            <div class="drip-guide__head">
-              <h3 class="drip-subtitle">Ingredient guide</h3>
-              <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-guide" hidden>Expand all</button>
-            </div>
-            <div class="accordion" id="ingredient-guide">
-              <details class="accordion__item">
-                <summary class="accordion__summary"><span data-verbatim="drips.iron-infusion.ingredientDescriptions.0.name">Monofer (Ferric Derisomaltose)</span></summary>
-                <div class="accordion__body" data-verbatim="drips.iron-infusion.ingredientDescriptions.0.text">
-                  <p>An intravenous iron formulation in which iron is tightly bound within a carbohydrate structure. This allows iron to be released steadily, so a large dose can be given in a single infusion. Once in the bloodstream the iron is taken up by the body&#39;s stores, where it replenishes ferritin and is used to produce haemoglobin.</p>
-                </div>
-              </details>
-            </div>
-          </div>
+          <ul class="ingredients__list" id="ingredient-list">
+              <li>
+                <details class="accordion__item ingredient">
+                  <summary class="accordion__summary"><span data-verbatim="drips.iron-infusion.ingredients.0">Monofer (ferric derisomaltose), dose calculated according to your weight and iron levels</span></summary>
+                  <div class="accordion__body">
+                    <p class="ingredient__name"><a class="ingredient__link" href="../../ingredients/#monofer-ferric-derisomaltose"><span data-verbatim="drips.iron-infusion.ingredientDescriptions.0.name">Monofer (Ferric Derisomaltose)</span></a></p>
+                    <div class="ingredient__text" data-verbatim="drips.iron-infusion.ingredientDescriptions.0.text">
+                      <p>An intravenous iron formulation in which iron is tightly bound within a carbohydrate structure. This allows iron to be released steadily, so a large dose can be given in a single infusion. Once in the bloodstream the iron is taken up by the body&#39;s stores, where it replenishes ferritin and is used to produce haemoglobin.</p>
+                    </div>
+                  </div>
+                </details>
+              </li>
+          </ul>
+          <p class="ingredients__glossary"><a class="link" href="../../ingredients/">Ingredient glossary</a></p>
         </div>
       </div>
     </section>
@@ -208,6 +206,7 @@
       </div>
       <nav class="site-footer__nav" aria-label="Footer">
         <a href="../../#treatments">Treatments</a>
+        <a href="../../ingredients/">Ingredients</a>
         <a href="../../#how-it-works">How it works</a>
         <a href="../../#book">Contact</a>
         <a href="#" data-book>Book now</a>

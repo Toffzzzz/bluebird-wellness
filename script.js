@@ -7,7 +7,8 @@
    4. Scenes (one per kind of featured visual)
    5. Live effects: frame sequences, hair sway (Three.js shader) and the
       NAD+ glass molecule (Three.js)
-   6. Motion (Lenis smooth scroll + GSAP ScrollTrigger)
+   6. Motion (Lenis smooth scroll + GSAP ScrollTrigger): the pinned stage on
+      wider screens, the swipeable carousel on phones
    ========================================================================== */
 
 /* ==========================================================================
@@ -48,6 +49,8 @@
                   others (default 1): 1.5 gives it half as much scroll again.
                   Its entrance and exit keep the normal length, so every
                   handover matches; only the part in between is stretched.
+     mobileSeconds Optional. On phones, how many seconds its scene takes to
+                  play to its rest (default CAROUSEL.seconds).
      showcase     The treatment's part of the pinned scroll stage:
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
@@ -105,6 +108,7 @@ const TREATMENTS = [
     menuSlug: 'myers-cocktail-infusion',
     short: 'Myers',
     length: 1.5, // more scroll, so the pour is unhurried
+    mobileSeconds: 3.6,
     image: 'images/treatments/myers-cocktail-infusion.webp',
     imageSize: [1200, 920],
     alt: 'Two small glass bottles above a round glass flask filled with golden liquid',
@@ -290,6 +294,7 @@ const TREATMENTS = [
     id: 'signature',
     menuSlug: 'signature-infusion',
     short: 'Signature',
+    mobileSeconds: 3.4,
     image: 'images/treatments/signature-infusion.webp',
     imageSize: [1534, 797],
     alt: 'A fountain pen beside a card signed "Bluebird" in ink',
@@ -335,10 +340,25 @@ const STAGE = {
   textOut: [0.82, 0.9], // …and away at the start of the exit (gone before the next arrives)
   approach: 0.6,        // share of the viewport height the first entrance plays over
   finalTint: '#FBFAF7', // Porcelain, to match the "All treatments" band below
+  scrub: 0.7,           // seconds the animation takes to catch up with the scroll
   snap: {
-    idle: 150,          // ms of stillness before gliding to the nearest rest point
+    idle: 300,          // ms of stillness before gliding to the nearest rest point
     duration: [0.6, 0.9],
   },
+};
+
+/* Phones (narrower than 820px, or held sideways): instead of the pinned
+   stage, the treatments are a row of panels to swipe through. Each panel's
+   scene is its own short timeline (the same scene, without the stage's
+   entrance and exit fades), played from its start to its rest label over
+   the treatment's mobileSeconds once the panel has settled in view, and
+   reset once it has left the screen. */
+const CAROUSEL = {
+  query: '(max-width: 819.98px), (pointer: coarse) and (max-height: 500px)',
+  seconds: 2.4,         // default time to play a scene to its rest
+  ease: 'power1.inOut',
+  activeRatio: 0.6,     // share of a panel in view before it counts as the current one
+  onScreen: 0.35,       // share of the carousel in view before a scene plays
 };
 
 /* ==========================================================================
@@ -373,7 +393,7 @@ function menuItem(t) {
     const drip = dripBySlug(t.menuSlug);
     if (!drip) return null;
     const at = `drips.${drip.slug}`;
-    return { name: drip.name, price: drip.priceLabel, href: `treatments/${drip.slug}/`, namePath: `${at}.name`, pricePath: `${at}.priceLabel` };
+    return { drip, name: drip.name, price: drip.priceLabel, href: `treatments/${drip.slug}/`, namePath: `${at}.name`, pricePath: `${at}.priceLabel` };
   }
   if (t.standalone && MENU) {
     const i = MENU.standalone.priceTable.rows.findIndex((row) => row[0] === t.standalone.row);
@@ -400,6 +420,23 @@ const bookHTML = (name) =>
 const learnMoreHTML = (m) =>
   `<a class="btn btn--secondary" href="${esc(m.href)}">Learn more<span class="visually-hidden"> about ${esc(m.name)}</span></a>`;
 
+// A drip's Pro version, if it has one.
+const proOf = (drip) => (drip && drip.proVariantSlug ? dripBySlug(drip.proVariantSlug) : null);
+
+// "PRO" beside a Pro drip's name. The name already says Pro, so screen readers skip it.
+const PRO_BADGE = '<span class="pro-badge" aria-hidden="true">Pro</span>';
+
+// "+ Pro" beside a standard drip's price, linking to its Pro version.
+const proChipHTML = (pro) => (pro
+  ? `<a class="pro-chip" href="treatments/${esc(pro.slug)}/" aria-label="${esc(pro.name)}, ${esc(pro.priceLabel)}">+ Pro</a>`
+  : '');
+
+// The price, with the "+ Pro" chip beside it when the drip has a Pro version.
+function priceRowHTML(drip, label, path) {
+  const chip = proChipHTML(proOf(drip));
+  return chip ? `<div class="price-row">${priceHTML(label, path)}${chip}</div>` : priceHTML(label, path);
+}
+
 const layerImg = (src, [w, h], attrs = '') =>
   `<img class="layer" src="${esc(src)}" alt="" width="${w}" height="${h}" decoding="async" draggable="false"${attrs}>`;
 
@@ -425,7 +462,7 @@ function textHTML(t, titleId) {
     <p class="eyebrow">IV therapy</p>
     <h2 class="treatment-title${long}" id="${titleId}" data-verbatim="${esc(m.namePath)}">${esc(m.name)}</h2>
     ${badgeHTML(t.badge)}
-    <div class="treatment-actions">${bookHTML(m.name)}${learnMoreHTML(m)}${priceHTML(m.price, m.pricePath)}</div>`;
+    <div class="treatment-actions">${bookHTML(m.name)}${learnMoreHTML(m)}${priceRowHTML(m.drip, m.price, m.pricePath)}</div>`;
 }
 
 function stageHTML(featured) {
@@ -477,6 +514,51 @@ function staticListHTML(featured) {
   return `<div class="treatment-list">${blocks}</div>`;
 }
 
+// Images that only load once script.js asks for them (the carousel loads
+// each panel's pictures as it comes near).
+const deferImages = (html) => html.replace(/<img\b[^>]*>/g, (tag) => tag.replace(/\s(src|srcset)="/g, ' data-$1="'));
+
+const CHEVRON = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+
+// Phones: one panel per treatment, in stage order, each on its own tint, with
+// its scene (or, when animated is false, its finished picture) above its
+// text. The names, arrows and progress bar sit above the panels.
+function carouselHTML(featured, animated) {
+  const panels = featured.map((t, i) => {
+    const def = SCENES[t.showcase.scene] || SCENES.fade;
+    const [w, h] = t.imageSize;
+    let visual;
+    if (animated) visual = `<div class="scene scene--${esc(t.showcase.scene)}" data-scene="${esc(t.id)}">${def.html(t)}</div>`;
+    else if (!t.image) visual = `<div class="carousel__still">${placeholderHTML(t)}</div>`;
+    else visual = `<div class="carousel__still${t.imageFit === 'cover' ? ' carousel__still--photo' : ''}"><img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" decoding="async"></div>`;
+    const hint = animated && i === 0 ? `
+        <p class="carousel__hint" aria-hidden="true"><span>Swipe</span>${CHEVRON('M3 8h10M9 4l4 4-4 4')}</p>` : '';
+    return `
+      <article class="carousel__panel" data-panel="${esc(t.id)}" style="--tint: ${esc(t.showcase.tint || '#F7F4EF')}" aria-labelledby="carousel-${esc(t.id)}-title">
+        <div class="carousel__visual">${deferImages(visual)}</div>
+        <div class="carousel__text">${textHTML(t, `carousel-${esc(t.id)}-title`)}</div>${hint}
+      </article>`;
+  }).join('');
+
+  const names = featured.map((t, i) => `
+        <li><button type="button" class="carousel__name" data-index="${i}" aria-label="Go to ${esc(menuItem(t).name)}"><span>${esc(t.short)}</span></button></li>`).join('');
+
+  return `
+    <section class="carousel${animated ? '' : ' carousel--still'}" id="stage" aria-label="Featured treatments">
+      <div class="carousel__bar">
+        <button type="button" class="carousel__arrow" data-step="-1" aria-label="Previous treatment">${CHEVRON('M10 3 5 8l5 5')}</button>
+        <nav class="carousel__names" aria-label="Featured treatments">
+          <ol>${names}
+          </ol>
+        </nav>
+        <button type="button" class="carousel__arrow" data-step="1" aria-label="Next treatment">${CHEVRON('M6 3l5 5-5 5')}</button>
+        <span class="carousel__progress" aria-hidden="true"><span class="carousel__progress-fill"></span></span>
+      </div>
+      <div class="carousel__track" data-lenis-prevent-horizontal>${panels}
+      </div>
+    </section>`;
+}
+
 // Share of the card's image well that a cut-out may fill (12% padding on each side).
 const CARD_FILL = 0.76;
 
@@ -498,20 +580,23 @@ function cardMediaHTML(v) {
   return `<div class="card__media"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}</div>`;
 }
 
-// One card per drip, in menu order; the whole card links to the drip's page.
+// One card per drip, in menu order (each Pro card straight after its
+// standard version). The whole card links to the drip's page: its title's
+// link covers the card, and the "+ Pro" chip sits above that.
 function cardHTML(drip) {
   const v = MENU_VISUALS[drip.slug] || {};
   const at = `drips.${drip.slug}`;
+  const isPro = !!drip.baseVariantSlug;
   return `
-    <a class="card" href="treatments/${esc(drip.slug)}/" data-card>
+    <article class="card${isPro ? ' card--pro' : ''}" data-card>
       ${cardMediaHTML(v)}
-      <h3 class="card__title" data-verbatim="${esc(at)}.name">${esc(drip.name)}</h3>
+      <h3 class="card__title"><a class="card__link" href="treatments/${esc(drip.slug)}/"><span data-verbatim="${esc(at)}.name">${esc(drip.name)}</span></a>${isPro ? ` ${PRO_BADGE}` : ''}</h3>
       ${badgeHTML(v.badge)}
       <div class="card__action">
-        ${priceHTML(drip.priceLabel, `${at}.priceLabel`)}
-        <span class="btn btn--secondary btn--compact card__more">Learn more</span>
+        ${priceRowHTML(drip, drip.priceLabel, `${at}.priceLabel`)}
+        <span class="btn btn--secondary btn--compact card__more" aria-hidden="true">Learn more</span>
       </div>
-    </a>`;
+    </article>`;
 }
 
 // The menu's standalone infusions and injections: heading, intro, price table
@@ -549,7 +634,10 @@ function standaloneHTML(s) {
               <tbody>${rows}</tbody>
             </table>
           </div>
-          <div class="accordion" data-fade>${items}</div>
+          <div class="standalone__entries" data-fade>
+            <div class="accordion">${items}</div>
+            <p class="standalone__glossary"><a class="link" href="ingredients/">Ingredient glossary</a></p>
+          </div>
         </div>
       </div>
     </section>`;
@@ -563,7 +651,9 @@ function render() {
   const stageRoot = document.getElementById('stage-root');
   const gridRoot = document.getElementById('treatment-grid');
   const standaloneRoot = document.getElementById('standalone-root');
-  if (stageRoot && FEATURED.length) stageRoot.innerHTML = stageHTML(FEATURED) + staticListHTML(FEATURED);
+  // The static list is the page's own content; the pinned stage (wider
+  // screens) or the carousel (phones) is added above it once motion starts.
+  if (stageRoot && FEATURED.length) stageRoot.innerHTML = staticListHTML(FEATURED);
   if (gridRoot) gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
   if (standaloneRoot && MENU.standalone) standaloneRoot.innerHTML = standaloneHTML(MENU.standalone);
 }
@@ -598,11 +688,14 @@ function render() {
      c.live(effect)
                 a canvas/WebGL effect that only runs while on screen
      c.tl, c.start, c.L, c.label, c.isLast, c.isDesktop
+     c.mobile   true on phones: the scene is its panel's own timeline
+                (start 0, L 1, isLast true) and has no entrance or exit
+                fades (fadeIn, gateIn and fadeOut skip them)
    The first treatment's entrance plays while the stage scrolls into view,
    so the stage opens on its entered picture; the last one has no exit
    (fadeOut skips it) and stays until the stage scrolls away.
-   A scene may also have preload(t, scene, isDesktop), awaited before the
-   stage starts, and its own rest label.
+   A scene may also have preload(t, scene, { cap, half }), awaited before
+   its pictures show, and its own rest label.
    Every scene shows its natural, finished picture during its rest.
    Only transform, opacity, clip-path, masks and custom properties are animated.
    ========================================================================== */
@@ -620,23 +713,26 @@ function offsetWithin(el, ancestor) {
 // Default entrance and exit. The fades are sequential (the outgoing object
 // has fully faded at 0.90 of its segment, exactly when the incoming one starts
 // to appear at 0.08 of its own) while their movements overlap, so a handover
-// never shows two pictures at once.
+// never shows two pictures at once. On phones (c.mobile) there are none: the
+// panel itself slides in and out.
 const FADE_IN = [0.08, 0.2];
 const FADE_OUT = [0.82, 0.9];
-const fadeIn = ({ obj, ft }, from = { y: 40 }) => {
+const fadeIn = ({ obj, ft, mobile }, from = { y: 40 }) => {
+  if (mobile) return;
   gsap.set(obj, { autoAlpha: 0, ...from });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
   const to = Object.fromEntries(Object.keys(from).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0, 0.22, 'power2.out');
 };
-const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
-  if (isLast) return;
+const fadeOut = ({ obj, ft, isLast, mobile }, to = { y: -30 }) => {
+  if (isLast || mobile) return;
   const from = Object.fromEntries(Object.keys(to).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0.82, 1, 'power1.inOut');
   ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
 };
 // Visibility only, for scenes whose entrance is a reveal (a growing stem, a wipe).
-const gateIn = ({ obj, ft }) => {
+const gateIn = ({ obj, ft, mobile }) => {
+  if (mobile) return;
   gsap.set(obj, { autoAlpha: 0 });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
 };
@@ -660,8 +756,9 @@ function spinImage({ scene, ft, idle, label }, tilt) {
   idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
 }
 
-// A 3D view is created once, the first time its treatment approaches, and
-// kept on its scene element (so it survives the stage being rebuilt).
+// A WebGL view (the NAD+ molecule, the swaying hair) is created once, in idle
+// time after the stage starts (or when its treatment approaches, if that
+// comes first), and kept on its scene element until the layout is rebuilt.
 function ensure3D(scene, create, pixelRatioCap) {
   const state = scene.view3d || (scene.view3d = { view: null, promise: null });
   if (!state.promise) {
@@ -682,19 +779,37 @@ function turntable3D(c, create) {
   ft(motion, { turn: -2 * Math.PI * label }, { turn: 2 * Math.PI * (1 - label) }, 0, 1);
   const cap = isDesktop ? 2 : 1.5;
   live({
-    initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
+    initFrom: start - 0.5 * L, // at the latest, set up while the previous treatment is on screen
     init: () => ensure3D(scene, () => create(cap), cap).then((view) => view && view.render(motion)),
     frame: (time, dt) => { if (scene.view3d?.view) scene.view3d.view.render(motion, dt); },
   });
 }
 
-// Loads and decodes an image sequence, then draws it on the scene's
-// .fx--frames canvas (awaited before the stage starts).
-function preloadFrames(t, scene, isDesktop) {
-  const { path, count } = t.showcase.frames;
-  const srcs = Array.from({ length: count }, (_, i) => path.replace('{n}', pad(i + 1)));
-  return Promise.all(srcs.map(loadImage)).then((images) => {
-    scene.frameSequence = createFrameSequence(scene.querySelector('.fx--frames'), images, isDesktop);
+// Frees a scene's WebGL view (when the layout is rebuilt).
+function dispose3D(scene) {
+  const state = scene.view3d;
+  if (!state) return;
+  scene.view3d = null;
+  if (state.view) state.view.dispose();
+  else if (state.promise) state.promise.then((view) => view && view.dispose());
+}
+
+// Loads an image sequence (awaited before the stage starts) and sets up its
+// drawing on the scene's .fx--frames canvas. opts.cap caps the canvas's pixel
+// ratio; with opts.half, the half-size frames (<name>-half.webp) are used
+// whenever the canvas is no wider than them in device pixels (phones).
+function preloadFrames(t, scene, { cap, half }) {
+  const { path, count, size } = t.showcase.frames;
+  const canvas = scene.querySelector('.fx--frames');
+  const need = canvas.clientWidth * Math.min(window.devicePixelRatio || 1, cap);
+  const useHalf = half && need > 0 && need <= Math.floor(size[0] / 2);
+  const srcs = Array.from({ length: count }, (_, i) => {
+    const src = path.replace('{n}', pad(i + 1));
+    return useHalf ? src.replace(/\.webp$/, '-half.webp') : src;
+  });
+  return Promise.all(srcs.map(loadFrame)).then((frames) => {
+    scene.frameSequence = createFrameSequence(canvas, frames, cap);
+    scene.frameSequence.setWanted(!!scene.framesWanted);
     return scene.frameSequence;
   });
 }
@@ -710,7 +825,12 @@ function scrubFrames({ scene, tl, start, L, live }, map) {
       if (seq) seq.setPosition(map(proxy.p) * (seq.count - 1));
     },
   }, start);
-  live({ frame: () => scene.frameSequence && scene.frameSequence.draw() });
+  live({
+    frame: () => scene.frameSequence && scene.frameSequence.draw(),
+    // Decoded frames are kept only while the treatment is near.
+    warm: () => { scene.framesWanted = true; scene.frameSequence?.setWanted(true); },
+    cool: () => { scene.framesWanted = false; scene.frameSequence?.setWanted(false); },
+  });
 }
 
 // MYERS COCKTAIL: the two bottles, both on the 1200 × 920 canvas.
@@ -769,7 +889,15 @@ const SCENES = {
     animate(c) {
       const { obj, scene, ft, idle, isLast } = c;
       const root = document.getElementById('stage');
-      const xExit = () => window.innerWidth - offsetWithin(obj, root).left + 40;
+      // Measured once per layout (not on every frame of the run).
+      let measured = -1, distance = 0;
+      const xExit = () => {
+        if (measured !== layoutVersion) {
+          measured = layoutVersion;
+          distance = window.innerWidth - offsetWithin(obj, root).left + 40;
+        }
+        return distance;
+      };
 
       fadeIn(c, { x: -60 });
       if (!isLast) {
@@ -792,7 +920,7 @@ const SCENES = {
       layerImg(t.showcase.layers.right, t.imageSize, ' data-layer="right"'),
       layerImg(t.showcase.layers.whole, t.imageSize, ' data-layer="whole"'),
     ].join('')),
-    animate({ scene, shadow, ft, isLast }) {
+    animate({ scene, shadow, ft, isLast, mobile }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const juice = q('juice'), left = q('left'), right = q('right'), whole = q('whole');
       const MEET = '49.8% 49.5%';
@@ -805,13 +933,16 @@ const SCENES = {
       gsap.set(left, leftTogether);
       gsap.set(right, rightTogether);
       gsap.set(juice, { scale: 0.4 });
-      gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
 
-      // Entrance: only the whole orange, rising gently into place.
-      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      // Entrance: only the whole orange, rising gently into place (on phones
+      // it is already there as its panel slides in).
+      if (!mobile) {
+        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      }
 
       // The split: a quick crossfade from the whole orange to the pushed-together halves.
       ft(whole, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 1.03 }, 0.2, 0.28, 'power1.inOut');
@@ -860,23 +991,27 @@ const SCENES = {
         layerImg(t.showcase.layers.whole, size, ' data-layer="whole"'),
       ].join(''), size);
     },
-    animate({ scene, shadow, ft, isLast }) {
+    animate({ scene, shadow, ft, isLast, mobile }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const bottom = q('bottom'), splash = q('splash'), top = q('top'), whole = q('whole');
       // Measured so the closed lid and the bottom make exactly the whole coconut's outline.
       const closed = { xPercent: -4.0, yPercent: 30.1, rotation: -17.8, scale: 1.077 };
       const open = { xPercent: 0, yPercent: 0, rotation: 0, scale: 1 };
 
-      gsap.set(whole, { transformOrigin: '50% 80%', autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+      gsap.set(whole, { transformOrigin: '50% 80%' });
       gsap.set([bottom, top], { autoAlpha: 0 });
       gsap.set(top, { transformOrigin: '53% 36%', ...closed });
       gsap.set(splash, { transformOrigin: '48.7% 55.1%', autoAlpha: 0, scale: 0.3 }); // the shell's opening
-      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
 
-      // Entrance: only the whole coconut, rising gently into place.
-      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      // Entrance: only the whole coconut, rising gently into place (on phones
+      // it is already there as its panel slides in).
+      if (!mobile) {
+        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      }
 
       // The crack: the split pieces are fully opaque underneath before the
       // whole coconut fades, so nothing ever looks see-through.
@@ -1015,14 +1150,16 @@ const SCENES = {
       if (!t.showcase.swayMask) return;
       // One and a half slow oscillations across the segment: 0 → +1 → −1 → +0.6 → 0.
       const sway = { v: 0 };
-      const push = () => { if (hairSway) hairSway.setSway(sway.v); };
+      const push = () => { if (scene.view3d?.view) scene.view3d.view.setSway(sway.v); };
       [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
         ft(sway, { v: from }, { v: to, onUpdate: push }, f0, f1, 'sine.inOut');
       });
+      const cap = isDesktop ? 2 : 1.5;
       live({
-        initFrom: start - 0.5 * L, // set up while the previous treatment is on screen
-        init: () => ensureHairSway(content, t, isDesktop),
-        frame: (time) => { if (hairSway) hairSway.render(time); },
+        initFrom: start - 0.5 * L, // at the latest, set up while the previous treatment is on screen
+        init: () => ensure3D(scene, () => createHairSway(content, content.querySelector('.wipe-img'), t.showcase.swayMask, cap), cap)
+          .then((view) => view && view.setSway(sway.v)),
+        frame: (time) => { if (scene.view3d?.view) scene.view3d.view.render(time); },
       });
     },
   },
@@ -1216,7 +1353,7 @@ const SCENES = {
   frames: {
     label: 0.74,
     html: (t) => objHTML(t, 'frames', `<canvas class="layer fx--frames" aria-hidden="true"></canvas>`, t.showcase.frames.size),
-    preload: (t, scene, isDesktop) => preloadFrames(t, scene, isDesktop),
+    preload: (t, scene, opts) => preloadFrames(t, scene, opts),
     animate(c) {
       fadeIn(c, { x: 40 });
       const FROM = 0.12, TO = 0.7;
@@ -1384,9 +1521,9 @@ const SCENES = {
         ${pen(ly.penShadow, ' sig-pen--shadow')}
         ${pen(ly.pen, '')}`, t.showcase.frames.size);
     },
-    preload: (t, scene, isDesktop) => Promise.all([
+    preload: (t, scene, opts) => Promise.all([
       fetch(t.showcase.penPath).then((r) => { if (!r.ok) throw new Error(`Could not load ${t.showcase.penPath}`); return r.json(); }),
-      preloadFrames(t, scene, isDesktop),
+      preloadFrames(t, scene, opts),
     ]).then(([data]) => {
       scene.penPath = data.penPath;
       if (scene.placePen) scene.placePen();
@@ -1508,42 +1645,99 @@ function fitCanvas(canvas, ctx, cap) {
 
 // 0 (still) to 1 (scrolling briskly), from Lenis's current velocity.
 const scrollBoost = () => Math.min(1, Math.abs(lenis ? lenis.velocity : 0) / 30);
+
+// One frame of an image sequence: its file, kept compressed (a few dozen KB)
+// until it is needed.
+const loadFrame = (src) => fetch(src).then((r) => {
+  if (!r.ok) throw new Error(`Could not load ${src}`);
+  return r.blob();
+});
+
+// Decodes a frame at exactly the canvas's size in device pixels (off the main
+// thread), or at its own size where resizing isn't supported.
+function decodeFrame(blob, width, height) {
+  return createImageBitmap(blob, { resizeWidth: width, resizeHeight: height, resizeQuality: 'high' })
+    .catch(() => createImageBitmap(blob));
+}
+
 // Image sequences (Muscle Recovery, Signature): every frame is drawn at the
 // same position and size (they are pre-aligned). Between two frames, frame
 // floor(p) and then frame ceil(p) on top with the fractional part as
 // opacity. Only redraws when the position changes.
-function createFrameSequence(canvas, images, isDesktop) {
+// The frames are decoded once, at the canvas's size, while the treatment is
+// near (setWanted(true)), so drawing never waits for a decode; they are
+// released again when it is far away, to keep memory down.
+function createFrameSequence(canvas, frames, cap) {
   const ctx = canvas.getContext('2d');
-  const cap = isDesktop ? 2 : 1.5;
   let w = 0, h = 0, position = 0, drawn = -1;
+  let wanted = false, bitmaps = null, decoding = '', decodedFor = '';
+  const release = () => {
+    if (bitmaps) bitmaps.forEach((b) => b.close());
+    bitmaps = null;
+    decodedFor = '';
+  };
+  const decode = () => {
+    const key = `${canvas.width}x${canvas.height}`;
+    if (!wanted || !w || key === decodedFor || key === decoding) return;
+    decoding = key;
+    // Two at a time, so the decoding never crowds out the page's own painting.
+    const list = [];
+    let chain = Promise.resolve();
+    for (let i = 0; i < frames.length; i += 2) {
+      chain = chain.then(() => {
+        if (decoding !== key) throw new Error('superseded');
+        return Promise.all(frames.slice(i, i + 2).map((blob) => decodeFrame(blob, canvas.width, canvas.height)))
+          .then((pair) => { list.push(...pair); });
+      });
+    }
+    chain.then(() => list, (error) => { list.forEach((b) => b.close()); throw error; }).then((list) => {
+      if (decoding !== key || !wanted) { list.forEach((b) => b.close()); return; }
+      release();
+      bitmaps = list;
+      decodedFor = key;
+      decoding = '';
+      drawn = -1;
+      draw();
+    }, () => { if (decoding === key) decoding = ''; });
+  };
   const resize = () => {
     ({ w, h } = fitCanvas(canvas, ctx, cap));
     // Resizing resets the context, so ask again for the sharpest scaling.
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     drawn = -1;
+    decode();
     draw();
   };
   const draw = () => {
-    if (drawn === position || !w) return;
-    const i0 = Math.floor(position), i1 = Math.min(images.length - 1, Math.ceil(position));
+    if (drawn === position || !w || !bitmaps) return;
+    const i0 = Math.floor(position), i1 = Math.min(bitmaps.length - 1, Math.ceil(position));
     const f = position - i0;
     const blend = i1 !== i0 && f > 0.001;
     ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(images[i0], 0, 0, w, h);
+    ctx.drawImage(bitmaps[i0], 0, 0, w, h);
     if (blend) {
       ctx.globalAlpha = f;
-      ctx.drawImage(images[i1], 0, 0, w, h);
+      ctx.drawImage(bitmaps[i1], 0, 0, w, h);
     }
     ctx.globalAlpha = 1;
     drawn = position;
   };
-  new ResizeObserver(resize).observe(canvas);
+  const observer = new ResizeObserver(resize);
+  observer.observe(canvas);
   resize();
   return {
-    count: images.length,
+    count: frames.length,
     setPosition(p) { position = Math.round(p * 1000) / 1000; },
+    // Resolves once the frames are decoded (or at once if they already are).
+    setWanted(on) {
+      wanted = on;
+      if (on) decode();
+      else { decoding = ''; release(); }
+    },
+    ready: () => !!bitmaps,
     draw,
+    dispose() { observer.disconnect(); wanted = false; decoding = ''; release(); },
   };
 }
 
@@ -1559,9 +1753,6 @@ const HAIR_SWAY = {
   idle: 0.1,         // idle sway strength, relative to a full scroll swing
   idlePeriod: 6,     // seconds per idle cycle
 };
-
-let hairSway = null;        // the running shader, or null (then the plain image is used)
-let hairSwayPromise = null;
 
 async function createHairSway(content, img, maskSrc, pixelRatioCap) {
   const probe = document.createElement('canvas');
@@ -1687,7 +1878,8 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
     mask.image = scaled(maskImg, pw, ph);
     map.needsUpdate = mask.needsUpdate = true;
   };
-  new ResizeObserver(resize).observe(content);
+  const observer = new ResizeObserver(resize);
+  observer.observe(content);
   resize();
 
   let scrollSway = 0;
@@ -1705,6 +1897,16 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
       uniforms.uSway.value = scrollSway + idle * Math.sin((time / HAIR_SWAY.idlePeriod) * Math.PI * 2);
       renderer.render(scene, camera);
     },
+    dispose() {
+      observer.disconnect();
+      map.dispose();
+      mask.dispose();
+      material.dispose();
+      renderer.dispose();
+      renderer.forceContextLoss();
+      canvas.remove();
+      img.style.visibility = '';
+    },
   };
 
   // Draw the first frame before swapping, so the canvas replaces the image invisibly.
@@ -1712,18 +1914,6 @@ async function createHairSway(content, img, maskSrc, pixelRatioCap) {
   sway.render(0);
   img.style.visibility = 'hidden';
   return sway;
-}
-
-function ensureHairSway(content, t, isDesktop) {
-  const cap = isDesktop ? 2 : 1.5;
-  if (!hairSwayPromise) {
-    hairSwayPromise = createHairSway(content, content.querySelector('.wipe-img'), t.showcase.swayMask, cap)
-      .catch(() => null)
-      .then((sway) => { hairSway = sway; return sway; });
-  } else if (hairSway) {
-    hairSway.setPixelRatioCap(cap);
-  }
-  return hairSwayPromise;
 }
 
 /* ---------- 3D scene (NAD+): shared setup ----------
@@ -1789,19 +1979,39 @@ async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 
     camera.aspect = w / h;
     fit();
   };
-  new ResizeObserver(resize).observe(host);
+  let dirty = true;
+  const observer = new ResizeObserver(() => { resize(); dirty = true; });
+  observer.observe(host);
 
-  let idleAngle = 0;
+  // Only draws when the picture changes: at once while the turn moves with
+  // the scroll; for the slow idle turn alone, whenever it has moved by at
+  // least MIN_TURN (a fraction of a pixel at the molecule's edge).
+  const MIN_TURN = 0.0015;
+  let idleAngle = 0, drawnAngle = NaN;
   const view = {
     setPixelRatioCap(cap) {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
       resize();
+      dirty = true;
     },
     // motion.turn: the scroll-driven turn; a very slow extra turn is added while the page is still.
     render(motion, dt = 0) {
       idleAngle += idleSpeed * dt * (1 - scrollBoost());
-      spinner.rotation.y = motion.turn + idleAngle;
+      const angle = motion.turn + idleAngle;
+      if (!dirty && Math.abs(angle - drawnAngle) < MIN_TURN) return;
+      dirty = false;
+      drawnAngle = angle;
+      spinner.rotation.y = angle;
       renderer.render(scene, camera);
+    },
+    dispose() {
+      observer.disconnect();
+      scene.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); });
+      scene.environment?.dispose();
+      renderer.dispose();
+      renderer.forceContextLoss();
+      renderer.domElement.remove();
+      obj.classList.remove('is-3d');
     },
   };
 
@@ -1981,11 +2191,24 @@ async function createMolecule(obj, src, pixelRatioCap) {
 
 let lives = [];
 
+// Sets up an effect (its WebGL view), once.
+function initLive(l) {
+  if (!l.init || l.inited) return;
+  l.inited = true;
+  l.init();
+}
+
+// On the stage: an effect runs while its treatment is visible, its frames
+// are decoded while it is near (up to one treatment away), and it is set up
+// once it approaches, unless idle time came first (initWhenIdle).
 function updateLives(time) {
   for (const l of lives) {
-    if (l.init && !l.inited && time >= l.initFrom && time <= l.to) {
-      l.inited = true;
-      l.init();
+    if (time >= l.initFrom && time <= l.to) initLive(l);
+    const near = time >= l.nearFrom && time <= l.nearTo;
+    if (near !== l.near) {
+      l.near = near;
+      if (near) l.warm?.();
+      else l.cool?.();
     }
     const visible = time >= l.from && time <= l.to;
     if (visible === l.visible) continue;
@@ -1996,19 +2219,63 @@ function updateLives(time) {
   }
 }
 
-// Driven by gsap.ticker; each effect is capped at 60fps, and nothing runs
-// once the stage has scrolled out of view.
+// Runs a visible effect's frame, at most 60 times a second.
+function frameLive(l, time) {
+  if (!l.visible || !l.frame) return;
+  if (l.last && time - l.last < 1 / 60 - 0.002) return;
+  const dt = l.last ? Math.min(0.1, time - l.last) : 1 / 60;
+  l.last = time;
+  l.frame(time, dt);
+}
+
+// Driven by gsap.ticker; nothing runs once the stage has scrolled out of view.
 let stageOnScreen = true;
 function tickLives(time) {
   if (!stageOnScreen) return;
-  for (const l of lives) {
-    if (!l.visible || !l.frame) continue;
-    if (l.last && time - l.last < 1 / 60 - 0.002) continue;
-    const dt = l.last ? Math.min(0.1, time - l.last) : 1 / 60;
-    l.last = time;
-    l.frame(time, dt);
-  }
+  for (const l of lives) frameLive(l, time);
 }
+
+/* ---------- Idle time ----------
+   Setting up a WebGL view takes a moment of main-thread work (shaders,
+   lighting), so it is done while the page is still, never mid-scroll. */
+
+let lastScrollAt = -Infinity;
+window.addEventListener('scroll', () => { lastScrollAt = performance.now(); }, { passive: true });
+
+// Calls fn once the page has been still for a moment and the browser is idle.
+// Returns a function that cancels it.
+function whenIdle(fn, stillFor = 500) {
+  let cancelled = false, timer = 0;
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+  const attempt = () => {
+    if (cancelled) return;
+    const wait = stillFor - (performance.now() - lastScrollAt);
+    if (wait > 0) { timer = setTimeout(attempt, wait + 50); return; }
+    idle(() => {
+      if (cancelled) return;
+      if (performance.now() - lastScrollAt < stillFor) attempt();
+      else fn();
+    }, { timeout: 1000 });
+  };
+  timer = setTimeout(attempt, 300);
+  return () => { cancelled = true; clearTimeout(timer); };
+}
+
+// Sets up each effect in turn, in idle time.
+function initWhenIdle(list) {
+  let cancel = () => {};
+  const next = (i) => {
+    while (i < list.length && (!list[i].init || list[i].inited)) i++;
+    if (i >= list.length) return;
+    cancel = whenIdle(() => { initLive(list[i]); next(i + 1); });
+  };
+  next(0);
+  return () => cancel();
+}
+
+// Bumped on every resize, so layout measurements cached by the scenes are re-taken.
+let layoutVersion = 0;
+window.addEventListener('resize', () => { layoutVersion++; }, { passive: true });
 
 /* ==========================================================================
    6. Motion
@@ -2016,6 +2283,7 @@ function tickLives(time) {
 
 let lenis = null;
 let stage = null; // { st, pin, tl, ids, anchors, labelScroll } once the stage is live
+let carousel = null; // { anchors, goTo(id, instant) } while the phones' carousel is live
 
 // Header gains its divider once the page has scrolled.
 function initHeader() {
@@ -2042,6 +2310,10 @@ function glideTo(y, duration, easing = easeInOutCubic) {
 }
 
 function scrollToTreatment(id) {
+  if (carousel) {
+    carousel.goTo(id);
+    return;
+  }
   if (!stage) return;
   const y = stage.labelScroll(id);
   const distance = Math.abs(y - window.scrollY) / window.innerHeight;
@@ -2081,7 +2353,8 @@ function initAnchors() {
       return;
     }
     const id = decodeURIComponent(hash.slice(1));
-    if (stage && stage.anchors.includes(id)) {
+    const featured = stage || carousel;
+    if (featured && featured.anchors.includes(id)) {
       event.preventDefault();
       scrollToTreatment(id);
       history.pushState(null, '', hash);
@@ -2106,7 +2379,12 @@ function initAnchors() {
 // After the stage exists, honour a #hash in the address (e.g. #iron or #book).
 function jumpToHash() {
   const id = decodeURIComponent(location.hash.slice(1));
-  if (!id || id === 'top' || !lenis) return;
+  if (!id || id === 'top') return;
+  if (carousel && carousel.anchors.includes(id)) {
+    carousel.goTo(id, true);
+    return;
+  }
+  if (!lenis) return;
   if (stage && stage.anchors.includes(id)) {
     lenis.scrollTo(stage.labelScroll(id), { immediate: true, force: true });
   } else {
@@ -2241,11 +2519,16 @@ function buildStage(root, isDesktop) {
     const start = starts[i];
     const scene = scenes[i];
     const isLast = i === n - 1;
-    // Live effects run while the treatment can be seen (after its fade in starts, until its fade out ends).
+    // Live effects run while the treatment can be seen (after its fade in
+    // starts, until its fade out ends), and keep their frames decoded from
+    // one treatment before until one after.
     const from = start + at(i, FADE_IN[0]), to = isLast ? end + 1 : start + at(i, FADE_OUT[1]);
     const ft = (target, a, b, f0, f1, ease = 'none') =>
       tl.fromTo(target, a, { ...b, duration: at(i, f1) - at(i, f0), ease, immediateRender: false }, start + at(i, f0));
-    const live = (effect) => lives.push({ from, to, initFrom: from, visible: false, inited: false, last: 0, ...effect });
+    const live = (effect) => lives.push({
+      from, to, initFrom: from, nearFrom: start - L, nearTo: to + L,
+      visible: false, near: false, inited: false, last: 0, ...effect,
+    });
     const idle = (target, vars) => {
       const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
       live({ start: () => tween.play(), stop: () => tween.pause() });
@@ -2253,8 +2536,8 @@ function buildStage(root, isDesktop) {
 
     const obj = scene.querySelector('.obj');
     const shadow = scene.querySelector('.obj__shadow');
-    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop });
-    if (defs[i].preload) preloads.push(defs[i].preload(t, scene, isDesktop).catch(() => null));
+    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop, mobile: false });
+    if (defs[i].preload) preloads.push(defs[i].preload(t, scene, { cap: isDesktop ? 2 : 1.5, half: false }).catch(() => null));
     tl.addLabel(t.id, labels[i]);
   });
 
@@ -2300,8 +2583,10 @@ async function preloadStage(root, preloads) {
 }
 
 function initStage(context, isDesktop) {
+  const stageRoot = document.getElementById('stage-root');
+  if (!stageRoot || !MENU || !FEATURED.length) return () => {};
+  stageRoot.insertAdjacentHTML('afterbegin', stageHTML(FEATURED));
   const root = document.getElementById('stage');
-  if (!root) return () => {};
 
   document.documentElement.classList.add('has-stage');
   const { tl, end, preloads, resync } = buildStage(root, isDesktop);
@@ -2310,6 +2595,7 @@ function initStage(context, isDesktop) {
   onScreen.observe(root);
 
   let alive = true;
+  let cancelIdle = () => {};
   (async () => {
     // Every image and frame is decoded, Three.js is fetched and the fonts are
     // in before the ScrollTrigger exists, so nothing loads mid-scroll.
@@ -2350,7 +2636,7 @@ function initStage(context, isDesktop) {
         trigger: root,
         start: `top ${STAGE.approach * 100}%`,
         end: () => pin.end,
-        scrub: 1,
+        scrub: STAGE.scrub,
         animation: driver,
         refreshPriority: 1,
         onRefresh: (self) => {
@@ -2369,17 +2655,251 @@ function initStage(context, isDesktop) {
     // The pin just made the page taller; let Lenis re-measure before any jump.
     if (lenis) lenis.resize();
     jumpToHash();
+    // The WebGL views are set up while the page is still, before they are needed.
+    cancelIdle = initWhenIdle(lives);
   })();
 
   return () => {
     alive = false;
     stage = null;
+    cancelIdle();
     onScreen.disconnect();
     stageOnScreen = true;
     lives.forEach((l) => { if (l.visible) l.stop?.(); l.visible = false; });
     lives = [];
     gsap.ticker.remove(tickLives);
+    root.querySelectorAll('.scene').forEach((scene) => {
+      dispose3D(scene);
+      scene.frameSequence?.dispose();
+    });
+    root.remove();
     document.documentElement.classList.remove('has-stage');
+  };
+}
+
+/* ---------- Phones: the treatments as swipeable panels ----------
+   The track scrolls natively (scroll snap, one treatment per swipe), so
+   vertical page scrolling keeps working when a swipe starts on it. Only the
+   current panel and its two neighbours are built: their pictures load, their
+   scenes' timelines exist and their frames are decoded. A scene plays to its
+   rest once its panel is the current one (CAROUSEL.activeRatio in view) and
+   the carousel is on screen; it is reset once the panel has completely left
+   the screen, so it plays again when the user comes back. Idle loops and
+   WebGL views only run while their panel can be seen. With animated false
+   (reduced motion) every panel shows its finished picture. */
+
+function initCarousel(context, animated) {
+  const stageRoot = document.getElementById('stage-root');
+  if (!stageRoot || !MENU || !FEATURED.length) return () => {};
+  stageRoot.insertAdjacentHTML('afterbegin', carouselHTML(FEATURED, animated));
+  const root = document.getElementById('stage');
+  const track = root.querySelector('.carousel__track');
+  const namesNav = root.querySelector('.carousel__names');
+  const names = [...root.querySelectorAll('.carousel__name')];
+  const [prev, next] = root.querySelectorAll('.carousel__arrow');
+  const fill = root.querySelector('.carousel__progress-fill');
+  const hint = root.querySelector('.carousel__hint');
+  const reduce = !animated;
+  document.documentElement.classList.add('has-carousel');
+
+  const panels = FEATURED.map((t, i) => {
+    const el = track.children[i];
+    const def = SCENES[t.showcase.scene] || SCENES.fade;
+    return {
+      t, i, el, def,
+      scene: el.querySelector('.scene'),
+      label: def.label ?? STAGE.label,
+      seconds: t.mobileSeconds || CAROUSEL.seconds,
+      ratio: 0, visible: false, near: false,
+      built: false, ready: false, tl: null, play: null, idles: [], lives: [],
+    };
+  });
+  const byEl = new Map(panels.map((p) => [p.el, p]));
+  let alive = true;
+  let active = -1;
+  let onScreen = false;  // any part of the carousel in the viewport
+  let settled = false;   // enough of it in view for a scene to play
+  const cancels = [];
+
+  // Pictures load only when their panel is built.
+  const loadImages = (el) => el.querySelectorAll('img[data-src], img[data-srcset]').forEach((img) => {
+    if (img.dataset.srcset) img.srcset = img.dataset.srcset;
+    if (img.dataset.src) img.src = img.dataset.src;
+    img.removeAttribute('data-src');
+    img.removeAttribute('data-srcset');
+  });
+
+  function build(p) {
+    if (!p || p.built) return;
+    p.built = true;
+    loadImages(p.el);
+    const images = [...p.el.querySelectorAll('img')];
+    let preload = null;
+    if (animated) {
+      // The scene as designed, on its own paused timeline of length 1.
+      const { t, scene } = p;
+      const obj = scene.querySelector('.obj');
+      const shadow = scene.querySelector('.obj__shadow');
+      context.add(() => {
+        const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
+        const ft = (target, a, b, f0, f1, ease = 'none') =>
+          tl.fromTo(target, a, { ...b, duration: f1 - f0, ease, immediateRender: false }, f0);
+        const idle = (target, vars) => p.idles.push(gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true }));
+        const live = (effect) => p.lives.push({ visible: false, near: false, inited: false, last: 0, ...effect });
+        p.def.animate({ t, tl, scene, obj, shadow, ft, idle, live, start: 0, L: 1, label: p.label, isLast: true, isDesktop: false, mobile: true });
+        tl.set({}, {}, 1);
+        tl.addLabel(t.id, p.label);
+        p.tl = tl;
+      });
+      if (p.def.preload) preload = p.def.preload(t, scene, { cap: 1.5, half: true }).catch(() => null);
+    }
+    Promise.all([...images.map((img) => img.decode().catch(() => {})), preload]).then(() => {
+      if (!alive) return;
+      p.ready = true;
+      p.el.classList.add('is-ready');
+      if (p.lives.some((l) => l.init)) cancels.push(initWhenIdle(p.lives));
+      update(p);
+    });
+  }
+
+  // Starts, stops, plays or resets a panel's scene to match where it is.
+  function update(p) {
+    if (!p.tl) return;
+    const visible = onScreen && p.ratio > 0;
+    const near = Math.abs(p.i - active) <= 1;
+    if (near !== p.near) {
+      p.near = near;
+      p.lives.forEach((l) => (near ? l.warm?.() : l.cool?.()));
+    }
+    if (visible !== p.visible) {
+      p.visible = visible;
+      p.idles.forEach((tween) => (visible ? tween.play() : tween.pause()));
+      p.lives.forEach((l) => {
+        l.visible = visible;
+        l.last = 0;
+        if (visible) {
+          if (!l.inited) { l.inited = true; l.init?.(); } // needed now, idle or not
+          l.start?.();
+        } else l.stop?.();
+      });
+    }
+    if (!p.ready) return;
+    if (!visible) {
+      // Completely out of view: back to the start, ready to play again.
+      if (p.play) p.play.kill();
+      p.play = null;
+      if (p.tl.time() !== 0) p.tl.pause(0);
+    } else if (p.i === active && settled && !p.play && p.tl.time() === 0) {
+      p.play = p.tl.tweenFromTo(0, p.label, { duration: p.seconds, ease: CAROUSEL.ease });
+    }
+  }
+
+  function setActive(i) {
+    if (i === active) return;
+    const first = active === -1;
+    active = i;
+    names.forEach((el, k) => {
+      el.classList.toggle('is-active', k === i);
+      if (k === i) el.setAttribute('aria-current', 'step');
+      else el.removeAttribute('aria-current');
+    });
+    prev.disabled = i === 0;
+    next.disabled = i === panels.length - 1;
+    fill.style.transform = `scaleX(${(i + 1) / panels.length})`;
+    // Keep the current name in view (only the row scrolls, never the page).
+    const chip = names[i];
+    const left = chip.offsetLeft - (namesNav.clientWidth - chip.offsetWidth) / 2;
+    namesNav.scrollTo({ left: Math.max(0, left), behavior: first || reduce ? 'auto' : 'smooth' });
+    if (!first && hint) hint.classList.add('is-gone');
+    [i - 1, i, i + 1].forEach((k) => build(panels[k]));
+    panels.forEach(update);
+  }
+
+  const goToIndex = (i, instant) => {
+    const p = panels[Math.max(0, Math.min(panels.length - 1, i))];
+    track.scrollTo({ left: p.el.offsetLeft, behavior: instant || reduce ? 'auto' : 'smooth' });
+  };
+
+  // Which panels are in view (horizontally, within the track). A panel
+  // counts as out of view below 2% (a panel that has just left sits edge to
+  // edge with the track, which still counts as intersecting at 0%).
+  const OUT = 0.02;
+  const panelObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const ratio = entry.isIntersecting ? entry.intersectionRatio : 0;
+      byEl.get(entry.target).ratio = ratio < OUT ? 0 : ratio;
+    });
+    const best = panels.reduce((a, b) => (b.ratio > a.ratio ? b : a));
+    if (best.ratio >= CAROUSEL.activeRatio) setActive(best.i);
+    panels.forEach(update);
+  }, { root: track, threshold: [0, OUT, CAROUSEL.activeRatio, 1] });
+  panels.forEach((p) => panelObserver.observe(p.el));
+
+  // Whether the carousel itself is on screen (vertically, in the page).
+  const pageObserver = new IntersectionObserver(([entry]) => {
+    onScreen = entry.isIntersecting;
+    settled = entry.intersectionRatio >= CAROUSEL.onScreen;
+    panels.forEach(update);
+  }, { threshold: [0, CAROUSEL.onScreen] });
+  pageObserver.observe(root);
+
+  const onClick = (event) => {
+    const name = event.target.closest('.carousel__name');
+    const arrow = event.target.closest('.carousel__arrow');
+    if (name) goToIndex(Number(name.dataset.index));
+    else if (arrow && !arrow.disabled) goToIndex(active + Number(arrow.dataset.step));
+  };
+  root.addEventListener('click', onClick);
+
+  const tick = (time) => {
+    if (!onScreen) return;
+    for (const p of panels) if (p.visible) p.lives.forEach((l) => frameLive(l, time));
+  };
+  if (animated) gsap.ticker.add(tick);
+
+  setActive(0);
+
+  const anchors = FEATURED.filter((t) => !t.standalone).map((t) => t.id);
+  carousel = {
+    anchors,
+    // Brings the carousel into view with the treatment's panel showing.
+    goTo(id, instant) {
+      const i = FEATURED.findIndex((t) => t.id === id);
+      if (i < 0) return;
+      goToIndex(i, true);
+      if (lenis) lenis.scrollTo(root, { offset: -document.getElementById('site-header').offsetHeight, immediate: !!instant, force: !!instant });
+      else root.scrollIntoView({ behavior: instant || reduce ? 'auto' : 'smooth' });
+    },
+  };
+  // The carousel changed the page's height: re-measure the reveals below it,
+  // then honour a #hash. Done after this matchMedia callback has returned
+  // (a refresh inside it would file the reveals' context under this one, and
+  // the next layout switch would revert them with it).
+  requestAnimationFrame(() => {
+    if (!alive) return;
+    ScrollTrigger.refresh();
+    if (lenis) lenis.resize();
+    jumpToHash();
+  });
+
+  return () => {
+    alive = false;
+    carousel = null;
+    cancels.forEach((cancel) => cancel());
+    panelObserver.disconnect();
+    pageObserver.disconnect();
+    root.removeEventListener('click', onClick);
+    gsap.ticker.remove(tick);
+    panels.forEach((p) => {
+      if (p.play) p.play.kill();
+      p.lives.forEach((l) => { if (l.visible) l.stop?.(); });
+      if (p.scene) {
+        dispose3D(p.scene);
+        p.scene.frameSequence?.dispose();
+      }
+    });
+    root.remove();
+    document.documentElement.classList.remove('has-carousel');
   };
 }
 
@@ -2389,14 +2909,14 @@ function initHeroIntro() {
   });
 }
 
-function initSectionReveals(isDesktop) {
+function initSectionReveals() {
   const targets = gsap.utils.toArray('[data-fade], [data-card]');
   gsap.set(targets, { y: 24, autoAlpha: 0 });
   ScrollTrigger.batch(targets, {
     start: 'top 88%',
     once: true,
     onEnter: (batch) => gsap.to(batch, {
-      y: 0, autoAlpha: 1, duration: 0.8, ease: 'power2.out', stagger: isDesktop ? 0.08 : 0.05, overwrite: true,
+      y: 0, autoAlpha: 1, duration: 0.8, ease: 'power2.out', stagger: window.innerWidth >= 768 ? 0.08 : 0.05, overwrite: true,
     }),
   });
 }
@@ -2421,10 +2941,13 @@ function initMotion() {
 
   const mm = gsap.matchMedia();
 
-  // Smooth scrolling and snapping only when the user hasn't asked for reduced motion.
+  // Smooth scrolling, snapping and the page's entrance and reveals only when
+  // the user hasn't asked for reduced motion.
   mm.add('(prefers-reduced-motion: no-preference)', () => {
     lenis = startLenis();
     if (lenis) lenis.on('scroll', scheduleSnap);
+    initHeroIntro();
+    initSectionReveals();
     return () => {
       if (!lenis) return;
       lenis.stopTicker();
@@ -2434,20 +2957,19 @@ function initMotion() {
     };
   });
 
-  // Scroll animations. Under reduced motion nothing is registered: the
-  // featured treatments show as calm stacked blocks with no pinning.
+  // The featured treatments: on phones, the swipeable carousel (with
+  // finished pictures under reduced motion); on wider screens, the pinned
+  // stage, or under reduced motion calm stacked blocks with no pinning.
+  // Crossing between the two reverts one completely and builds the other.
   mm.add({
-    isDesktop: '(min-width: 768px)',
-    isMobile: '(max-width: 767.98px)',
+    isMobile: CAROUSEL.query,
     reduceMotion: '(prefers-reduced-motion: reduce)',
+    always: 'all',
   }, (context) => {
-    const { reduceMotion, isDesktop } = context.conditions;
+    const { isMobile, reduceMotion } = context.conditions;
+    if (isMobile) return initCarousel(context, !reduceMotion);
     if (reduceMotion) return;
-
-    initHeroIntro();
-    const cleanupStage = initStage(context, isDesktop);
-    initSectionReveals(isDesktop);
-    return cleanupStage;
+    return initStage(context, true);
   });
 
   // Web fonts can change text heights; re-measure once they have loaded.
