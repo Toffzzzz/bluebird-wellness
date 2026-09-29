@@ -369,10 +369,134 @@ html.lenis body { height: auto; }
 
 .site-header .btn { margin-left: auto; }
 
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .site-nav { display: flex; }
   .site-header .btn { margin-left: 0; }
 }
+
+/* The logo (the bird, inline SVG in Bluebird Blue) and the wordmark: one link home. */
+.brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.brand__mark {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 34px;
+  aspect-ratio: 463.9 / 613.9;
+  color: var(--color-bluebird);
+}
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.footer-brand .brand__mark { height: 26px; }
+
+/* Phones: the Menu button (an icon with the word), opening a full-screen
+   menu. Wider screens have the header's own links instead. */
+.menu-button {
+  display: none;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.menu-button svg { width: 22px; height: 22px; }
+
+@media (max-width: 819.98px) {
+  .site-header__inner {
+    gap: var(--space-8);
+    padding-inline: 16px;
+  }
+  .brand__mark { height: 30px; }
+  .site-header .btn--compact {
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+  .menu-button { display: flex; margin-right: -4px; }
+}
+@media (max-width: 374.98px) {
+  .brand { gap: 8px; }
+  .site-header .wordmark { font-size: 16px; }
+}
+
+.site-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-porcelain);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.site-menu.is-open { opacity: 1; }
+.site-menu__inner {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-inline: 16px;
+  padding-bottom: calc(var(--space-32) + env(safe-area-inset-bottom));
+}
+.site-menu__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  height: var(--header-h);
+}
+.site-menu__close { display: flex; margin-right: -4px; }
+.site-menu__links {
+  margin: var(--space-16) 0 var(--space-32);
+  padding: 0;
+  list-style: none;
+}
+.site-menu__links li + li { border-top: 1px solid var(--color-mist); }
+.site-menu__links a {
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  font-size: 28px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.site-menu__links a[aria-current="page"] { color: var(--color-bluebird); }
+.site-menu__book {
+  width: 100%;
+  min-height: 56px;
+  font-size: 17px;
+}
+@media (min-width: 820px) {
+  .site-menu { display: none !important; }
+}
+
+/* While a menu or sheet is open, the page behind stays put. */
+html.is-locked,
+html.is-locked body { overflow: hidden; }
 
 /* ---------- Hero ---------- */
 
@@ -544,7 +668,7 @@ html.lenis body { height: auto; }
 .stage { display: none; }
 .has-stage .stage { display: block; }
 .has-stage .treatment-list,
-.has-phone-stage .treatment-list { display: none; }
+.has-reels .treatment-list { display: none; }
 
 .stage {
   --vis-w: min(560px, 42vw);
@@ -1093,153 +1217,72 @@ html.lenis body { height: auto; }
   }
 }
 
-/* ---------- Featured treatments on phones: the stage, driven by swiping ----------
-   Below 820px (and on phones held sideways) the stage is exactly one screen
-   tall below the header and isn't pinned: at the top the short names and a
-   thin progress line, then the picture (at least 55% of the stage) with
-   arrows over its edges, then the text. The page snaps gently onto it.
-   Only transforms and opacity change while it moves: the tints are three
-   stacked layers (the one being left, the next fading in over it, and a
-   veil for the quick jump between far treatments). */
+/* ---------- Featured treatments on phones: full-screen sections ----------
+   Below 820px (and on phones held sideways) each treatment fills the screen
+   below the header, on its tint: the picture (at least 58% of it), then the
+   title, the price and Learn more / Book. The page snaps so that one flick
+   brings the next one; above and below the treatments, the hero and the
+   rest of the page are each one area that scrolls freely. A pill at the
+   bottom shows where you are and opens the list of every treatment. */
 
-.has-phone-stage { scroll-snap-type: y proximity; }
+html.has-reel-snap { scroll-snap-type: y mandatory; }
+.has-reel-snap .hero,
+.has-reel-snap .page-rest { scroll-snap-align: start; }
+.reel { scroll-margin-top: 0 !important; }
+.has-reel-snap .reel {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+/* The page's scroll-padding-top already clears the fixed header. The area
+   below the treatments runs on through the footer, so every position down
+   to the very end is free. */
+.has-reel-snap .page-rest { scroll-margin-bottom: var(--footer-h, 100vh); }
 
-.stage.stage--phone {
-  --bar-h: 48px;
+.reel {
+  --pill-zone: 60px;
+  position: relative;
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--header-h));
+  padding: var(--space-8) 0 calc(var(--pill-zone) + env(safe-area-inset-bottom));
   overflow: hidden;
-  /* Vertical swipes scroll the page; sideways ones drive the stage. */
-  touch-action: pan-y;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  /* The page's scroll-padding-top already clears the fixed header. */
-  scroll-snap-align: start;
+  background: var(--tint);
 }
 @supports (height: 100svh) {
-  .stage.stage--phone { height: calc(100svh - var(--header-h)); }
-}
-
-.stage--phone .stage__bg { background-color: var(--color-porcelain); }
-.stage__tint {
-  position: absolute;
-  inset: 0;
-}
-.stage__tint + .stage__tint { opacity: 0; }
-
-/* The short names (the current one in Ink, with a short dash before it) and
-   a thin line that fills as the treatments go by. */
-.stage__bar {
-  position: relative;
-  z-index: 3;
-  flex: none;
-  height: var(--bar-h);
-}
-.stage__names {
-  position: relative;
-  display: flex;
-  gap: var(--space-4);
-  height: 100%;
-  margin: 0;
-  padding: 0 var(--space-12);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  list-style: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 16px), transparent);
-}
-.stage__names::-webkit-scrollbar { display: none; }
-.stage__names li { display: flex; align-items: center; }
-.stage__name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: none;
-  color: var(--color-slate);
-  font-family: inherit;
-  font-size: var(--text-eyebrow);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color var(--duration-base) var(--ease-out);
-}
-.stage__name::before {
-  content: "";
-  width: 16px;
-  height: 1px;
-  margin-right: -16px;
-  background: currentColor;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform var(--duration-base) var(--ease-out), margin var(--duration-base) var(--ease-out);
-}
-.stage__name.is-active { color: var(--color-ink); }
-.stage__name.is-active::before {
-  margin-right: 0;
-  transform: scaleX(1);
-}
-.stage__name:focus-visible { outline-offset: -2px; }
-
-.stage__line {
-  position: absolute;
-  left: var(--gutter);
-  right: var(--gutter);
-  bottom: 0;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 1px;
-  background: rgba(21, 34, 56, 0.1);
-}
-.stage__line-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--color-ink);
-  transform: scaleX(0);
-  transform-origin: left center;
-  will-change: transform;
-}
-
-.stage--phone .stage__inner {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-8);
-  height: auto;
-  min-height: 0;
-  padding: var(--space-8) 0 var(--space-16);
+  .reel { height: calc(100svh - var(--header-h)); }
 }
 
 /* The picture: every scene fills it the same way (Myers at full size here). */
-.stage--phone .stage__visual {
+.reel__visual {
   --vis-w: calc(100cqw - 2 * var(--gutter));
   --vis-h: calc(100cqh - var(--space-16));
-  order: 0;
+  position: relative;
   flex: 1 1 auto;
-  width: 100%;
-  height: auto;
-  min-height: 55%;
+  min-height: 58%;
   container-type: size;
 }
-.stage--phone .obj--blend { width: min(var(--vis-w), calc(var(--vis-h) * var(--ratio))); }
-
-/* A scene that isn't ready yet shows its finished picture. */
-.scene-still { visibility: hidden; }
-.stage--phone .scene.is-loading .obj > * { visibility: hidden !important; }
-.stage--phone .scene.is-loading .obj > .scene-still { visibility: visible !important; }
+.reel .obj--blend { width: min(var(--vis-w), calc(var(--vis-h) * var(--ratio))); }
+.reel__visual .scene { visibility: hidden; }
+.reel.is-shown .scene { visibility: visible; }
+.reel__still {
+  position: absolute;
+  top: var(--space-8);
+  left: var(--gutter);
+  width: calc(100% - 2 * var(--gutter));
+  height: calc(100% - var(--space-16));
+  object-fit: contain;
+  user-select: none;
+}
+.reel__still--photo { border-radius: var(--radius-card); }
+div.reel__still {
+  display: grid;
+  place-items: center;
+}
+div.reel__still .placeholder { width: min(60%, 60cqh); }
+.reel.is-shown .reel__still { visibility: hidden; }
 
 /* NAD+: the pre-rendered turn, on a square canvas centred on the object
-   (the 3D view's frame), crossfading in over the photo once drawn. */
+   (the 3D view's frame), crossfading in over the picture once drawn. */
 .nad-spin {
   position: absolute;
   top: 50%;
@@ -1254,45 +1297,67 @@ html.lenis body { height: auto; }
 .is-3d .nad-spin { opacity: 1; }
 
 /* Hair & Scalp: the pre-rendered sway replaces the picture once drawn (its
-   first frame matches the picture exactly). */
+   middle frame is the picture itself). */
 .wipe-frames { visibility: hidden; }
 .is-swaying .wipe-frames { visibility: visible; }
 .is-swaying .wipe-img { visibility: hidden; }
 
-/* The finished pictures (reduced motion). */
-.obj--still .layer { filter: var(--shadow-float); }
-.obj--photo .layer { border-radius: var(--radius-card); filter: none; object-fit: cover; }
-
-/* Round arrows over the picture's edges, gone at either end. */
-.stage__arrow {
-  position: absolute;
-  z-index: 30;
-  top: 50%;
+/* The text: title, price (with the Iron badge or + Pro), then Learn more and Book. */
+.reel__text {
   display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1px solid rgba(21, 34, 56, 0.12);
-  border-radius: 50%;
-  background: rgba(251, 250, 247, 0.72);
-  color: var(--color-ink);
-  cursor: pointer;
-  transform: translateY(-50%);
-  transition: opacity var(--duration-base) var(--ease-out), visibility var(--duration-base);
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  justify-items: center;
+  gap: var(--space-8) var(--space-12);
+  padding: 0 var(--gutter);
+  text-align: center;
 }
-.stage__arrow svg { width: 16px; height: 16px; }
-.stage__arrow--prev { left: 8px; }
-.stage__arrow--next { right: 8px; }
-.stage__arrow.is-off {
-  opacity: 0;
-  visibility: hidden;
+.reel__text > *,
+.reel__text .treatment-actions > .price,
+.reel__text .treatment-actions > .price-row { grid-column: 1 / -1; }
+.reel__text .eyebrow { display: none; }
+.reel__text .treatment-title { font-size: clamp(28px, 8.2vw, 38px); }
+.reel__text .treatment-title--long { font-size: clamp(25px, 7.2vw, 32px); }
+.reel__text .treatment-actions { display: contents; }
+.reel__text .treatment-actions > .price,
+.reel__text .treatment-actions > .price-row { order: 1; }
+.reel__text > .badge { order: 2; }
+.reel__text .treatment-actions > .btn {
+  order: 3;
+  grid-column: auto;
+  width: 100%;
+  min-height: 48px;
+  margin-top: var(--space-4);
+  padding-inline: var(--space-12);
+}
+.reel__text .treatment-actions > .btn--primary { order: 4; }
+/* The + Pro chip keeps its look, with a 44px tap target. */
+.reel__text .pro-chip::after {
+  content: "";
+  position: absolute;
+  inset: -10px -4px;
 }
 
-/* "Swipe", with a small arrow, once Hydration has arrived, until the first swipe. */
-.stage__hint {
+/* Above the first treatment: the way past them all. */
+.reel__skip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-height: 44px;
+  margin-top: calc(-1 * var(--space-8));
+  padding: 0 var(--space-16);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-slate);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* "Scroll", with a gently bouncing chevron, until the first scroll. */
+.reel__cue {
   position: absolute;
-  z-index: 30;
   left: 50%;
   bottom: var(--space-4);
   display: flex;
@@ -1306,112 +1371,195 @@ html.lenis body { height: auto; }
   font-weight: var(--font-weight-medium);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0;
   pointer-events: none;
   transform: translateX(-50%);
   transition: opacity var(--duration-slow) var(--ease-out);
 }
-.stage__hint.is-shown { opacity: 1; }
-.stage__hint svg { width: 14px; height: 14px; }
+.reel__cue svg { width: 14px; height: 14px; }
+.reel__cue.is-gone { opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
-  .stage__hint.is-shown svg { animation: stage-nudge 1.6s var(--ease-out) infinite; }
+  .reel__cue svg { animation: reel-bounce 1.6s var(--ease-out) infinite; }
 }
-@keyframes stage-nudge {
+@keyframes reel-bounce {
   0%, 100% { transform: none; }
-  50% { transform: translateX(4px); }
+  50% { transform: translateY(3px); }
 }
 
-/* The text: title, price (with + Pro), the badge, then Learn more and Book. */
-.stage--phone .stage__text {
-  z-index: 2;
-  order: 0;
-  flex: none;
-  justify-self: auto;
-  justify-items: center;
-  max-width: none;
-  padding: 0 var(--gutter);
-}
-.stage--phone .stage__copy {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
-  justify-items: center;
-  align-self: start;
-  gap: var(--space-8) var(--space-12);
-  text-align: center;
-}
-.stage--phone .stage__copy > *,
-.stage--phone .treatment-actions > .price,
-.stage--phone .treatment-actions > .price-row { grid-column: 1 / -1; }
-.stage--phone .stage__copy .eyebrow { display: none; }
-.stage--phone .treatment-title { font-size: clamp(30px, 8.6vw, 40px); }
-.stage--phone .treatment-title--long { font-size: clamp(26px, 7.4vw, 34px); }
-.stage--phone .treatment-actions { display: contents; }
-.stage--phone .treatment-actions > .price,
-.stage--phone .treatment-actions > .price-row { order: 1; }
-.stage--phone .stage__copy > .badge { order: 2; }
-.stage--phone .treatment-actions > .btn { order: 3; grid-column: auto; margin-top: var(--space-4); }
-.stage--phone .treatment-actions > .btn--secondary { justify-self: end; }
-.stage--phone .treatment-actions > .btn--primary { order: 4; justify-self: start; }
-/* The + Pro chip keeps its look, with a 44px tap target. */
-.stage--phone .pro-chip::after {
-  content: "";
-  position: absolute;
-  inset: -10px -4px;
-}
-
-/* The ending: "All treatments", on Porcelain, and the way down to them. */
-.stage__end {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
+/* The pill: where you are ("Myers · 3 of 14"), opening the list. */
+.reels-pill {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: calc(10px + env(safe-area-inset-bottom));
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-24);
-  padding: 0 var(--gutter);
-  text-align: center;
+  gap: var(--space-8);
+  min-height: 44px;
+  padding: 0 16px 0 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(21, 34, 56, 0.9);
+  box-shadow: 0 6px 20px rgba(21, 34, 56, 0.18);
+  color: var(--color-porcelain);
+  font-family: inherit;
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
   opacity: 0;
   visibility: hidden;
+  transform: translate(-50%, 12px);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out), visibility var(--duration-base);
 }
-.stage__end-title {
-  font-size: var(--text-section);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+.reels-pill.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
 }
+.reels-pill svg { width: 16px; height: 16px; }
 
-@media (max-height: 640px) {
-  .stage--phone .treatment-actions > .btn { padding: 12px 22px; }
+/* The sheet: every treatment, to jump straight to it. */
+.reels-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(21, 34, 56, 0.4);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.reels-sheet.is-open { opacity: 1; }
+.reels-sheet__panel {
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px calc(var(--space-16) + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: var(--color-porcelain);
+  transform: translateY(32px);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+@supports (height: 100svh) {
+  .reels-sheet__panel { max-height: 86svh; }
+}
+.reels-sheet.is-open .reels-sheet__panel { transform: none; }
+.reels-sheet__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-12);
+  background: var(--color-porcelain);
+}
+.reels-sheet__grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-mist);
+  transform: translateX(-50%);
+}
+.reels-sheet__title {
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.015em;
+}
+.reels-sheet__close { display: flex; margin-right: -4px; }
+.reels-sheet__close svg { width: 20px; height: 20px; }
+.reels-sheet__list {
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.reels-sheet__list li + li { border-top: 1px solid var(--color-mist); }
+.reels-sheet__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  border-radius: 8px;
+  color: var(--color-ink);
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+.reels-sheet__item[aria-current] { color: var(--color-bluebird); }
+.reels-sheet__item[aria-current] .reels-sheet__name::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 2px;
+}
+.reels-sheet__price {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--color-slate);
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-regular);
+  white-space: nowrap;
+}
+.reels-sheet__plus {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-sky);
+  color: var(--color-bluebird-deep);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+.reels-sheet__more {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+  margin-top: var(--space-16);
+}
+.reels-sheet__more .btn {
+  min-height: 48px;
+  padding-inline: var(--space-12);
+  white-space: normal;
+  text-align: center;
 }
 
 /* Held sideways: the picture beside the text. */
 @media (orientation: landscape) {
-  .stage--phone .stage__inner {
+  .reel {
+    --pill-zone: 56px;
     flex-direction: row;
     align-items: center;
     gap: var(--space-16);
-    padding: var(--space-4) var(--gutter) var(--space-8) 0;
+    padding-right: var(--gutter);
   }
-  .stage--phone .stage__visual {
+  .reel__skip {
+    position: absolute;
+    top: 0;
+    right: var(--gutter);
+    margin: 0;
+  }
+  .reel__visual {
     flex: 1 1 55%;
     align-self: stretch;
     min-height: 0;
   }
-  .stage--phone .stage__text {
+  .reel__text {
     flex: 0 1 42%;
-    padding: 0;
-  }
-  .stage--phone .stage__copy {
-    justify-content: start;
     justify-items: start;
+    padding: 0;
     text-align: left;
   }
-  .stage--phone .treatment-actions > .btn--secondary { justify-self: start; }
-  .stage--phone .treatment-title { font-size: clamp(24px, 7vh, 34px); }
-  .stage--phone .treatment-title--long { font-size: clamp(22px, 6vh, 30px); }
-  .stage--phone .treatment-actions > .btn { padding: 12px 20px; margin-top: 0; }
+  .reel__text .treatment-title { font-size: clamp(22px, 7vh, 32px); }
+  .reel__text .treatment-title--long { font-size: clamp(20px, 6vh, 28px); }
 }
 
 /* ---------- Standard sections ---------- */
@@ -2238,13 +2386,22 @@ html.lenis body { height: auto; }
 
 .glossary { max-width: calc(760px + var(--gutter) * 2); }
 
-.glossary-intro { padding: calc(var(--header-h) + var(--space-48)) 0 var(--space-32); }
-.glossary-intro .glossary {
+.glossary-intro { padding: calc(var(--header-h) + var(--space-48)) 0 var(--space-16); }
+.glossary-intro .glossary,
+.glossary-bar .glossary {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-16);
 }
+.glossary-bar { padding-bottom: var(--space-16); }
+.glossary-tools-row { padding-bottom: var(--space-32); }
+.glossary-empty {
+  padding: var(--space-48) 0 var(--space-16);
+  color: var(--color-slate);
+  text-align: center;
+}
+.to-top { display: none; }
 
 .glossary-search {
   display: flex;
@@ -2460,3 +2617,258 @@ html.lenis body { height: auto; }
   .card:hover .card__media img,
   .card:hover .placeholder { transform: none; }
 }
+
+/* ==========================================================================
+   Phones (below 820px): the rest of the site, made easy to use
+   ========================================================================== */
+
+@media (max-width: 819.98px) {
+  /* All treatments: a compact list. Each row is one link: a small picture,
+     the name (with PRO), the price (with + Pro) and a chevron; a Pro row
+     sits just under its standard version, slightly indented. */
+  .card-grid {
+    display: block;
+    overflow: hidden;
+    background: var(--color-white);
+    border: 1px solid var(--color-mist);
+    border-radius: var(--radius-tile);
+  }
+  .card {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 16px;
+    grid-template-areas: "media title chevron" "media action chevron" "media badge chevron";
+    grid-template-rows: auto auto auto;
+    align-content: center;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 2px;
+    min-height: 88px;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .card + .card { border-top: 1px solid var(--color-mist); }
+  .card::after {
+    content: "";
+    grid-area: chevron;
+    width: 8px;
+    height: 8px;
+    border-top: 1.5px solid var(--color-slate);
+    border-right: 1.5px solid var(--color-slate);
+    transform: rotate(45deg);
+  }
+  .card__media {
+    grid-area: media;
+    align-self: center;
+    width: 64px;
+    height: 64px;
+    margin: 0;
+    border-radius: 14px;
+  }
+  .card__shadow { display: none; }
+  .card__title {
+    grid-area: title;
+    align-self: end;
+    font-size: var(--text-body);
+    line-height: 1.25;
+  }
+  .card__link::after { border-radius: 0; }
+  .card__action {
+    grid-area: action;
+    align-self: start;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 0;
+  }
+  .card__action .price {
+    font-size: var(--text-label);
+    font-weight: var(--font-weight-regular);
+    color: var(--color-slate);
+  }
+  .card__more { display: none; }
+  .card .badge {
+    grid-area: badge;
+    justify-self: start;
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+  .card--pro {
+    margin-left: 20px;
+    padding-left: 12px;
+    border-left: 2px solid rgba(36, 88, 198, 0.4);
+    background: #FBFCFF;
+  }
+  .card--pro + .card { border-top-color: var(--color-mist); }
+  @supports selector(:has(*)) {
+    .card:has(.card__link:focus-visible) { outline-offset: -3px; }
+  }
+  /* The + Pro chip keeps its look, with a 44px tap target. */
+  .card .pro-chip::after,
+  .drip-page .pro-chip::after {
+    content: "";
+    position: absolute;
+    inset: -10px -4px;
+  }
+  @media (hover: hover) {
+    .card:hover { transform: none; box-shadow: none; background: var(--color-porcelain); }
+  }
+
+  /* Anchors land clear of the header. */
+  :where(section[id], [id].accordion__item, .longform-section, .toc) { scroll-margin-top: var(--space-16); }
+
+  /* Treatment pages: the name and price visible without scrolling, links to
+     the page's sections, and a Book bar once the price has scrolled away. */
+  .drip-intro { padding-top: calc(var(--header-h) + var(--space-16)); }
+  .drip-intro__inner { gap: var(--space-16); }
+  .drip-picture img { max-height: min(320px, 40vh); }
+  .drip-picture--photo img { width: min(100%, 300px); max-height: 40vh; object-fit: cover; }
+  .drip-picture--placeholder { width: min(100%, 40vh); }
+  .drip-back {
+    min-height: 44px;
+    margin: -6px 0;
+  }
+  .drip-jumps ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .drip-jumps a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid rgba(21, 34, 56, 0.2);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink);
+    font-size: var(--text-caption);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+  }
+  .accordion { padding-inline: var(--space-16); }
+  .accordion__summary { min-height: 48px; padding: 12px 0; }
+  .accordion__summary::after {
+    width: 10px;
+    height: 10px;
+    border-width: 0 2px 2px 0;
+    color: var(--color-bluebird);
+  }
+
+  .book-bar {
+    position: fixed;
+    z-index: 90;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-mist);
+    background: rgba(251, 250, 247, 0.95);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition: transform var(--duration-base) var(--ease-out), visibility var(--duration-base);
+  }
+  .book-bar.is-shown {
+    transform: none;
+    visibility: visible;
+  }
+  .book-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-16);
+  }
+  .book-bar__price {
+    font-size: var(--text-body);
+    font-weight: var(--font-weight-medium);
+  }
+  .book-bar .btn { min-height: 48px; padding-inline: 32px; }
+
+  /* The glossary: the search and the categories stay under the header. */
+  .glossary-bar {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 50;
+    padding: var(--space-8) 0;
+    border-bottom: 1px solid var(--color-mist);
+    background: rgba(247, 244, 239, 0.96);
+  }
+  .glossary-bar .glossary { gap: var(--space-8); }
+  .glossary-search { margin: 0; }
+  .glossary-search__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .glossary-search__input { padding: 10px 18px; font-size: 16px; }
+  .glossary-cats { width: calc(100% + 2 * var(--gutter)); margin: 0 calc(-1 * var(--gutter)); }
+  .glossary-cats__list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 2px var(--gutter);
+    scrollbar-width: none;
+  }
+  .glossary-cats__list::-webkit-scrollbar { display: none; }
+  .glossary-cats__link {
+    align-items: center;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+  .glossary-tools-row { padding: var(--space-16) 0 0; }
+  .glossary-section { padding-top: var(--space-32); }
+  :root:has(body.glossary-page) { scroll-padding-top: calc(var(--header-h) + var(--glossary-bar-h, 120px)); }
+  .glossary-section,
+  .glossary-page .accordion__item { scroll-margin-top: var(--space-8); }
+
+  .to-top {
+    position: fixed;
+    z-index: 90;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: var(--radius-pill);
+    background: rgba(21, 34, 56, 0.9);
+    color: var(--color-porcelain);
+    font-size: var(--text-caption);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out), visibility var(--duration-base);
+  }
+  .to-top.is-shown { opacity: 1; visibility: visible; transform: none; }
+  .to-top svg { width: 16px; height: 16px; }
+
+  /* Everywhere: comfortable tap targets and nothing wider than the screen. */
+  .site-footer__nav a,
+  .contact-item .link,
+  .ingredients__glossary .link,
+  .standalone__glossary .link,
+  .used-in__link,
+  .toc__list .link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .contact-item__links { display: flex; flex-wrap: wrap; column-gap: var(--space-16); }
+  .brand,
+  .variant-link,
+  .ingredient__link { min-height: 44px; }
+  .ingredient__link { min-width: 44px; }
+  .variant-link,
+  .ingredient__link { display: inline-flex; align-items: center; }
+  .btn--compact { min-height: 44px; }
+}
+

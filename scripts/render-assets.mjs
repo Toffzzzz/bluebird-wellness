@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 /* ==========================================================================
-   Renders the pictures the home page's stage uses on phones, where it runs
-   no live WebGL:
+   Renders the pictures drawn from the site's own code, plus smaller copies:
+
+   - images/treatments/nad-plus-infusion.webp: the NAD+ finished picture
+     (the grid card, the drip page, the reduced-motion list and the stage's
+     picture before its 3D view is ready): the glass molecule of the stage's
+     Three.js scene, facing front as it does at rest (its widest, most
+     readable view), cropped to the molecule with a small margin and centred
+     on a transparent 1200 × 1200 square.
+
+   The phones' stage runs no live WebGL, so it uses:
 
    - images/nad-spin/nad-NN.webp: the NAD+ glass molecule turning once
      (36 frames, frame 01 facing front), drawn by the site's own Three.js
@@ -18,10 +26,12 @@
    It serves this folder on a local port and draws everything in a headless
    Chromium through Playwright, which isn't part of the site:
      npm install --no-save playwright && npx playwright install chromium
-     node scripts/render-phone-assets.mjs
-   Three.js loads from jsDelivr, as on the site. Run it again after changing
-   the molecule (MOLECULE, models/nad.sdf), the hair shader or its mask, or
-   one of the listed pictures.
+     node scripts/render-assets.mjs                 everything
+     node scripts/render-assets.mjs picture copies  only those parts
+   (parts: picture, spin, sway, copies). Three.js loads from jsDelivr, as on
+   the site. Run it again after changing the molecule (MOLECULE,
+   models/nad.sdf), the hair shader or its mask, or one of the listed
+   pictures (copies).
    ========================================================================== */
 
 import { createServer } from 'node:http';
@@ -34,6 +44,14 @@ const QUALITY = 0.8;      // the frames
 const COPY_QUALITY = 0.9; // the 800px copies, which must look the same as the originals
 const NAD = { dir: 'images/nad-spin', name: 'nad', count: 36, size: 720, box: [800, 730] };
 const HAIR = { dir: 'images/hair-sway', name: 'hair', count: 17, size: [720, 1024] };
+const PICTURE = { file: 'images/treatments/nad-plus-infusion.webp', size: 1200, box: [800, 730], margin: 0.05, quality: 0.9 };
+const PARTS = ['picture', 'spin', 'sway', 'copies'];
+const asked = process.argv.slice(2);
+if (asked.some((part) => !PARTS.includes(part))) {
+  console.error(`Parts: ${PARTS.join(', ')}`);
+  process.exit(1);
+}
+const wants = (part) => !asked.length || asked.includes(part);
 
 let chromium;
 try {
@@ -110,8 +128,50 @@ const save = async (dir, name, n, [full, half]) => {
   if (half) await writeFile(path.join(ROOT, dir, `${base}-half.webp`), Buffer.from(half, 'base64'));
 };
 
+// NAD+'s finished picture: the rest pose (facing front), drawn at twice the
+// size, cropped to what it covers and scaled down into the square.
+if (wants('picture')) {
+  const [data] = await page.evaluate(async ({ size, box, margin, quality }) => {
+    const obj = document.createElement('div');
+    const boxH = (size * box[1]) / box[0];
+    obj.innerHTML = `<div class="three-host" style="width: ${size}px; height: ${boxH}px"></div>`;
+    document.body.append(obj);
+    const view = await createMolecule(obj, '/models/nad.sdf', 2);
+    if (!view) throw new Error('No WebGL');
+    view.render({ turn: 2 * Math.PI }); // facing front (one full turn, so it redraws)
+    const gl = obj.querySelector('canvas');
+    const drawn = document.createElement('canvas');
+    drawn.width = gl.width;
+    drawn.height = gl.height;
+    const g = drawn.getContext('2d', { willReadFrequently: true });
+    g.drawImage(gl, 0, 0);
+    // The molecule's bounds: every pixel that isn't (nearly) transparent.
+    const { data: px } = g.getImageData(0, 0, drawn.width, drawn.height);
+    let x0 = drawn.width, y0 = drawn.height, x1 = 0, y1 = 0;
+    for (let y = 0; y < drawn.height; y++) {
+      for (let x = 0; x < drawn.width; x++) {
+        if (px[(y * drawn.width + x) * 4 + 3] > 2) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      }
+    }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const square = document.createElement('canvas');
+    square.width = square.height = 2 * size;
+    const scale = (2 * size * (1 - 2 * margin)) / Math.max(w, h);
+    const sq = square.getContext('2d');
+    sq.imageSmoothingQuality = 'high';
+    sq.drawImage(drawn, x0, y0, w, h, size - (w * scale) / 2, size - (h * scale) / 2, w * scale, h * scale);
+    const out = await encode(square, size, size, quality, false);
+    view.dispose();
+    obj.remove();
+    return out;
+  }, PICTURE);
+  await writeFile(path.join(ROOT, PICTURE.file), Buffer.from(data, 'base64'));
+  console.log(PICTURE.file);
+}
+
 // NAD+: one full turn. Each frame is copied straight after its render, while
 // the WebGL canvas still holds it, into the square (at twice the size).
+if (wants('spin')) {
 const nadFrames = await page.evaluate(async ({ count, size, box, quality }) => {
   const obj = document.createElement('div');
   const boxH = (size * box[1]) / box[0];
@@ -137,8 +197,10 @@ const nadFrames = await page.evaluate(async ({ count, size, box, quality }) => {
 }, { ...NAD, quality: QUALITY });
 for (let k = 0; k < nadFrames.length; k++) await save(NAD.dir, NAD.name, k + 1, nadFrames[k]);
 console.log(`${NAD.dir}: ${nadFrames.length} frames`);
+}
 
 // Hair & Scalp: the sway from −1 to +1, with the idle sway at rest.
+if (wants('sway')) {
 const hairFrames = await page.evaluate(async ({ count, size: [w, h], quality }) => {
   const content = document.createElement('div');
   content.style.cssText = `position: relative; width: ${w}px; height: ${h}px`;
@@ -167,9 +229,10 @@ const hairFrames = await page.evaluate(async ({ count, size: [w, h], quality }) 
 }, { ...HAIR, quality: QUALITY });
 for (let k = 0; k < hairFrames.length; k++) await save(HAIR.dir, HAIR.name, k + 1, hairFrames[k]);
 console.log(`${HAIR.dir}: ${hairFrames.length} frames`);
+}
 
 // The 800px copies.
-const copies = await page.evaluate(() => [...PHONE_COPIES]);
+const copies = wants('copies') ? await page.evaluate(() => [...PHONE_COPIES]) : [];
 for (const src of copies) {
   const [data] = await page.evaluate(async ({ src, quality }) => {
     const img = new Image();
@@ -181,7 +244,7 @@ for (const src of copies) {
   }, { src, quality: COPY_QUALITY });
   await writeFile(path.join(ROOT, src.replace(/\.webp$/, '-sm.webp')), Buffer.from(data, 'base64'));
 }
-console.log(`${copies.length} copies at 800px`);
+if (copies.length) console.log(`${copies.length} copies at 800px`);
 
 await browser.close();
 server.close();

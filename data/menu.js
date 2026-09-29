@@ -1434,10 +1434,10 @@ window.MENU_VISUALS = {
     "badge": null
   },
   "nad-plus-infusion": {
-    "image": "images/nad.webp",
+    "image": "images/treatments/nad-plus-infusion.webp",
     "imageSize": [
-      800,
-      730
+      1200,
+      1200
     ],
     "imageFit": null,
     "alt": "A glass model of a molecule, with clear spheres joined by rods",
@@ -1458,11 +1458,11 @@ window.MENU_VISUALS = {
   "signature-infusion": {
     "image": "images/treatments/signature-infusion.webp",
     "imageSize": [
-      1534,
-      797
+      1556,
+      795
     ],
     "imageFit": null,
-    "alt": "A fountain pen beside a card signed \"Bluebird\" in ink",
+    "alt": "A fountain pen beside a card with the Bluebird Wellness bird drawn in blue ink",
     "tint": "#F7F2EA",
     "badge": null
   },
@@ -1481,6 +1481,3 @@ window.MENU_VISUALS = {
     }
   }
 };
-
-// Where every Book button goes.
-window.BOOK_URL = "#";

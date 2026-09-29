@@ -3,19 +3,21 @@
    Bluebird Wellness: menu generator
 
    Reads the clinic's menu, data/drips.json, and writes:
-     data/menu.js                  window.MENU (the JSON as it is), the
-                                   picture/tint/badge of every drip and
-                                   BOOK_URL, for the home page (script.js)
+     data/menu.js                  window.MENU (the JSON as it is) and the
+                                   picture/tint/badge of every drip, for the
+                                   home page (script.js)
      treatments/<slug>/index.html  one static page per drip, with all its
                                    text in the HTML
      ingredients/index.html        the ingredient glossary (the menu's
                                    glossary), with where each one is used
-     index.html                    only the href of every data-book link
+     index.html                    only its Book and contact links (from
+                                   site-config.js) and the inlined logo
      data/menu-check.txt           the check report (also printed)
 
-   Run it after editing data/drips.json, BOOK_URL below, or a treatment's
-   image, alt, tint or badge in TREATMENTS (script.js), then commit what it
-   writes:
+   Run it after editing data/drips.json, site-config.js (the booking link
+   and contact details), the logo (images/logo/bluebird-mark.svg), the
+   header, menu or footer in index.html, or a treatment's image, alt, tint or
+   badge in TREATMENTS (script.js), then commit what it writes:
      node scripts/build-menu.mjs
    To check the files as they are, without writing anything:
      node scripts/build-menu.mjs --check
@@ -32,10 +34,6 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 /* ---------- Settings ---------- */
-
-// Where every "Book" and "Book now" button goes, on the home page and on every
-// treatment page. "#" until the booking system exists.
-const BOOK_URL = '#';
 
 // The brand name in page titles, headers and footers (the menu text itself
 // stays exactly as written).
@@ -83,6 +81,17 @@ const notes = [];
 /* ---------- The menu ---------- */
 
 const MENU = JSON.parse(read('data/drips.json'));
+
+// The booking link and contact details (site-config.js, shared with script.js).
+const SITE = (() => {
+  const window = {};
+  try {
+    vm.runInNewContext(read('site-config.js'), { window }, { timeout: 1000 });
+  } catch (error) {
+    fail(`Could not read site-config.js: ${error.message}`);
+  }
+  return Object.fromEntries(Object.entries(window.SITE || {}).map(([k, v]) => [k, String(v ?? '').trim()]));
+})();
 const DRIPS = MENU.drips;
 if (!Array.isArray(DRIPS) || !DRIPS.length) fail('data/drips.json has no drips.');
 for (const drip of DRIPS) {
@@ -254,9 +263,46 @@ function proAdds(base, pro) {
   return { adds, medicines };
 }
 
+/* ---------- Book and contact links, and the logo ----------
+   Every link marked data-book goes to SITE.bookingUrl; while that is empty,
+   to the booking and contact section (#book), and the ones inside that
+   section (data-book="here") are hidden. A link marked data-contact="phone",
+   "email", "whatsapp" or "maps" gets its tel:, mailto:, wa.me or map link,
+   and is hidden while its value is empty. Links are written as seen from the
+   home page; rebase() points them back at it from other pages. */
+
+const contactHref = {
+  phone: (v) => `tel:${v.replace(/[^\d+]/g, '')}`,
+  email: (v) => `mailto:${v}`,
+  whatsapp: (v) => `https://wa.me/${v.replace(/\D/g, '')}`,
+  maps: (v) => v,
+};
+const setLink = (tag, href) => {
+  const clean = tag.replace(/\shidden(?=[\s>])/g, '');
+  const withHref = / href="/.test(clean) ? clean.replace(/\shref="[^"]*"/, ` href="${esc(href || '#book')}"`) : clean.replace(/^<a\b/, `<a href="${esc(href || '#book')}"`);
+  return href ? withHref : withHref.replace(/>$/, ' hidden>');
+};
+const withSite = (html) => html
+  .replace(/<a\b[^>]*\sdata-book(?:="([^"]*)")?[^>]*>/g, (tag, where) =>
+    setLink(tag, SITE.bookingUrl || (where === 'here' ? '' : '#book')))
+  .replace(/<a\b[^>]*\sdata-contact="([a-z]+)"[^>]*>/g, (tag, kind) =>
+    setLink(tag, SITE[kind === 'maps' ? 'mapsUrl' : kind] ? contactHref[kind](SITE[kind === 'maps' ? 'mapsUrl' : kind]) : ''));
+
+// The logo, inline so it takes the colour of its text (currentColor) and
+// stays sharp at every size: every <svg class="brand__mark" data-logo> gets
+// the drawing in images/logo/bluebird-mark.svg.
+const LOGO = (() => {
+  const svg = read('images/logo/bluebird-mark.svg');
+  const viewBox = (svg.match(/viewBox="([^"]+)"/) || [])[1];
+  const inner = (svg.match(/<svg\b[^>]*>([\s\S]*)<\/svg>/) || [])[1];
+  if (!viewBox || !inner) fail('Could not read images/logo/bluebird-mark.svg.');
+  return `<svg class="brand__mark" data-logo viewBox="${viewBox}" fill="currentColor" aria-hidden="true" focusable="false">${inner.trim()}</svg>`;
+})();
+const withLogo = (html) => html.replace(/<svg class="brand__mark" data-logo[^>]*>[\s\S]*?<\/svg>/g, LOGO);
+
 /* ---------- Header and footer: the home page's, pointed back at it ---------- */
 
-const INDEX = read('index.html');
+const INDEX = withLogo(withSite(read('index.html')));
 
 function slice(html, open, close) {
   const start = html.indexOf(open);
@@ -265,25 +311,28 @@ function slice(html, open, close) {
   return html.slice(start, end + close.length);
 }
 
-// data-book links go to BOOK_URL; in-page links go back to the home page and
-// relative links are re-pointed from the page's folder (up: "../../" from a
-// treatment page, "../" from the glossary).
-const withBookUrl = (html) =>
-  html.replace(/<a\b[^>]*\bdata-book\b[^>]*>/g, (tag) => tag.replace(/\shref="[^"]*"/, ` href="${esc(BOOK_URL)}"`));
+// In-page links go back to the home page and relative links are re-pointed
+// from the page's folder (up: "../../" from a treatment page, "../" from the
+// glossary).
 const rebase = (html, up) =>
-  withBookUrl(html)
+  html
     .replace(/href="(?!#|\/|[a-z][a-z0-9+.-]*:)([^"]+)"/gi, `href="${up}$1"`)
     .replace(/href="#top"/g, `href="${up}"`)
     .replace(/href="#([A-Za-z][^"]*)"/g, `href="${up}#$1"`);
 
-const HEADER_HTML = slice(INDEX, '<header class="site-header"', '</header>');
+// The header runs to the end of the phones' menu, which follows it.
+const HEADER_HTML = slice(INDEX, '<header class="site-header"', '<!-- end of the site menu -->');
 const FOOTER_HTML = slice(INDEX, '<footer class="site-footer">', '</footer>');
 const HEADER = rebase(HEADER_HTML, '../../');
 const FOOTER = rebase(FOOTER_HTML, '../../');
-// On the glossary itself, its own nav link points at the page and is marked current.
-const GLOSSARY_HEADER = rebase(HEADER_HTML, '../').replace(/<a href="\.\.\/ingredients\/">/, '<a href="./" aria-current="page">');
+// On the glossary itself, its own links point at the page and are marked current.
+const GLOSSARY_HEADER = rebase(HEADER_HTML, '../').replace(/<a href="\.\.\/ingredients\/">/g, '<a href="./" aria-current="page">');
 const GLOSSARY_FOOTER = rebase(FOOTER_HTML, '../').replace(/href="\.\.\/ingredients\/"/g, 'href="./"');
-const ICON = (INDEX.match(/<link rel="icon"[^>]*>/) || [''])[0];
+// The favicons, as the home page has them.
+const ICONS = [...INDEX.matchAll(/<link rel="(?:icon|apple-touch-icon)"[^>]*>/g)].map((m) => m[0]).join('\n  ');
+if (!ICONS) fail('No favicon links in index.html.');
+// A Book button on another page, as the header's are.
+const bookHref = (up) => (SITE.bookingUrl ? esc(SITE.bookingUrl) : `${up}#book`);
 
 /* ---------- Treatment page ---------- */
 
@@ -406,7 +455,7 @@ ${I}</li>`);
   const small = notes.map((n) => `
           <p class="ingredients__note"${vb(`${p}.ingredients.${n.i}`)}>${esc(n.line)}</p>`).join('');
   return `
-    <section class="drip-section" aria-labelledby="ingredients-title">
+    <section class="drip-section" id="ingredients" aria-labelledby="ingredients-title">
       <div class="container">
         <div class="ingredients" data-fade>
           <div class="ingredients__head">
@@ -449,7 +498,7 @@ function longFormHTML(drip, p) {
 ${paras(drip.moreInfoIntro, '          ')}
         </div>` : '';
   const toc = drip.sections?.length ? `
-        <nav class="toc" aria-labelledby="contents-title" data-fade>
+        <nav class="toc" id="contents" aria-labelledby="contents-title" data-fade>
           <h2 class="toc__title" id="contents-title">Contents</h2>
           <ol class="toc__list">
 ${drip.sections.map((s, i) => `            <li><a class="link" href="#${ids[i]}"${vb(`${p}.sections.${i}.heading`)}>${esc(s.heading)}</a></li>`).join('\n')}
@@ -485,6 +534,19 @@ ${items}
     </section>`;
 }
 
+// Phones: links to the page's own sections, under the price, in page order.
+function jumpsHTML(drip) {
+  const links = [];
+  if (drip.sections?.length) links.push(['#contents', 'Contents']);
+  if (drip.ingredients.length || drip.ingredientDescriptions.length) links.push(['#ingredients', 'Ingredients']);
+  if (drip.priceTable || drip.pricingNote) links.push(['#prices', 'Prices']);
+  if (!links.length) return '';
+  return `
+          <nav class="drip-jumps" aria-label="On this page">
+            <ul>${links.map(([href, label]) => `<li><a href="${href}">${label}</a></li>`).join('')}</ul>
+          </nav>`;
+}
+
 function pageHTML(drip) {
   const p = `drips.${drip.slug}`;
   const v = VISUALS[drip.slug];
@@ -503,7 +565,7 @@ function pageHTML(drip) {
   <meta name="theme-color" content="${esc(tint)}">
   <!-- Remove before launch, after the menu wording has had its compliance review -->
   <meta name="robots" content="noindex, nofollow">
-  ${ICON}
+  ${rebase(ICONS, '../../')}
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -521,10 +583,10 @@ function pageHTML(drip) {
         <div class="drip-intro__text">
           <a class="drip-back" href="../../#treatments">${BACK}Back to all treatments</a>
           <h1 class="drip-title"><span${vb(`${p}.name`)}>${esc(drip.name)}</span>${drip.baseVariantSlug ? ` ${PRO_BADGE}` : ''}</h1>${tagline}
-          <div class="drip-meta">
+          <div class="drip-meta" data-main-price>
             <p class="drip-price"${vb(`${p}.priceLabel`)}>${esc(drip.priceLabel)}</p>
             ${badge}
-          </div>${variantHTML(drip)}${upgradeHTML(drip)}
+          </div>${jumpsHTML(drip)}${variantHTML(drip)}${upgradeHTML(drip)}
           <div class="drip-prose drip-description"${vb(`${p}.description`)}>
 ${paras(drip.description, '            ')}
           </div>
@@ -536,10 +598,10 @@ ${paras(drip.description, '            ')}
     </div>
 ${longFormHTML(drip, p)}${ingredientsHTML(drip, p)}${pricesHTML(drip, p)}${footnotesHTML(drip, p)}
 
-    <section class="drip-book" aria-label="Book">
+    <section class="drip-book" aria-label="Book" data-book-section>
       <div class="container">
         <div class="drip-book__panel" data-fade>
-          <a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book>Book now<span class="visually-hidden"> ${esc(drip.name)}</span></a>
+          <a class="btn btn--primary" href="${bookHref('../../')}" data-book>Book now<span class="visually-hidden"> ${esc(drip.name)}</span></a>
           <p class="drip-disclaimer"${vb('disclaimer')}>${esc(MENU.disclaimer)}</p>
           <a class="drip-back" href="../../#treatments">${BACK}Back to all treatments</a>
         </div>
@@ -547,8 +609,17 @@ ${longFormHTML(drip, p)}${ingredientsHTML(drip, p)}${pricesHTML(drip, p)}${footn
     </section>
   </main>
 
+  <!-- Phones: the price and Book, once the main price has scrolled away -->
+  <div class="book-bar" data-book-bar aria-hidden="true">
+    <div class="container book-bar__inner">
+      <p class="book-bar__price"${vb(`${p}.priceLabel`)}>${esc(drip.priceLabel)}</p>
+      <a class="btn btn--primary" href="${bookHref('../../')}" data-book tabindex="-1">Book<span class="visually-hidden"> ${esc(drip.name)}</span></a>
+    </div>
+  </div>
+
   ${FOOTER}
 
+  <script src="../../site.js" defer></script>
   <script src="../../treatment.js" defer></script>
 </body>
 </html>
@@ -612,7 +683,7 @@ ${paras(item.text, '                  ')}
   <meta name="theme-color" content="#F7F4EF">
   <!-- Remove before launch, after the menu wording has had its compliance review -->
   <meta name="robots" content="noindex, nofollow">
-  ${ICON}
+  ${rebase(ICONS, '../')}
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -629,27 +700,35 @@ ${paras(item.text, '                  ')}
       <div class="container glossary">
         <a class="drip-back" href="../#treatments">${BACK}Back to all treatments</a>
         <h1 class="drip-title">${esc(GLOSSARY_TITLE)}</h1>
+      </div>
+    </div>
+    <!-- On phones the search and the categories stay under the header -->
+    <div class="glossary-bar" data-glossary-bar>
+      <div class="container glossary">
         <div class="glossary-search" data-glossary-search hidden>
           <label class="glossary-search__label" for="glossary-search">Search ingredients</label>
-          <input class="glossary-search__input" type="search" id="glossary-search" autocomplete="off" spellcheck="false" aria-controls="glossary-entries">
+          <input class="glossary-search__input" type="search" id="glossary-search" placeholder="Search ingredients" autocomplete="off" spellcheck="false" aria-controls="glossary-entries">
         </div>
         <nav class="glossary-cats" aria-label="Categories">
           <ul class="glossary-cats__list">${cats}
           </ul>
         </nav>
-        <div class="glossary-tools">
-          <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="glossary-entries" hidden>Expand all</button>
-        </div>
+      </div>
+    </div>
+    <div class="glossary-tools-row">
+      <div class="container glossary glossary-tools">
+        <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="glossary-entries" hidden>Expand all</button>
       </div>
     </div>
 
     <div class="container glossary glossary-entries" id="glossary-entries">${sections}
+      <p class="glossary-empty" data-glossary-empty role="status" hidden>No ingredients match that search.</p>
     </div>
 
     <section class="drip-book" aria-label="Book">
       <div class="container glossary">
         <div class="drip-book__panel" data-fade>
-          <a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book>Book now</a>
+          <a class="btn btn--primary" href="${bookHref('../')}" data-book>Book now</a>
           <p class="drip-disclaimer"${vb('disclaimer')}>${esc(MENU.disclaimer)}</p>
           <a class="drip-back" href="../#treatments">${BACK}Back to all treatments</a>
         </div>
@@ -657,8 +736,14 @@ ${paras(item.text, '                  ')}
     </section>
   </main>
 
+  <a class="to-top" href="#main" data-to-top>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4"/></svg>
+    <span>Back to top</span>
+  </a>
+
   ${GLOSSARY_FOOTER}
 
+  <script src="../site.js" defer></script>
   <script src="../treatment.js" defer></script>
 </body>
 </html>
@@ -674,9 +759,6 @@ window.MENU = ${JSON.stringify(MENU, null, 2)};
 // Picture, tint and badge of every drip (from TREATMENTS in script.js, or
 // NEW_PICTURES in the generator).
 window.MENU_VISUALS = ${JSON.stringify(VISUALS, null, 2)};
-
-// Where every Book button goes.
-window.BOOK_URL = ${JSON.stringify(BOOK_URL)};
 `);
 
 // Treatment pages: generated folders are replaced; anything else is left alone.
@@ -691,9 +773,8 @@ for (const drip of DRIPS) write(`treatments/${drip.slug}/index.html`, pageHTML(d
 // The ingredient glossary.
 if (GLOSSARY.length) write('ingredients/index.html', glossaryPageHTML());
 
-// index.html: only the data-book links change.
-const indexOut = withBookUrl(INDEX);
-if (indexOut !== INDEX) write('index.html', indexOut);
+// index.html: only its Book and contact links and the logo change.
+if (INDEX !== read('index.html')) write('index.html', INDEX);
 
 /* ---------- Check ---------- */
 
@@ -860,9 +941,9 @@ function renderedHome() {
   const context = vm.createContext({ window, document, location: { hash: '' }, history: { pushState: noop }, console });
   vm.runInContext(read('data/menu.js'), context, { filename: 'data/menu.js', timeout: 5000 });
   vm.runInContext(read('script.js'), context, { filename: 'script.js', timeout: 5000 });
-  // The pinned stage and the phones' stage (animated and still) are added
+  // The pinned stage and the phones' sections (animated and still) and sheet are added
   // once motion starts, so they are rendered here too.
-  const featured = vm.runInContext('stageHTML(FEATURED) + phoneStageHTML(FEATURED, true) + phoneStageHTML(FEATURED, false)', context, { timeout: 5000 });
+  const featured = vm.runInContext('stageHTML(FEATURED) + reelsHTML(FEATURED, true) + reelsHTML(FEATURED, false) + reelsSheetHTML(FEATURED)', context, { timeout: 5000 });
   return ROOTS.map((id) => roots[id]?.innerHTML || '').join('\n') + featured;
 }
 

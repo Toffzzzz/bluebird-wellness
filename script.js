@@ -8,7 +8,7 @@
    5. Live effects: frame sequences, hair sway (Three.js shader) and the
       NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger): the pinned stage on
-      wider screens; on phones the same stage, driven by swiping
+      wider screens; on phones a full-screen section per treatment
    ========================================================================== */
 
 /* ==========================================================================
@@ -17,8 +17,8 @@
    Names, prices and every word of treatment copy come from the clinic's
    menu, data/drips.json, through data/menu.js (window.MENU). That file is
    written by scripts/build-menu.mjs, which also builds a page per drip
-   (treatments/<slug>/) and holds the booking link (window.BOOK_URL). Edit
-   the menu there and run the script; nothing here repeats it.
+   (treatments/<slug>/). Edit the menu there and run the script; nothing
+   here repeats it. The booking link comes from site-config.js.
 
    TREATMENTS only holds the pinned stage's visuals, scenes and tints, and
    the menuSlug that links each one to its drip in the menu. Its order is the
@@ -49,9 +49,9 @@
                   others (default 1): 1.5 gives it half as much scroll again.
                   Its entrance and exit keep the normal length, so every
                   handover matches; only the part in between is stretched.
-     mobileSeconds Optional. On phones, how many seconds the swipe into it
-                  takes, from the previous treatment's rest to its own
-                  (default SWIPE.seconds).
+     mobileSeconds Optional. On phones, how many seconds its scene takes to
+                  play on to its rest once its section has come to rest
+                  (default REELS.seconds).
      showcase     The treatment's part of the pinned scroll stage:
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
@@ -71,8 +71,10 @@
                     frames:      ("frames", "signature") { path, count, size } image sequence
                                  (phoneStep: on phones, only every nth frame)
                     model:       ("molecule") V2000 SDF file for the 3D glass molecule
+                    box:         ("molecule") [width, height] of the 3D view on the stage
+                                 (the finished picture itself is square)
                     spin:        ("molecule") on phones, the molecule's turn pre-rendered
-                                 as a looping image sequence (scripts/render-phone-assets.mjs)
+                                 as a looping image sequence (scripts/render-assets.mjs)
                     swayFrames:  ("wipe") on phones, the hair's sway pre-rendered from
                                  −1 to +1 (the same script)
                     penPath:     ("signature") JSON with the nib's position on every frame
@@ -114,7 +116,7 @@ const TREATMENTS = [
     menuSlug: 'myers-cocktail-infusion',
     short: 'Myers',
     length: 1.5, // more scroll, so the pour is unhurried
-    mobileSeconds: 3.2,
+    mobileSeconds: 2.6,
     image: 'images/treatments/myers-cocktail-infusion.webp',
     imageSize: [1200, 920],
     alt: 'Two small glass bottles above a round glass flask filled with golden liquid',
@@ -159,12 +161,13 @@ const TREATMENTS = [
     id: 'nad',
     menuSlug: 'nad-plus-infusion',
     short: 'NAD+',
-    image: 'images/nad.webp',
-    imageSize: [800, 730],
+    image: 'images/treatments/nad-plus-infusion.webp', // rendered from the stage's 3D scene
+    imageSize: [1200, 1200],
     alt: 'A glass model of a molecule, with clear spheres joined by rods',
     showcase: {
       scene: 'molecule',
       tint: '#F2F2F7',
+      box: [800, 730], // the 3D view's proportions on the stage
       model: 'models/nad.sdf',
       spin: { path: 'images/nad-spin/nad-{n}.webp', count: 36, size: [720, 720] },
     },
@@ -302,10 +305,10 @@ const TREATMENTS = [
     id: 'signature',
     menuSlug: 'signature-infusion',
     short: 'Signature',
-    mobileSeconds: 3.2,
+    mobileSeconds: 2.6,
     image: 'images/treatments/signature-infusion.webp',
-    imageSize: [1534, 797],
-    alt: 'A fountain pen beside a card signed "Bluebird" in ink',
+    imageSize: [1556, 795],
+    alt: 'A fountain pen beside a card with the Bluebird Wellness bird drawn in blue ink',
     showcase: {
       scene: 'signature',
       tint: '#F7F2EA',
@@ -355,37 +358,25 @@ const STAGE = {
   },
 };
 
-/* Phones (narrower than 820px, or held sideways): the same stage and master
-   timeline, one screen tall and not pinned; swiping sideways drives it
-   instead of scrolling. Every treatment's rest label is a resting point,
-   and after Signature comes an ending ("All treatments").
-   A move from one rest to the next is measured in "progress" (0 → 1): the
-   first `hold` of it crosses the finished picture that holds before the
-   exit (so the exit starts at once), the rest is the handover and the next
-   scene. While the finger is down, a full-width drag covers `reach` of it;
-   on release the stage plays on to the next rest (or eases back). */
-const SWIPE = {
+/* Phones (narrower than 820px, or held sideways): no pinned stage. Each
+   treatment is a full-screen section in the page, like a reel: the page
+   snaps so one flick brings the next one to fill the screen. Its scene (the
+   same SCENES code, on its own timeline, without the stage's entrance and
+   exit fades) follows the scroll as it slides up, to `scrub` of the way to
+   its rest label, and once the page is still plays on by itself to the
+   rest (the treatment's mobileSeconds, or `seconds`). */
+const REELS = {
   query: '(max-width: 819.98px), (pointer: coarse) and (max-height: 500px)',
-  seconds: 2.2,         // default time from one rest to the next (see mobileSeconds)
-  endSeconds: 1.6,      // from Signature's rest to the ending
-  back: 0.6,            // going back takes this share of the time
-  ease: 'power1.inOut', // arrows, names and the arrival
-  releaseEase: 'sine.out', // after a drag, the stage is already moving
-  hold: 0.02,
-  reach: 0.35,
-  commit: 0.2,          // share of the width past which a release moves on…
-  flick: 0.3,           // …or a release faster than this (px per ms)
-  lock: 8,              // px of movement before the direction is decided
-  retarget: 2,          // time scale when a swipe arrives mid-transition
-  springBack: 0.45,     // seconds to ease back to the rest
-  jump: 0.4,            // seconds for the cross-fade jump to a far treatment
-  hint: 0.07,           // how far the arrival hint leans towards the next treatment
-  endRest: 0.3,         // the ending's rest, in segments after Signature's exit begins
-  keep: 1,              // frame sequences are decoded this many treatments away (and released beyond one more)
+  seconds: 1.6,        // default time to play on to the rest, once still
+  scrub: 0.4,          // share of the way to the rest label that follows the scroll
+  ease: 'power1.inOut',
+  near: 2,             // sections built (pictures, timeline, frames) either side of the current one
+  keep: 3,             // frame sequences are let go beyond this many sections away
+  still: 140,          // ms without scrolling before the page counts as still
 };
 
 // Phones: 800px-wide copies (<name>-sm.webp, made by
-// scripts/render-phone-assets.mjs) of the stage's pictures far wider than
+// scripts/render-assets.mjs) of the stage's pictures far wider than
 // that, chosen by srcset where the screen doesn't need the full size.
 const PHONE_COPIES = new Set([
   'images/bone-left.webp', 'images/bone-right.webp', 'images/bone-left-clean.webp',
@@ -395,6 +386,7 @@ const PHONE_COPIES = new Set([
   'images/myers/myers-right-a.webp', 'images/myers/myers-right-b.webp',
   'images/signature/signature-card.webp',
   'images/treatments/myers-cocktail-infusion.webp', 'images/treatments/signature-infusion.webp',
+  'images/treatments/nad-plus-infusion.webp',
 ]);
 const phoneCopy = (src) => src.replace(/\.webp$/, '-sm.webp');
 
@@ -410,8 +402,9 @@ const phoneCopy = (src) => src.replace(/\.webp$/, '-sm.webp');
 const MENU = window.MENU || null;
 // Picture, tint and badge per drip, resolved by the generator from TREATMENTS.
 const MENU_VISUALS = window.MENU_VISUALS || {};
-// Where every Book button goes. Set once, in scripts/build-menu.mjs.
-const BOOK_URL = window.BOOK_URL || '#';
+// The booking link (site-config.js); until there is one, Book goes to the
+// booking and contact section.
+const BOOK_URL = (window.SITE && window.SITE.bookingUrl) || '#book';
 
 const esc = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -452,7 +445,7 @@ function badgeHTML(badge) {
 const priceHTML = (label, path) => `<p class="price" data-verbatim="${esc(path)}">${esc(label)}</p>`;
 
 const bookHTML = (name) =>
-  `<a class="btn btn--primary" href="${esc(BOOK_URL)}">Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
+  `<a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book>Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
 
 const learnMoreHTML = (m) =>
   `<a class="btn btn--secondary" href="${esc(m.href)}">Learn more<span class="visually-hidden"> about ${esc(m.name)}</span></a>`;
@@ -557,49 +550,61 @@ const deferImages = (html) => html.replace(/<img\b[^>]*>/g, (tag) => tag.replace
 
 const CHEVRON = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 
-// Phones: the stage, one screen tall. At the top, the short names and a thin
-// progress line; then the picture (every scene, or with animated false the
-// finished pictures), with arrows over its edges; then the text. After the
-// last treatment comes an ending that leads to "All treatments".
-function phoneStageHTML(featured, animated) {
-  const scenes = featured.map((t, i) => {
-    const def = SCENES[t.showcase.scene] || SCENES.fade;
-    let inner;
-    if (animated) inner = def.html(t, { phone: true });
-    else if (!t.image) inner = objHTML(t, 'still', placeholderHTML(t, ' placeholder--stage'), [1, 1]);
-    else inner = objHTML(t, `still${t.imageFit === 'cover' ? ' obj--photo' : ''}`, layerImg(t.image, t.imageSize));
-    const loading = animated ? ' is-loading' : '';
-    return `<div class="scene scene--${esc(animated ? t.showcase.scene : 'still')}${loading}" data-scene="${esc(t.id)}" style="z-index: ${featured.length - i}">${deferImages(inner)}</div>`;
+// Phones: one full-screen section per treatment, in stage order, on its
+// tint: the picture (its finished picture until its scene is built, or
+// always with animated false), then the text. The first one has the way
+// past them all ("Skip to the full menu") and a "Scroll" cue. A standalone
+// item's anchor belongs to its entry in the standalone section.
+function reelsHTML(featured, animated) {
+  const sections = featured.map((t, i) => {
+    const [w, h] = t.imageSize;
+    // The finished deadlift pose is a frame: its half-size copy is plenty.
+    const src = t.showcase.scene === 'frames' ? t.image.replace(/\.webp$/, '-half.webp') : t.image;
+    const still = t.image
+      ? `<img class="reel__still${t.imageFit === 'cover' ? ' reel__still--photo' : ''}" data-src="${esc(src)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" decoding="async" draggable="false">`
+      : `<div class="reel__still">${placeholderHTML(t)}</div>`;
+    const first = i === 0 ? `
+        <a class="reel__skip" href="#treatments">Skip to the full menu</a>` : '';
+    const cue = i === 0 && animated ? `
+          <p class="reel__cue" aria-hidden="true"><span>Scroll</span>${CHEVRON('M4 6l4 4 4-4')}</p>` : '';
+    return `
+      <section class="reel${animated ? '' : ' is-still'}" id="${esc(t.standalone ? `reel-${t.id}` : t.id)}" data-reel="${i}" style="--tint: ${esc(t.showcase.tint || '#F7F4EF')}" aria-labelledby="reel-${esc(t.id)}-title">${first}
+        <div class="reel__visual">
+          ${still}${cue}
+        </div>
+        <div class="reel__text">${textHTML(t, `reel-${esc(t.id)}-title`)}</div>
+      </section>`;
   }).join('');
+  return `<div class="reels" id="stage" aria-label="Featured treatments">${sections}
+    </div>`;
+}
 
-  const copies = featured.map((t) =>
-    `<article class="stage__copy" data-copy="${esc(t.id)}">${textHTML(t, `stage-${esc(t.id)}-title`)}</article>`).join('');
-
-  const names = featured.map((t, i) => `
-          <li><button type="button" class="stage__name" data-index="${i}" aria-label="Go to ${esc(menuItem(t).name)}"><span>${esc(t.short)}</span></button></li>`).join('');
-
+// Phones: the floating pill (the current treatment and its place) and the
+// sheet it opens, listing every treatment to jump straight to.
+function reelsSheetHTML(featured) {
+  const rows = featured.map((t, i) => {
+    const m = menuItem(t);
+    const pro = m.drip && m.drip.baseVariantSlug ? ` ${PRO_BADGE}` : '';
+    const plus = proOf(m.drip) ? '<span class="reels-sheet__plus">+ Pro</span>' : '';
+    return `
+        <li><a class="reels-sheet__item" href="#${esc(t.standalone ? `reel-${t.id}` : t.id)}" data-reel-go="${i}"><span class="reels-sheet__name">${esc(t.short)}${pro}</span><span class="reels-sheet__price"><span data-verbatim="${esc(m.pricePath)}">${esc(m.price)}</span>${plus}</span></a></li>`;
+  }).join('');
   return `
-    <section class="stage stage--phone${animated ? '' : ' stage--still'}" id="stage" aria-label="Featured treatments">
-      <div class="stage__bg" aria-hidden="true"><span class="stage__tint"></span><span class="stage__tint"></span><span class="stage__tint"></span></div>
-      <nav class="stage__bar" aria-label="Featured treatments">
-        <ol class="stage__names">${names}
-        </ol>
-        <span class="stage__line" aria-hidden="true"><span class="stage__line-fill"></span></span>
-      </nav>
-      <div class="stage__inner">
-        <div class="stage__visual">
-          ${scenes}
-          <button type="button" class="stage__arrow stage__arrow--prev" data-step="-1" aria-label="Previous treatment">${CHEVRON('M10 3 5 8l5 5')}</button>
-          <button type="button" class="stage__arrow stage__arrow--next" data-step="1" aria-label="Next treatment">${CHEVRON('M6 3l5 5-5 5')}</button>
-          <p class="stage__hint" aria-hidden="true"><span>Swipe</span>${CHEVRON('M3 8h10M9 4l4 4-4 4')}</p>
-        </div>
-        <div class="stage__text">${copies}</div>
-        <div class="stage__end">
-          <p class="stage__end-title">All treatments</p>
-          <a class="btn btn--secondary" href="#treatments">See all treatments</a>
-        </div>
+  <button type="button" class="reels-pill" aria-haspopup="dialog" aria-controls="reels-sheet" hidden>
+    <span class="reels-pill__label"></span>${CHEVRON('M4 10l4-4 4 4')}
+  </button>
+  <div class="reels-sheet" id="reels-sheet" role="dialog" aria-modal="true" aria-labelledby="reels-sheet-title" hidden>
+    <div class="reels-sheet__panel">
+      <div class="reels-sheet__head">
+        <span class="reels-sheet__grip" aria-hidden="true"></span>
+        <h2 class="reels-sheet__title" id="reels-sheet-title">All treatments</h2>
+        <button type="button" class="menu-button reels-sheet__close" data-close>${CHEVRON('M4 4l8 8M12 4l-8 8')}<span>Close</span></button>
       </div>
-    </section>`;
+      <ol class="reels-sheet__list">${rows}
+      </ol>
+      <p class="reels-sheet__more"><a class="btn btn--secondary" href="#treatments">Full menu</a><a class="btn btn--secondary" href="ingredients/">Ingredient glossary</a></p>
+    </div>
+  </div>`;
 }
 
 // Share of the card's image well that a cut-out may fill (12% padding on each side).
@@ -733,14 +738,16 @@ function render() {
      c.tl, c.start, c.L, c.label, c.isLast, c.isDesktop
      c.phone    true on phones: no live WebGL; NAD+ and Hair & Scalp use
                 their pre-rendered frames instead (html(t, { phone }) too)
-   The first treatment's entrance plays while the stage scrolls into view
-   (on phones, when the stage first settles on screen), so the stage opens
-   on its entered picture; on wide screens the last one has no exit
-   (fadeOut skips it) and stays until the stage scrolls away, while on
-   phones it leaves for the ending like the others.
+     c.reel     true on phones: the scene is its section's own timeline
+                (start 0, L 1, isLast true) with no entrance or exit fades,
+                as the section itself slides in (fadeIn, gateIn, fadeOut
+                and the whole coconut's and orange's rise skip them)
+   The first treatment's entrance plays while the stage scrolls into view,
+   so the stage opens on its entered picture; the last one has no exit
+   (fadeOut skips it) and stays until the stage scrolls away.
    A scene may also have preload(t, scene, { cap, half, phone }), awaited
-   before its pictures show (on phones, the stage's loader calls it in
-   turn), and its own rest label.
+   before its pictures show (on phones, when its section is built), and its
+   own rest label.
    Every scene shows its natural, finished picture during its rest.
    Only transform, opacity, clip-path, masks and custom properties are animated.
    ========================================================================== */
@@ -758,23 +765,26 @@ function offsetWithin(el, ancestor) {
 // Default entrance and exit. The fades are sequential (the outgoing object
 // has fully faded at 0.90 of its segment, exactly when the incoming one starts
 // to appear at 0.08 of its own) while their movements overlap, so a handover
-// never shows two pictures at once.
+// never shows two pictures at once. On phones (c.reel) there are none: the
+// section itself slides in and out.
 const FADE_IN = [0.08, 0.2];
 const FADE_OUT = [0.82, 0.9];
-const fadeIn = ({ obj, ft }, from = { y: 40 }) => {
+const fadeIn = ({ obj, ft, reel }, from = { y: 40 }) => {
+  if (reel) return;
   gsap.set(obj, { autoAlpha: 0, ...from });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
   const to = Object.fromEntries(Object.keys(from).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0, 0.22, 'power2.out');
 };
-const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
-  if (isLast) return;
+const fadeOut = ({ obj, ft, isLast, reel }, to = { y: -30 }) => {
+  if (isLast || reel) return;
   const from = Object.fromEntries(Object.keys(to).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0.82, 1, 'power1.inOut');
   ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
 };
 // Visibility only, for scenes whose entrance is a reveal (a growing stem, a wipe).
-const gateIn = ({ obj, ft }) => {
+const gateIn = ({ obj, ft, reel }) => {
+  if (reel) return;
   gsap.set(obj, { autoAlpha: 0 });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
 };
@@ -986,7 +996,7 @@ const SCENES = {
       layerImg(t.showcase.layers.right, t.imageSize, ' data-layer="right"'),
       layerImg(t.showcase.layers.whole, t.imageSize, ' data-layer="whole"'),
     ].join('')),
-    animate({ scene, shadow, ft, isLast }) {
+    animate({ scene, shadow, ft, isLast, reel }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const juice = q('juice'), left = q('left'), right = q('right'), whole = q('whole');
       const MEET = '49.8% 49.5%';
@@ -1000,12 +1010,15 @@ const SCENES = {
       gsap.set(right, rightTogether);
       gsap.set(juice, { scale: 0.4 });
 
-      // Entrance: only the whole orange, rising gently into place.
-      gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
-      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      // Entrance: only the whole orange, rising gently into place (on phones
+      // it is already there as its section slides in).
+      if (!reel) {
+        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      }
 
       // The split: a quick crossfade from the whole orange to the pushed-together halves.
       ft(whole, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 1.03 }, 0.2, 0.28, 'power1.inOut');
@@ -1054,7 +1067,7 @@ const SCENES = {
         layerImg(t.showcase.layers.whole, size, ' data-layer="whole"'),
       ].join(''), size);
     },
-    animate({ scene, shadow, ft, isLast }) {
+    animate({ scene, shadow, ft, isLast, reel }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const bottom = q('bottom'), splash = q('splash'), top = q('top'), whole = q('whole');
       // Measured so the closed lid and the bottom make exactly the whole coconut's outline.
@@ -1066,12 +1079,15 @@ const SCENES = {
       gsap.set(top, { transformOrigin: '53% 36%', ...closed });
       gsap.set(splash, { transformOrigin: '48.7% 55.1%', autoAlpha: 0, scale: 0.3 }); // the shell's opening
 
-      // Entrance: only the whole coconut, rising gently into place.
-      gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
-      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      // Entrance: only the whole coconut, rising gently into place (on phones
+      // it is already there as its section slides in).
+      if (!reel) {
+        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
+      }
 
       // The crack: the split pieces are fully opaque underneath before the
       // whole coconut fades, so nothing ever looks see-through.
@@ -1134,7 +1150,7 @@ const SCENES = {
 
   // NAD+: the real 3D structure (section 5) in clear glass, turning like a
   // turntable once across its segment (facing front at rest), with a very
-  // slow extra idle turn. nad.webp shows until the first 3D frame is drawn;
+  // slow extra idle turn. Its finished picture shows until the first 3D frame is drawn;
   // without WebGL (or if loading fails) the photo turns in-plane instead.
   // On phones the same turn plays from its pre-rendered frames (showcase.spin,
   // one full turn, frame 1 facing front) on a square canvas centred on the
@@ -1142,7 +1158,7 @@ const SCENES = {
   molecule: {
     html: (t, { phone } = {}) => objHTML(t, 'molecule', phone && t.showcase.spin
       ? `<div class="layer three-fallback">${spinHTML(t)}</div><canvas class="nad-spin" aria-hidden="true"></canvas>`
-      : threeHTML(spinHTML(t))),
+      : threeHTML(spinHTML(t)), t.showcase.box || t.imageSize),
     phoneFrames: (t, scene) => preloadFrames(t, scene, {
       cap: 1.5, half: true, phone: true, frames: t.showcase.spin,
       canvas: scene.querySelector('.nad-spin'), key: 'spinSequence', loop: true,
@@ -2191,7 +2207,7 @@ function parseSDF(text) {
 
 // Centre the molecule on its centroid and turn it so its longest axis lies
 // across the screen and its flattest axis points at the viewer (the widest
-// view, like nad.webp, faces front at rest). Principal axes by power iteration.
+// view faces front at rest). Principal axes by power iteration.
 function orientMolecule(THREE, atoms) {
   const n = atoms.length;
   const c = atoms.reduce((s, a) => s.add(new THREE.Vector3(a.x, a.y, a.z)), new THREE.Vector3()).divideScalar(n);
@@ -2394,7 +2410,7 @@ window.addEventListener('resize', () => { layoutVersion++; }, { passive: true })
 
 let lenis = null;
 let stage = null; // { st, pin, tl, ids, anchors, labelScroll } once the stage is live
-let phoneStage = null; // { anchors, goTo(id, instant) } while the phones' stage is live
+let phoneStage = null; // { anchors, goTo(id) } while the phones' treatments are live
 
 // Header gains its divider once the page has scrolled.
 function initHeader() {
@@ -2547,19 +2563,13 @@ function initSnapInputs() {
 
 /* ---------- The stage ---------- */
 
-// The master timeline, paused: driven by the scroll on wider screens, by
-// swiping on phones. With phone, the last treatment leaves like the others
-// and an ending follows ("All treatments", on Porcelain), the tints
-// cross-fade through opacity only, no WebGL runs, and the scenes' pictures
-// and frames are left to the phones' loader.
-function buildStage(root, isDesktop, phone = false) {
+function buildStage(root, isDesktop) {
   const L = STAGE.segment;
   const n = FEATURED.length;
   const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
   const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
-  const steps = [...root.querySelectorAll(phone ? '.stage__name' : '.stage__step')];
+  const steps = [...root.querySelectorAll('.stage__step')];
   const bg = root.querySelector('.stage__bg');
-  const ending = phone ? root.querySelector('.stage__end') : null;
   const defs = FEATURED.map((t) => SCENES[t.showcase.scene] || SCENES.fade);
 
   // Where fraction f of treatment i's segment falls, from the segment's
@@ -2578,15 +2588,11 @@ function buildStage(root, isDesktop, phone = false) {
   for (let i = 1; i < n; i++) starts.push(starts[i - 1] + at(i - 1, X));
   const labelAt = defs.map((d) => d.label ?? STAGE.label);
   const labels = starts.map((s, i) => s + at(i, labelAt[i]));
-  // Phones: the ending begins where the last treatment's exit does.
-  const endStart = starts[n - 1] + at(n - 1, X);
-  const endLabel = endStart + SWIPE.endRest * L;
-  const end = phone ? endLabel : starts[n - 1] + lengths[n - 1];
+  const end = starts[n - 1] + lengths[n - 1];
 
   // The active treatment changes in the middle of each text handover.
   const mid = ([a, b]) => (a + b) / 2;
   const switches = starts.map((s, i) => (i === 0 ? -Infinity : (starts[i - 1] + at(i - 1, mid(STAGE.textOut)) + s + at(i, mid(STAGE.textIn))) / 2));
-  if (phone) switches.push((starts[n - 1] + at(n - 1, mid(STAGE.textOut)) + endStart + mid(STAGE.textIn) * L) / 2);
 
   let active = -1;
   const setActive = (index) => {
@@ -2601,7 +2607,6 @@ function buildStage(root, isDesktop, phone = false) {
       if (i === index) el.setAttribute('aria-current', 'step');
       else el.removeAttribute('aria-current');
     });
-    if (ending) ending.inert = index !== n;
   };
 
   // Safety net: only the treatments whose segment contains the playhead (the
@@ -2609,7 +2614,7 @@ function buildStage(root, isDesktop, phone = false) {
   // scene (with its shadow, canvases and 3D) and text block is hidden, and
   // live effects only run inside their own segment. Within a segment the
   // tweens decide; re-entering a segment always crosses one of its tweens.
-  const windows = starts.map((s, i) => [s, i === n - 1 && !phone ? Infinity : s + lengths[i]]);
+  const windows = starts.map((s, i) => [s, i === n - 1 ? Infinity : s + lengths[i]]);
   const isHidden = (el) => el.style.visibility === 'hidden' && el.style.opacity === '0';
   const sync = (time) => {
     windows.forEach(([a, b], i) => {
@@ -2623,29 +2628,6 @@ function buildStage(root, isDesktop, phone = false) {
     });
   };
 
-  // Background (phones): two stacked tints, the lower one showing the
-  // treatment being left and the upper one fading in with the next, so a
-  // handover changes only opacity (the colours change between handovers).
-  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
-  const handovers = phone ? tints.map((from, i) => {
-    const a = i < n - 1 ? starts[i + 1] : endStart;
-    return { a, b: a + (1 - X) * L, from, to: i < n - 1 ? tints[i + 1] : STAGE.finalTint };
-  }) : [];
-  const [lower, upper] = phone ? bg.children : [];
-  const tintEase = gsap.parseEase('power1.inOut');
-  const shown = { lower: '', upper: '', k: -1 };
-  const paintTint = (time) => {
-    let from = tints[0], to = tints[0], k = 0;
-    for (const h of handovers) {
-      if (time < h.a) break;
-      ({ from, to } = h);
-      k = tintEase(Math.min(1, (time - h.a) / (h.b - h.a)));
-    }
-    if (from !== shown.lower) lower.style.backgroundColor = shown.lower = from;
-    if (to !== shown.upper) upper.style.backgroundColor = shown.upper = to;
-    if (k !== shown.k) upper.style.opacity = shown.k = k;
-  };
-
   lives = [];
   const preloads = [];
   const onUpdate = () => {
@@ -2655,7 +2637,6 @@ function buildStage(root, isDesktop, phone = false) {
     sync(time);
     setActive(index);
     updateLives(time);
-    if (phone) paintTint(time);
   };
 
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' }, onUpdate });
@@ -2664,7 +2645,7 @@ function buildStage(root, isDesktop, phone = false) {
   FEATURED.forEach((t, i) => {
     const start = starts[i];
     const scene = scenes[i];
-    const isLast = i === n - 1 && !phone;
+    const isLast = i === n - 1;
     // Live effects run while the treatment can be seen (after its fade in
     // starts, until its fade out ends), and keep their frames decoded from
     // one treatment before until one after.
@@ -2682,8 +2663,8 @@ function buildStage(root, isDesktop, phone = false) {
 
     const obj = scene.querySelector('.obj');
     const shadow = scene.querySelector('.obj__shadow');
-    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop, phone });
-    if (defs[i].preload && !phone) preloads.push(defs[i].preload(t, scene, { cap: isDesktop ? 2 : 1.5, half: false }).catch(() => null));
+    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop, phone: false });
+    if (defs[i].preload) preloads.push(defs[i].preload(t, scene, { cap: isDesktop ? 2 : 1.5, half: false }).catch(() => null));
     tl.addLabel(t.id, labels[i]);
   });
 
@@ -2693,39 +2674,28 @@ function buildStage(root, isDesktop, phone = false) {
   const [out0, out1] = STAGE.textOut;
   copies.forEach((copy, i) => {
     tl.fromTo(copy, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: at(i, in1) - at(i, in0), ease: 'power2.out', immediateRender: false }, starts[i] + at(i, in0));
-    if (i < n - 1 || phone) {
+    if (i < n - 1) {
       tl.fromTo(copy, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: at(i, out1) - at(i, out0), ease: 'power1.inOut', immediateRender: false }, starts[i] + at(i, out0));
     }
   });
 
-  if (phone) {
-    // The ending's heading and button arrive like a treatment's text.
-    gsap.set(ending, { autoAlpha: 0, y: 30 });
-    tl.fromTo(ending, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: (in1 - in0) * L, ease: 'power2.out', immediateRender: false }, endStart + in0 * L);
-    tl.addLabel('ending', endLabel);
-  } else {
-    // Background: a gentle cross-fade between tints during each handover,
-    // then to Porcelain so the stage releases seamlessly into the grid.
-    gsap.set(bg, { backgroundColor: tints[0] });
-    for (let i = 0; i < n - 1; i++) {
-      tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - STAGE.exitStart) * L, ease: 'power1.inOut', immediateRender: false }, starts[i + 1]);
-    }
-    const lastFade = 0.14 * L;
-    tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
+  // Background: a gentle cross-fade between tints during each handover,
+  // then to Porcelain so the stage releases seamlessly into the grid.
+  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
+  gsap.set(bg, { backgroundColor: tints[0] });
+  for (let i = 0; i < n - 1; i++) {
+    tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - STAGE.exitStart) * L, ease: 'power1.inOut', immediateRender: false }, starts[i + 1]);
   }
+  const lastFade = 0.14 * L;
+  tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
 
   tl.set({}, {}, end); // the timeline runs to the very end of the pin
   sync(0);
   setActive(0);
   updateLives(0);
-  if (phone) paintTint(0);
   // After a refresh (resize, fonts) the playhead may not move, so re-apply.
   const resync = () => { const time = tl.time(); sync(time); updateLives(time); };
-  // Phones: the resting points (every rest label, then the ending) and where
-  // each exit begins (the way on from each resting point).
-  const rests = phone ? [...labels, endLabel] : labels;
-  const leaves = phone ? [...starts.slice(1), endStart] : starts.slice(1);
-  return { tl, labels, end, preloads, resync, rests, leaves, defs, scenes };
+  return { tl, labels, end, preloads, resync };
 }
 
 // Every stage image (layers, 3D fallbacks) is loaded and decoded, and every
@@ -2834,73 +2804,67 @@ function initStage(context, isDesktop) {
   };
 }
 
-/* ---------- Phones: the same stage, driven by swiping ----------
-   One screen tall below the header and not pinned: the page scrolls past it
-   natively (Lenis is off on phones) and settles onto it through CSS scroll
-   snapping. Sideways swipes drive the master timeline between its resting
-   points (each rest label, then the ending), measured in progress P: P = i
-   is treatment i at rest, and between two rests the first SWIPE.hold of the
-   way crosses the finished picture that holds before the exit, the rest is
-   the handover and the next scene. −1 → 0 is Hydration's entrance, played
-   when the stage first settles on screen.
-   While a finger drags from rest, the timeline follows it (a full-width drag
-   covers SWIPE.reach of the way); on release it plays on to the next rest,
-   or eases back. A swipe during a transition retargets it and speeds it up.
-   Pictures load before they are needed: the first three treatments before
-   the stage responds, then the rest in turn in idle time, never during a
-   swipe or a transition; frame sequences stay decoded only near the current
-   treatment. A treatment that isn't ready yet shows its finished picture.
-   With animated false (reduced motion) there is no timeline: the finished
-   pictures change instantly. */
+/* ---------- Phones: the treatments as full-screen sections ("reels") ----------
+   The page scrolls natively (no Lenis) and snaps (styles.css) so that one
+   flick brings the next section to fill the screen below the header.
+   A section's scene follows the scroll while its section slides up (from
+   when its top enters the screen until it reaches the header: to
+   REELS.scrub of the way to its rest label); once the page is still, the
+   rest plays by itself. A finished scene stays finished while any part of
+   its section is on screen, and scrolling back up finds the ones above
+   finished; a section starts again once it is completely below the screen.
+   Only the current section and REELS.near either side are built (their
+   pictures, timeline and frames), and never while a finger is down or the
+   page is moving; until a scene is ready its section shows its finished
+   picture. Positions are measured once (and on resize), never while
+   scrolling. The pill at the bottom opens a sheet listing every treatment.
+   With animated false (reduced motion) the sections show their finished
+   pictures, with no snapping and no animation. */
 
-function initPhoneStage(context, animated) {
+function initReels(context, animated) {
   const stageRoot = document.getElementById('stage-root');
   if (!stageRoot || !MENU || !FEATURED.length) return () => {};
-  stageRoot.insertAdjacentHTML('afterbegin', phoneStageHTML(FEATURED, animated));
+  stageRoot.insertAdjacentHTML('afterbegin', reelsHTML(FEATURED, animated));
+  document.body.insertAdjacentHTML('beforeend', reelsSheetHTML(FEATURED));
   const root = document.getElementById('stage');
-  const inner = root.querySelector('.stage__inner');
-  const namesList = root.querySelector('.stage__names');
-  const names = [...root.querySelectorAll('.stage__name')];
-  const prev = root.querySelector('.stage__arrow--prev');
-  const next = root.querySelector('.stage__arrow--next');
-  const fill = root.querySelector('.stage__line-fill');
-  const hint = root.querySelector('.stage__hint');
-  const ending = root.querySelector('.stage__end');
-  const [lower, upper, veil] = root.querySelector('.stage__bg').children;
-  const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
-  const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
-  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
-  const n = FEATURED.length; // the ending's index
-  const clamp = (lo, hi, v) => Math.max(lo, Math.min(hi, v));
-  document.documentElement.classList.add('has-phone-stage');
+  const pill = document.querySelector('.reels-pill');
+  const pillLabel = pill.querySelector('.reels-pill__label');
+  const sheet = document.getElementById('reels-sheet');
+  const panel = sheet.querySelector('.reels-sheet__panel');
+  const header = document.getElementById('site-header');
+  const footer = document.querySelector('.site-footer');
+  const cue = root.querySelector('.reel__cue');
+  const html = document.documentElement;
+  html.classList.add('has-reels');
+  if (animated) html.classList.add('has-reel-snap');
+  const n = FEATURED.length;
+  const clamp01 = gsap.utils.clamp(0, 1);
 
   let alive = true;
   const offs = [];
   const on = (el, type, fn, opts) => { el.addEventListener(type, fn, opts); offs.push(() => el.removeEventListener(type, fn, opts)); };
 
-  /* Pictures. The largest have 800px copies, chosen through srcset. */
-  const units = FEATURED.map((t, i) => ({ i, t, scene: scenes[i], obj: scenes[i].querySelector('.obj'), def: SCENES[t.showcase.scene] || SCENES.fade }));
-  if (animated) {
-    // Each scene's finished picture, shown until the scene is ready.
-    units.forEach((u) => {
-      const [w, h] = u.t.imageSize;
-      const img = document.createElement('img');
-      img.className = 'layer scene-still';
-      img.alt = '';
-      img.width = w;
-      img.height = h;
-      img.decoding = 'async';
-      img.draggable = false;
-      // The finished deadlift pose is a frame: its half-size copy is plenty.
-      img.dataset.src = u.t.showcase.scene === 'frames' ? u.t.image.replace(/\.webp$/, '-half.webp') : u.t.image;
-      u.obj.append(img);
-      u.still = img;
-    });
-  }
-  root.querySelectorAll('img[data-src]').forEach((img) => {
-    const src = img.dataset.src;
-    if (PHONE_COPIES.has(src)) img.dataset.srcset = `${phoneCopy(src)} 800w, ${src} ${img.getAttribute('width')}w`;
+  const reels = FEATURED.map((t, i) => {
+    const def = SCENES[t.showcase.scene] || SCENES.fade;
+    const el = root.querySelector(`[data-reel="${i}"]`);
+    return {
+      i, t, def, el,
+      visual: el.querySelector('.reel__visual'),
+      still: el.querySelector('img.reel__still'),
+      label: def.label ?? STAGE.label,
+      seconds: t.mobileSeconds || REELS.seconds,
+      top: 0, h: 0, vw: 0, visible: false,
+      built: false, loading: null, loaded: false, shown: false, stillLoaded: false, wantsPlay: false,
+      scene: null, tl: null, lives: [], play: null, done: false,
+    };
   });
+
+  /* Pictures. The largest have 800px copies, chosen through srcset. */
+  const addCopies = (scope) => scope.querySelectorAll('img[data-src]').forEach((img) => {
+    const src = img.dataset.src;
+    if (PHONE_COPIES.has(src) && !img.dataset.srcset) img.dataset.srcset = `${phoneCopy(src)} 800w, ${src} ${img.getAttribute('width')}w`;
+  });
+  addCopies(root);
   const loadImg = (img, width) => {
     if (img.dataset.srcset) {
       img.sizes = `${Math.ceil(width || 400)}px`;
@@ -2913,384 +2877,309 @@ function initPhoneStage(context, animated) {
     }
     return img.decode().catch(() => {});
   };
+  const loadStill = (r) => {
+    r.stillLoaded = true;
+    return r.still ? loadImg(r.still, r.vw) : Promise.resolve();
+  };
 
-  /* Sizes: measured once and on resize, never while a finger or a transition moves. */
-  const size = { width: 1, list: 0, names: [], objs: [] };
+  /* Where everything is: measured once, and again on resize. */
+  const size = { vh: 1, header: 0, width: 0 };
   const measure = () => {
-    size.width = root.clientWidth || 1;
-    size.list = namesList.clientWidth;
-    size.names = names.map((el) => [el.parentElement.offsetLeft, el.parentElement.offsetWidth]);
-    size.objs = units.map((u) => (u.obj ? u.obj.offsetWidth : 0));
-  };
-  measure();
-
-  /* The timeline and where each resting point sits on it. */
-  let tl = null, rests = [], leaves = [];
-  if (animated) ({ tl, rests, leaves } = buildStage(root, false, true));
-  const H = SWIPE.hold;
-  const timeAt = (P) => {
-    if (P <= -1) return 0;
-    if (P < 0) return (P + 1) * rests[0];
-    if (P >= n) return rests[n];
-    const k = Math.floor(P), p = P - k;
-    return p <= H
-      ? rests[k] + (p / H) * (leaves[k] - rests[k])
-      : leaves[k] + ((p - H) / (1 - H)) * (rests[k + 1] - leaves[k]);
-  };
-  // Seconds for the way from rest k to rest k + 1 (k = −1: the arrival).
-  const pairSeconds = (k) => {
-    if (k < 0) return SWIPE.seconds;
-    if (k >= n - 1) return SWIPE.endSeconds;
-    return FEATURED[k + 1].mobileSeconds || SWIPE.seconds;
-  };
-  const secondsBetween = (a, b) => {
-    const lo = Math.min(a, b), hi = Math.max(a, b);
-    let seconds = 0;
-    for (let k = Math.floor(lo); k < hi; k++) seconds += (Math.min(hi, k + 1) - Math.max(lo, k)) * pairSeconds(k);
-    return b < a ? seconds * SWIPE.back : seconds;
-  };
-
-  // The finished pictures (reduced motion): one at a time, instantly.
-  let stillShown = -1;
-  const showStill = (i) => {
-    if (i === stillShown) return;
-    stillShown = i;
-    scenes.forEach((el, k) => gsap.set(el, { autoAlpha: k === i ? 1 : 0 }));
-    copies.forEach((el, k) => {
-      gsap.set(el, { autoAlpha: k === i ? 1 : 0 });
-      el.classList.toggle('is-active', k === i);
-      el.inert = k !== i;
+    size.vh = window.innerHeight;
+    size.header = header ? header.offsetHeight : 0;
+    size.width = root.clientWidth;
+    const y = window.scrollY;
+    reels.forEach((r) => {
+      const box = r.el.getBoundingClientRect();
+      r.top = box.top + y;
+      r.h = box.height;
+      r.vw = r.visual.clientWidth;
     });
-    gsap.set(ending, { autoAlpha: i === n ? 1 : 0 });
-    ending.inert = i !== n;
-    names.forEach((el, k) => {
-      el.classList.toggle('is-active', k === i);
-      if (k === i) el.setAttribute('aria-current', 'step');
-      else el.removeAttribute('aria-current');
+    // The page below the treatments is one snap area, running on through the footer.
+    if (footer) html.style.setProperty('--footer-h', `${footer.offsetHeight}px`);
+    update();
+  };
+
+  /* Scenes: each on its own timeline, played by the scroll, then by time. */
+  const reset = (r) => {
+    if (r.play) { r.play.kill(); r.play = null; }
+    r.done = false;
+    r.tl.time(0);
+  };
+  const finish = (r) => {
+    if (r.play) { r.play.kill(); r.play = null; }
+    r.done = true;
+    r.tl.time(r.label);
+  };
+  const playOn = (r) => {
+    if (!r.tl || !r.shown || r.done || r.play) return;
+    const from = r.tl.time();
+    const duration = Math.max(0.3, r.seconds * clamp01((r.label - from) / (r.label * (1 - REELS.scrub))));
+    r.play = r.tl.tweenTo(r.label, {
+      duration, ease: REELS.ease,
+      onComplete: () => { r.play = null; r.done = true; },
     });
-    lower.style.backgroundColor = i === n ? STAGE.finalTint : tints[i];
-    [i - 1, i, i + 1].forEach((k) => units[k]?.scene.querySelectorAll('img[data-src]').forEach((img) => loadImg(img, size.objs[k])));
   };
-
-  const pos = { P: animated ? -1 : 0 };
-  let cur = 0, target = 0;
-  const apply = () => {
-    if (tl) tl.time(timeAt(pos.P));
-    else showStill(Math.round(pos.P));
-    fill.style.transform = `scaleX(${clamp(0, 1, (pos.P + 1) / (n + 1))})`;
-  };
-
-  let tween = null, hintTween = null, jumpTl = null, gesture = null;
-  let interactive = !animated, arrived = !animated, swiped = false;
-  let lastMoveAt = -Infinity; // a swipe or transition ended (the loader waits a moment)
-  const busy = () => !!(tween || hintTween || jumpTl || gesture?.scrub)
-    || performance.now() - lastScrollAt < 300 || performance.now() - lastMoveAt < 200;
-
-  /* The loader. */
-  const sequences = (u) => [u.scene.frameSequence, u.scene.spinSequence, u.scene.swaySequence].filter(Boolean);
-  const ready = (u) => !!u.loaded && u.done && (!u.scene.frameSequence || u.scene.frameSequence.ready());
-  // Shows the scene once it is ready (or its finished picture while it isn't),
-  // but never swaps pictures while it can be seen moving.
-  const refresh = (u) => {
-    const isReady = ready(u);
-    if (isReady === !u.scene.classList.contains('is-loading')) return;
-    if (isReady && busy() && u.scene.style.visibility !== 'hidden') return;
-    u.scene.classList.toggle('is-loading', !isReady);
-  };
-  const loadStill = (u) => {
-    if (u.stillLoading || ready(u)) return;
-    u.stillLoading = true;
-    loadImg(u.still, size.objs[u.i]);
-  };
-  const loadUnit = (u) => u.loaded || (u.loaded = Promise.all([
-    ...[...u.scene.querySelectorAll('img[data-src]')].filter((img) => img !== u.still).map((img) => loadImg(img, size.objs[u.i])),
-    u.def.preload ? u.def.preload(u.t, u.scene, { cap: 1.5, half: true, phone: true }).catch(() => null) : null,
-  ]).then(() => { u.done = true; }));
-  const loadExtra = (u) => u.extra || (u.extra = u.def.phoneFrames(u.t, u.scene).catch(() => null));
-  const decode = (u) => Promise.race([
-    Promise.all(sequences(u).map((s) => s.setWanted(true))),
-    new Promise((resolve) => setTimeout(resolve, 6000)),
-  ]);
-  const near = (u, d) => Math.abs(u.i - target) <= d;
-  // The next piece of work: the current treatment and its neighbours first
-  // (pictures, pre-rendered frames, then decoding), then the rest in order.
-  const nextJob = () => {
-    const close = [target, target + 1, target - 1].map((k) => units[k]).filter(Boolean);
-    for (const u of close) if (!u.loaded) return () => loadUnit(u);
-    for (const u of close) if (u.def.phoneFrames && !u.extra) return () => loadExtra(u);
-    for (const u of close) if (sequences(u).some((s) => !s.ready())) return () => decode(u);
-    for (const u of units) if (!u.loaded) return () => loadUnit(u);
-    for (const u of units) if (u.def.phoneFrames && !u.extra) return () => loadExtra(u);
-    return null;
-  };
-  const idleCall = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 800 }) : setTimeout(fn, 60));
-  let pumping = false;
-  const pump = () => {
-    if (pumping || !animated) return;
-    pumping = true;
-    const step = () => {
-      if (!alive) return;
-      if (busy()) { setTimeout(() => idleCall(step), 150); return; }
-      const job = nextJob();
-      if (!job) { pumping = false; return; }
-      job().then(() => {
-        units.forEach(refresh);
-        idleCall(step);
-      });
-    };
-    idleCall(step);
-  };
-  // Frame sequences far from the current treatment give their memory back.
-  const trim = () => units.forEach((u) => {
-    if (near(u, SWIPE.keep + 1)) return;
-    sequences(u).forEach((s) => { if (s.ready()) s.setWanted(false); });
-  });
-  // Where the stage is headed: its neighbours' finished pictures are fetched
-  // at once if their scenes aren't ready.
-  const heading = (to) => [to - 1, to, to + 1].forEach((k) => { if (units[k] && animated && !ready(units[k])) loadStill(units[k]); });
-
-  /* Arrows, names and the hint. */
-  const marks = () => {
-    prev.classList.toggle('is-off', target <= 0);
-    next.classList.toggle('is-off', target >= n);
-    prev.disabled = target <= 0;
-    next.disabled = target >= n;
-  };
-  const centreName = (i, smooth) => {
-    const [left, width] = size.names[Math.min(i, n - 1)] || [0, 0];
-    namesList.scrollTo({ left: Math.max(0, left + width / 2 - size.list / 2), behavior: smooth && animated ? 'smooth' : 'auto' });
-  };
-  const dismissHint = () => {
-    swiped = true;
-    hint.classList.remove('is-shown');
-    if (hintTween) { hintTween.kill(); hintTween = null; }
-  };
-  const showHint = () => {
-    if (swiped) return;
-    hint.classList.add('is-shown');
-    // One gentle lean towards the next treatment, and back.
-    hintTween = gsap.timeline({ delay: 0.4, onComplete: () => { hintTween = null; lastMoveAt = performance.now(); pump(); } })
-      .to(pos, { P: SWIPE.hint, duration: 0.6, ease: 'sine.inOut', onUpdate: apply })
-      .to(pos, { P: 0, duration: 0.7, ease: 'sine.inOut', onUpdate: apply });
-  };
-  if (!animated) hint.classList.add('is-shown');
-
-  /* Moving between resting points. */
-  const settle = () => {
-    cur = target;
-    lastMoveAt = performance.now();
-    marks();
-    centreName(cur, true);
-    if (!animated) return;
-    trim();
-    units.forEach(refresh);
-    pump();
-  };
-  // from: 'tap' (arrows, names, the arrival), 'drag' (a release that moves
-  // on) or 'spring' (a release that eases back).
-  function go(to, from = 'tap', then) {
-    to = clamp(0, n, to);
-    if (!animated) {
-      target = to;
-      pos.P = to;
-      apply();
-      settle();
-      return;
-    }
-    const moving = !!tween;
-    if (tween) tween.kill();
-    if (hintTween) { hintTween.kill(); hintTween = null; }
-    tween = null;
-    target = to;
-    marks();
-    heading(to);
-    let duration = secondsBetween(pos.P, to);
-    let ease = from === 'drag' ? SWIPE.releaseEase : SWIPE.ease;
-    if (from === 'spring') { duration = SWIPE.springBack; ease = 'power2.out'; }
-    else if (moving) { duration /= SWIPE.retarget; ease = 'power1.out'; }
-    if (Math.abs(pos.P - to) < 1e-4) {
-      pos.P = to;
-      apply();
-      settle();
-      return;
-    }
-    tween = gsap.to(pos, {
-      P: to, duration, ease, onUpdate: apply,
-      onComplete: () => { tween = null; settle(); if (then) then(); },
-    });
-  }
-  // A far treatment: a quick cross-fade instead of playing through everything in between.
-  function jump(to) {
-    to = clamp(0, n, to);
-    if (!animated) { go(to); return; }
-    if (tween) { tween.kill(); tween = null; }
-    if (hintTween) { hintTween.kill(); hintTween = null; }
-    if (jumpTl) jumpTl.kill();
-    target = to;
-    marks();
-    heading(to);
-    const half = SWIPE.jump / 2;
-    jumpTl = gsap.timeline({ onComplete: () => { jumpTl = null; settle(); } })
-      .to(inner, { autoAlpha: 0, duration: half, ease: 'power1.in' })
-      .add(() => {
-        // The old tint stays over the new one for a moment, then fades.
-        veil.style.backgroundColor = Number(upper.style.opacity) >= 0.5 ? upper.style.backgroundColor : lower.style.backgroundColor;
-        veil.style.opacity = 1;
-        pos.P = to;
-        apply();
-      })
-      .to(inner, { autoAlpha: 1, duration: half, ease: 'power1.out' })
-      .to(veil, { opacity: 0, duration: half, ease: 'power1.out' }, '<');
-  }
-  // Arrows and names: a neighbour plays the transition, a far one jumps.
-  const select = (i) => {
-    if (!interactive) return;
-    i = clamp(0, n, i);
-    arrived = true;
-    dismissHint();
-    if (i === target) return;
-    if (Math.abs(i - target) === 1) go(i);
-    else jump(i);
-  };
-
-  /* The arrival: once the stage first settles on screen, Hydration enters and
-     its scene plays, then the hint. */
-  let inView = false, arriveTimer = 0;
-  const arrive = () => {
-    clearTimeout(arriveTimer);
-    if (arrived || !interactive || !inView) return;
-    const wait = 150 - (performance.now() - lastScrollAt);
-    if (wait > 0) { arriveTimer = setTimeout(arrive, wait + 20); return; }
-    arrived = true;
-    go(0, 'tap', showHint);
-  };
-  const setOnScreen = (visible) => {
-    if (visible === stageOnScreen) return;
-    stageOnScreen = visible;
-    // Idle loops pause while the stage is off screen (frames stop in tickLives).
-    lives.forEach((l) => {
-      if (!l.visible) return;
+  const setVisible = (r, visible) => {
+    if (visible === r.visible) return;
+    r.visible = visible;
+    r.lives.forEach((l) => {
+      l.visible = visible;
       l.last = 0;
       if (visible) l.start?.();
       else l.stop?.();
     });
   };
-  const screenObserver = new IntersectionObserver(([entry]) => {
-    setOnScreen(entry.isIntersecting);
-    inView = entry.intersectionRatio >= 0.75;
-    arrive();
-  }, { threshold: [0, 0.75] });
-  screenObserver.observe(root);
-  const resizeObserver = new ResizeObserver(() => { measure(); if (!tween && !jumpTl) centreName(cur, false); });
-  resizeObserver.observe(root);
-  if (animated) gsap.ticker.add(tickLives);
 
-  /* Gestures: vertical swipes stay the page's; sideways ones drive the stage. */
-  on(root, 'pointerdown', (e) => {
-    if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    if (e.target.closest('a, button, .stage__bar')) return;
-    gesture = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, locked: false, scrub: false, base: cur, samples: [[e.timeStamp, e.clientX]] };
-  });
-  on(root, 'pointermove', (e) => {
-    const g = gesture;
-    if (!g || e.pointerId !== g.id) return;
-    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
-    if (!g.locked) {
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE.lock) return;
-      if (Math.abs(dx) <= Math.abs(dy) || !interactive) { gesture = null; return; }
-      g.locked = true;
-      try { root.setPointerCapture(e.pointerId); } catch (error) { /* already released */ }
-      if (!arrived) { arrived = true; go(0); }
-      dismissHint();
-      // From rest the stage follows the finger; mid-transition the release decides.
-      g.scrub = animated && !tween && !jumpTl;
-      g.base = cur;
+  let focus = 0;    // the section in the middle of the screen (or the last one that was)
+  let current = -1; // the same, or −1 when no section is there
+  const setCurrent = (i) => {
+    current = i;
+    if (i >= 0) {
+      focus = i;
+      pillLabel.textContent = `${FEATURED[i].short} · ${i + 1} of ${n}`;
+      if (i > 0 && cue) cue.classList.add('is-gone');
     }
-    g.dx = dx;
-    g.samples.push([e.timeStamp, e.clientX]);
-    while (g.samples.length > 2 && e.timeStamp - g.samples[0][0] > 100) g.samples.shift();
-    if (g.scrub) {
-      pos.P = clamp(0, n, g.base + clamp(-1, 1, -dx / size.width) * SWIPE.reach);
-      apply();
-    }
-  });
-  const release = (e, cancelled) => {
-    const g = gesture;
-    if (!g || e.pointerId !== g.id) return;
-    gesture = null;
-    if (!g.locked) return;
-    const [t0, x0] = g.samples[0];
-    const [t1, x1] = g.samples[g.samples.length - 1];
-    const velocity = t1 > t0 ? (x1 - x0) / (t1 - t0) : 0; // px per ms, negative leftwards
-    const far = Math.abs(g.dx) > SWIPE.commit * size.width;
-    let way = 0;
-    if (!cancelled && g.dx < 0 && (far || velocity < -SWIPE.flick)) way = 1;
-    if (!cancelled && g.dx > 0 && (far || velocity > SWIPE.flick)) way = -1;
-    lastMoveAt = performance.now();
-    if (g.scrub) {
-      const to = g.base + way;
-      if (way && to >= 0 && to <= n) go(to, 'drag');
-      else go(g.base, 'spring');
-    } else if (way) {
-      if (animated) go(target + way);
-      else go(cur + way);
-    }
+    pill.classList.toggle('is-shown', i >= 0);
+    pump();
   };
-  on(root, 'pointerup', (e) => release(e, false));
-  on(root, 'pointercancel', (e) => release(e, true));
-  on(root, 'click', (e) => {
-    const name = e.target.closest('.stage__name');
-    const arrow = e.target.closest('.stage__arrow');
-    if (name) select(Number(name.dataset.index));
-    else if (arrow && !arrow.disabled) select(target + Number(arrow.dataset.step));
-  });
 
-  /* Start: the first three treatments' pictures, then the stage responds. */
-  marks();
-  apply();
-  if (animated) {
-    Promise.all(units.slice(0, 3).map((u) => loadUnit(u).then(() => decode(u)))).then(() => {
-      if (!alive) return;
-      interactive = true;
-      units.forEach(refresh);
-      arrive();
-      pump();
-    });
+  // Everything follows the scroll position: which sections are visible, the
+  // scrubbed scenes, and the current one.
+  function update() {
+    const y = window.scrollY, { vh, header: top } = size;
+    const middle = y + (top + vh) / 2;
+    let now = -1;
+    for (const r of reels) {
+      const rel = r.top - y;
+      const below = rel >= vh - 1;
+      const above = rel + r.h <= top + 1;
+      setVisible(r, !below && !above);
+      if (r.top <= middle && r.top + r.h > middle) now = r.i;
+      if (!r.shown) continue;
+      if (below) { if (r.done || r.play || r.tl.time() !== 0) reset(r); continue; }
+      if (above) { if (!r.done) finish(r); continue; }
+      if (!r.done && !r.play) r.tl.time(clamp01((vh - rel) / Math.max(1, vh - top)) * REELS.scrub * r.label);
+    }
+    if (now !== current) setCurrent(now);
+    if (cue && y > reels[0].top - top + 24) cue.classList.add('is-gone');
   }
+  let frame = 0;
+  const schedule = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); };
+
+  // The page is still: the section resting under the header plays on.
+  let moving = false, fingerDown = false, stillTimer = 0;
+  const settle = () => {
+    if (!alive) return;
+    moving = false;
+    const y = window.scrollY;
+    const r = reels.find((s) => Math.abs(s.top - y - size.header) < 2);
+    reels.forEach((s) => { if (s.loaded && !s.shown) show(s); });
+    if (r && r.shown) {
+      if (r.wantsPlay) { r.wantsPlay = false; reset(r); }
+      playOn(r);
+    }
+    trim();
+    pump();
+  };
+  const moved = () => {
+    moving = true;
+    clearTimeout(stillTimer);
+    if (!fingerDown) stillTimer = setTimeout(settle, REELS.still);
+    schedule();
+  };
+  on(window, 'scroll', moved, { passive: true });
+  on(window, 'scrollend', () => { if (fingerDown) return; clearTimeout(stillTimer); settle(); });
+  on(window, 'touchstart', () => { fingerDown = true; clearTimeout(stillTimer); }, { passive: true });
+  const lift = () => { fingerDown = false; clearTimeout(stillTimer); stillTimer = setTimeout(settle, REELS.still); };
+  on(window, 'touchend', lift, { passive: true });
+  on(window, 'touchcancel', lift, { passive: true });
+
+  /* Building sections, in idle time near the current one. */
+  const sequences = (r) => (r.scene ? [r.scene.frameSequence, r.scene.spinSequence, r.scene.swaySequence].filter(Boolean) : []);
+  const isReady = (r) => r.loaded && (!r.scene.frameSequence || r.scene.frameSequence.ready());
+  const decode = (r) => Promise.race([
+    Promise.all(sequences(r).map((s) => s.setWanted(true))),
+    new Promise((resolve) => setTimeout(resolve, 6000)),
+  ]);
+  // Swaps the finished picture for the scene, never while it can be seen moving:
+  // off screen below it waits at its start, on screen it shows finished.
+  function show(r) {
+    if (!alive || r.shown || !isReady(r)) return;
+    const rel = r.top - window.scrollY;
+    const below = rel >= size.vh - 1;
+    if (!below && moving) return; // again once the page is still
+    if (below) r.tl.time(0);
+    else { r.tl.time(r.label); r.done = true; }
+    r.shown = true;
+    r.el.classList.add('is-shown');
+    if (r.visible) r.lives.forEach((l) => { l.visible = true; l.last = 0; l.start?.(); });
+    // Just jumped to from the list: it plays from its start.
+    if (r.wantsPlay && Math.abs(r.top - window.scrollY - size.header) < 2) {
+      r.wantsPlay = false;
+      reset(r);
+      playOn(r);
+    }
+  }
+  function build(r) {
+    if (r.loading) return r.loading;
+    const { t, def } = r;
+    r.visual.insertAdjacentHTML('afterbegin', `<div class="scene scene--${esc(t.showcase.scene)}">${deferImages(def.html(t, { phone: true }))}</div>`);
+    const scene = r.visual.querySelector('.scene');
+    r.scene = scene;
+    addCopies(scene);
+    const obj = scene.querySelector('.obj');
+    const shadow = scene.querySelector('.obj__shadow');
+    context.add(() => {
+      const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
+      const ft = (target, a, b, f0, f1, ease = 'none') =>
+        tl.fromTo(target, a, { ...b, duration: f1 - f0, ease, immediateRender: false }, f0);
+      const live = (effect) => r.lives.push({ visible: false, last: 0, ...effect });
+      const idle = (target, vars) => {
+        const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
+        live({ start: () => tween.play(), stop: () => tween.pause() });
+      };
+      def.animate({ t, tl, scene, obj, shadow, ft, idle, live, start: 0, L: 1, label: r.label, isLast: true, isDesktop: false, phone: true, reel: true });
+      tl.set({}, {}, 1);
+      r.tl = tl;
+    });
+    r.built = true;
+    const width = r.vw || size.width;
+    r.loading = Promise.all([
+      ...[...scene.querySelectorAll('img[data-src]')].map((img) => loadImg(img, width)),
+      def.preload ? def.preload(t, scene, { cap: 1.5, half: true, phone: true }).catch(() => null) : null,
+      def.phoneFrames ? def.phoneFrames(t, scene).catch(() => null) : null,
+    ]).then(() => {
+      r.loaded = true;
+      return decode(r);
+    }).then(() => show(r));
+    return r.loading;
+  }
+  // Frame sequences far from the current section give their memory back
+  // (it shows its finished picture again until it is near once more).
+  const trim = () => reels.forEach((r) => {
+    if (!r.scene || Math.abs(r.i - focus) <= REELS.keep) return;
+    if (!sequences(r).some((s) => s.ready())) return;
+    sequences(r).forEach((s) => s.setWanted(false));
+    r.scene.querySelectorAll('.is-3d, .is-swaying').forEach((el) => el.classList.remove('is-3d', 'is-swaying'));
+    if (r.scene.frameSequence && r.shown && !r.visible) {
+      r.shown = false;
+      r.el.classList.remove('is-shown');
+    }
+  });
+  // The next piece of work: the current section and REELS.near either side
+  // (built, then their frames decoded), then every other section's finished picture.
+  const nextJob = () => {
+    const close = [0, 1, -1, 2, -2].map((d) => reels[focus + d]).filter(Boolean)
+      .filter((r) => Math.abs(r.i - focus) <= REELS.near);
+    for (const r of close) if (!r.stillLoaded) return () => loadStill(r);
+    if (animated) {
+      for (const r of close) if (!r.built) return () => build(r);
+      for (const r of close) if (r.loaded && sequences(r).some((s) => !s.ready())) return () => decode(r).then(() => show(r));
+    }
+    for (const r of reels) if (!r.stillLoaded) return () => loadStill(r);
+    return null;
+  };
+  const idleCall = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 600 }) : setTimeout(fn, 50));
+  let pumping = false;
+  function pump() {
+    if (pumping || !alive) return;
+    pumping = true;
+    const step = () => {
+      if (!alive) return;
+      if (fingerDown || moving) { setTimeout(() => idleCall(step), 150); return; }
+      const job = nextJob();
+      if (!job) { pumping = false; return; }
+      job().then(() => idleCall(step));
+    };
+    idleCall(step);
+  }
+
+  /* Getting around: jumps, the pill and its sheet. */
+  // An instant jump to a section, whose scene then plays from its start.
+  const goTo = (i) => {
+    const r = reels[i];
+    if (!r) return;
+    focus = i;
+    window.scrollTo({ top: r.top - size.header, behavior: 'instant' });
+    update();
+    if (!animated) return;
+    r.wantsPlay = true;
+    if (r.shown) { r.wantsPlay = false; reset(r); playOn(r); }
+    else build(r); // at once: it is what the visitor asked to see
+    pump();
+  };
+  const openSheet = () => {
+    if (!window.SiteDialog) return;
+    sheet.querySelectorAll('[data-reel-go]').forEach((a, k) => {
+      if (k === focus) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    });
+    pill.setAttribute('aria-expanded', 'true');
+    window.SiteDialog.open(sheet, {
+      returnFocus: pill,
+      initialFocus: sheet.querySelector('[aria-current]'),
+      onClose: () => pill.setAttribute('aria-expanded', 'false'),
+    });
+    const item = sheet.querySelector('[aria-current]');
+    if (item) item.scrollIntoView({ block: 'center', behavior: 'instant' });
+  };
+  pill.hidden = false;
+  on(pill, 'click', openSheet);
+  on(sheet, 'click', (event) => {
+    const go = event.target.closest('[data-reel-go]');
+    if (go) {
+      event.preventDefault();
+      event.stopPropagation();
+      window.SiteDialog.close();
+      goTo(Number(go.dataset.reelGo));
+    } else if (event.target.closest('a[href]')) {
+      window.SiteDialog.close();
+    }
+  });
+  // A swipe down on the sheet (from its top) closes it.
+  let pull = null;
+  on(panel, 'touchstart', (event) => {
+    pull = panel.scrollTop <= 0 ? { y: event.touches[0].clientY, dy: 0 } : null;
+  }, { passive: true });
+  on(panel, 'touchmove', (event) => {
+    if (!pull) return;
+    pull.dy = Math.max(0, event.touches[0].clientY - pull.y);
+    panel.style.transform = pull.dy ? `translateY(${pull.dy}px)` : '';
+  }, { passive: true });
+  on(panel, 'touchend', () => {
+    if (!pull) return;
+    const far = pull.dy > 80;
+    pull = null;
+    panel.style.transform = '';
+    if (far) window.SiteDialog.close();
+  }, { passive: true });
+
+  /* Start. */
+  const tick = (time) => {
+    for (const r of reels) if (r.visible && r.shown) r.lives.forEach((l) => frameLive(l, time));
+  };
+  if (animated) gsap.ticker.add(tick);
+  const resizeObserver = new ResizeObserver(() => measure());
+  resizeObserver.observe(root);
+  measure();
+  // The first sections' finished pictures at once, so none is ever empty.
+  reels.slice(0, 3).forEach(loadStill);
+  pump();
 
   const anchors = FEATURED.filter((t) => !t.standalone).map((t) => t.id);
   phoneStage = {
     anchors,
-    // Brings the stage into view, at the treatment's rest.
-    goTo(id, instant) {
-      const i = FEATURED.findIndex((t) => t.id === id);
-      if (i < 0) return;
-      const header = document.getElementById('site-header');
-      const top = root.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : 0);
-      window.scrollTo({ top, behavior: instant || !animated ? 'auto' : 'smooth' });
-      arrived = true;
-      clearTimeout(arriveTimer);
-      if (instant || !interactive) {
-        [tween, hintTween, jumpTl].forEach((t) => t && t.kill());
-        tween = hintTween = jumpTl = null;
-        target = i;
-        heading(i);
-        pos.P = i;
-        apply();
-        settle();
-      } else if (i !== target) {
-        if (Math.abs(i - target) === 1) go(i);
-        else jump(i);
-      }
-    },
+    goTo(id) { goTo(FEATURED.findIndex((t) => t.id === id)); },
   };
-  // The stage changed the page's height: re-measure the reveals below it,
-  // then honour a #hash. Done after this matchMedia callback has returned
-  // (a refresh inside it would file the reveals' context under this one, and
-  // the next layout switch would revert them with it).
+  // The sections changed the page's height: re-measure the reveals below
+  // them, then honour a #hash. Done after this matchMedia callback has
+  // returned (a refresh inside it would file the reveals' context under
+  // this one, and the next layout switch would revert them with it).
   requestAnimationFrame(() => {
     if (!alive) return;
     ScrollTrigger.refresh();
+    measure();
     jumpToHash();
   });
 
@@ -3298,17 +3187,21 @@ function initPhoneStage(context, animated) {
     alive = false;
     phoneStage = null;
     offs.forEach((off) => off());
-    screenObserver.disconnect();
     resizeObserver.disconnect();
-    clearTimeout(arriveTimer);
-    [tween, hintTween, jumpTl].forEach((t) => t && t.kill());
-    lives.forEach((l) => { if (l.visible) l.stop?.(); l.visible = false; });
-    lives = [];
-    gsap.ticker.remove(tickLives);
-    stageOnScreen = true;
-    scenes.forEach((scene) => sequences({ scene }).forEach((s) => s.dispose()));
+    clearTimeout(stillTimer);
+    cancelAnimationFrame(frame);
+    gsap.ticker.remove(tick);
+    if (window.SiteDialog) window.SiteDialog.close();
+    reels.forEach((r) => {
+      if (r.play) r.play.kill();
+      r.lives.forEach((l) => { if (l.visible) l.stop?.(); });
+      sequences(r).forEach((s) => s.dispose());
+    });
     root.remove();
-    document.documentElement.classList.remove('has-phone-stage');
+    pill.remove();
+    sheet.remove();
+    html.classList.remove('has-reels', 'has-reel-snap');
+    html.style.removeProperty('--footer-h');
   };
 }
 
@@ -3319,10 +3212,11 @@ function initHeroIntro() {
 }
 
 // On phones the reveals are lighter (a shorter rise, a smaller stagger), so
-// fast scrolling stays smooth.
+// fast scrolling stays smooth, and the treatments list (the cards) is simply
+// there, ready to scan.
 function initSectionReveals() {
-  const phone = window.matchMedia(SWIPE.query).matches;
-  const targets = gsap.utils.toArray('[data-fade], [data-card]');
+  const phone = window.matchMedia(REELS.query).matches;
+  const targets = gsap.utils.toArray(phone ? '[data-fade]' : '[data-fade], [data-card]');
   gsap.set(targets, { y: phone ? 12 : 24, autoAlpha: 0 });
   ScrollTrigger.batch(targets, {
     start: 'top 88%',
@@ -3355,7 +3249,7 @@ function initMotion() {
 
   // Smooth scrolling and snapping only on wider screens (phones scroll
   // natively) and when the user hasn't asked for reduced motion.
-  mm.add({ motion: '(prefers-reduced-motion: no-preference)', isMobile: SWIPE.query }, (context) => {
+  mm.add({ motion: '(prefers-reduced-motion: no-preference)', isMobile: REELS.query }, (context) => {
     const { motion, isMobile } = context.conditions;
     if (!motion || isMobile) return;
     lenis = startLenis();
@@ -3375,17 +3269,17 @@ function initMotion() {
     initSectionReveals();
   });
 
-  // The featured treatments: on phones, the stage driven by swiping (with
-  // finished pictures under reduced motion); on wider screens, the pinned
+  // The featured treatments: on phones, full-screen sections (with finished
+  // pictures under reduced motion); on wider screens, the pinned
   // stage, or under reduced motion calm stacked blocks with no pinning.
   // Crossing between the two reverts one completely and builds the other.
   mm.add({
-    isMobile: SWIPE.query,
+    isMobile: REELS.query,
     reduceMotion: '(prefers-reduced-motion: reduce)',
     always: 'all',
   }, (context) => {
     const { isMobile, reduceMotion } = context.conditions;
-    if (isMobile) return initPhoneStage(context, !reduceMotion);
+    if (isMobile) return initReels(context, !reduceMotion);
     if (reduceMotion) return;
     return initStage(context, true);
   });
