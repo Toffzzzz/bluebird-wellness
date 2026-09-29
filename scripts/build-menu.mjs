@@ -860,9 +860,9 @@ function renderedHome() {
   const context = vm.createContext({ window, document, location: { hash: '' }, history: { pushState: noop }, console });
   vm.runInContext(read('data/menu.js'), context, { filename: 'data/menu.js', timeout: 5000 });
   vm.runInContext(read('script.js'), context, { filename: 'script.js', timeout: 5000 });
-  // The pinned stage and the phones' carousel (animated and still) are added
+  // The pinned stage and the phones' stage (animated and still) are added
   // once motion starts, so they are rendered here too.
-  const featured = vm.runInContext('stageHTML(FEATURED) + carouselHTML(FEATURED, true) + carouselHTML(FEATURED, false)', context, { timeout: 5000 });
+  const featured = vm.runInContext('stageHTML(FEATURED) + phoneStageHTML(FEATURED, true) + phoneStageHTML(FEATURED, false)', context, { timeout: 5000 });
   return ROOTS.map((id) => roots[id]?.innerHTML || '').join('\n') + featured;
 }
 

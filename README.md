@@ -6,12 +6,13 @@ Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be
 
 - `index.html`: home page structure
 - `styles.css`: design tokens and styles for every page (see `DESIGN.md`)
-- `script.js`: the home page: the stage's visuals (the `TREATMENTS` list at the top), stage timing (`STAGE`), the phones' carousel (`CAROUSEL`), rendering, scenes and scroll motion
+- `script.js`: the home page: the stage's visuals (the `TREATMENTS` list at the top), stage timing (`STAGE`), swiping on phones (`SWIPE`), rendering, scenes and scroll motion
 - `data/drips.json`: the clinic's menu, the single source of every treatment name, price, description, ingredient, table and disclaimer
+- `scripts/render-phone-assets.mjs`: renders the phones' pre-rendered frames and 800px copies (see "The stage" below)
 - `scripts/build-menu.mjs`: the generator that turns the menu into `data/menu.js`, the treatment pages and the ingredient glossary, and holds `BOOK_URL` (and `MEDICINES`, the lines never shown as something a Pro version adds)
 - `data/menu.js`, `treatments/<slug>/index.html`, `ingredients/index.html`, `data/menu-check.txt`: generated, don't edit by hand
 - `treatment.js`: the small script the treatment pages and the glossary share (header border, scroll reveal, "Expand all", the glossary's search, opening an entry linked to by its #anchor)
-- `images/`: treatment images, the layer images for the stage scenes, the hair mask, the deadlift frame sequence in `images/deadlift/` (each frame also as `-half.webp`, used on phones), the Myers Cocktail bottles and flask in `images/myers/`, the Skin & Beauty shell, pearl and glint in `images/skin/`, the Recovery mirror ball, sun and glints in `images/recovery/`, the Signature card, pen, pen path and ink frames in `images/signature/` (frames also as `-half.webp`), and finished pictures in `images/treatments/` (`<slug>.webp`, used for that drip's page and card whenever it exists)
+- `images/`: treatment images, the layer images for the stage scenes, the hair mask, the deadlift frame sequence in `images/deadlift/` (each frame also as `-half.webp`, used on phones), the Myers Cocktail bottles and flask in `images/myers/`, the Skin & Beauty shell, pearl and glint in `images/skin/`, the Recovery mirror ball, sun and glints in `images/recovery/`, the Signature card, pen, pen path and ink frames in `images/signature/` (frames also as `-half.webp`), the phones' pre-rendered NAD+ turn in `images/nad-spin/` and hair sway in `images/hair-sway/` (each frame also as `-half.webp`), 800px copies of the largest stage pictures (`<name>-sm.webp`, used on phones), and finished pictures in `images/treatments/` (`<slug>.webp`, used for that drip's page and card whenever it exists)
 
 GSAP, ScrollTrigger, Lenis and Three.js (for the hair sway and the NAD+ molecule) load from jsDelivr. If they fail to load, or the visitor prefers reduced motion, the featured treatments show as calm stacked blocks with the finished images.
 
@@ -35,7 +36,7 @@ A drip with a `proVariantSlug` shows an "Upgrade to Pro" card: its Pro version's
 
 `TREATMENTS` in `script.js` sets the stage's order, scenes, images and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field. To fine-tune the scroll film (pin length, how long each treatment takes, when text hands over, how much the scrub smooths), edit the `STAGE` object just below it.
 
-On phones (narrower than 820px, or a phone held sideways) the same treatments are a row of panels to swipe through instead, each playing its scene once it settles in view (`CAROUSEL` sets the default time, the breakpoint and when a panel counts as the current one; a treatment's `mobileSeconds` overrides the time). Only the current panel and its neighbours load their pictures and run.
+On phones (narrower than 820px, or a phone held sideways) the stage is the same master timeline, one screen tall and not pinned, and swiping sideways drives it instead of scrolling: one swipe moves from one treatment's rest to the next, playing the same exits, entrances and scenes (backwards when swiping back), and after Signature comes an ending that leads down to "All treatments". `SWIPE` sets the breakpoint, the default time of a transition (a treatment's `mobileSeconds` overrides the time into it), how far a drag reaches and what counts as a swipe. Phones scroll natively (no Lenis) and the page snaps gently onto the stage. No WebGL runs on phones: NAD+ and Hair & Scalp play pre-rendered frames instead. After changing the molecule, the hair shader or mask, or one of the pictures in `PHONE_COPIES`, run `node scripts/render-phone-assets.mjs` (it needs Playwright, see the top of the script) and commit what it writes.
 
 ## Before going live
 

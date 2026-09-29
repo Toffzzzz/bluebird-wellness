@@ -8,7 +8,7 @@
    5. Live effects: frame sequences, hair sway (Three.js shader) and the
       NAD+ glass molecule (Three.js)
    6. Motion (Lenis smooth scroll + GSAP ScrollTrigger): the pinned stage on
-      wider screens, the swipeable carousel on phones
+      wider screens; on phones the same stage, driven by swiping
    ========================================================================== */
 
 /* ==========================================================================
@@ -49,8 +49,9 @@
                   others (default 1): 1.5 gives it half as much scroll again.
                   Its entrance and exit keep the normal length, so every
                   handover matches; only the part in between is stretched.
-     mobileSeconds Optional. On phones, how many seconds its scene takes to
-                  play to its rest (default CAROUSEL.seconds).
+     mobileSeconds Optional. On phones, how many seconds the swipe into it
+                  takes, from the previous treatment's rest to its own
+                  (default SWIPE.seconds).
      showcase     The treatment's part of the pinned scroll stage:
                     scene:       which animation (see section 4):
                                  "runner" | "orange" | "float" | "coconut" |
@@ -68,7 +69,12 @@
                                  canvas), the pen and its shadow
                     swayMask:    ("wipe") greyscale mask: white hair sways, black never moves
                     frames:      ("frames", "signature") { path, count, size } image sequence
+                                 (phoneStep: on phones, only every nth frame)
                     model:       ("molecule") V2000 SDF file for the 3D glass molecule
+                    spin:        ("molecule") on phones, the molecule's turn pre-rendered
+                                 as a looping image sequence (scripts/render-phone-assets.mjs)
+                    swayFrames:  ("wipe") on phones, the hair's sway pre-rendered from
+                                 −1 to +1 (the same script)
                     penPath:     ("signature") JSON with the nib's position on every frame
    ========================================================================== */
 
@@ -108,7 +114,7 @@ const TREATMENTS = [
     menuSlug: 'myers-cocktail-infusion',
     short: 'Myers',
     length: 1.5, // more scroll, so the pour is unhurried
-    mobileSeconds: 3.6,
+    mobileSeconds: 3.2,
     image: 'images/treatments/myers-cocktail-infusion.webp',
     imageSize: [1200, 920],
     alt: 'Two small glass bottles above a round glass flask filled with golden liquid',
@@ -160,6 +166,7 @@ const TREATMENTS = [
       scene: 'molecule',
       tint: '#F2F2F7',
       model: 'models/nad.sdf',
+      spin: { path: 'images/nad-spin/nad-{n}.webp', count: 36, size: [720, 720] },
     },
   },
   {
@@ -288,13 +295,14 @@ const TREATMENTS = [
       scene: 'wipe',
       tint: '#F6F0EA',
       swayMask: 'images/hair-mask.webp',
+      swayFrames: { path: 'images/hair-sway/hair-{n}.webp', count: 17, size: [720, 1024] },
     },
   },
   {
     id: 'signature',
     menuSlug: 'signature-infusion',
     short: 'Signature',
-    mobileSeconds: 3.4,
+    mobileSeconds: 3.2,
     image: 'images/treatments/signature-infusion.webp',
     imageSize: [1534, 797],
     alt: 'A fountain pen beside a card signed "Bluebird" in ink',
@@ -306,7 +314,7 @@ const TREATMENTS = [
         pen: 'images/signature/signature-pen.webp',
         penShadow: 'images/signature/signature-pen-shadow.webp',
       },
-      frames: { path: 'images/signature/signature-{n}.webp', count: 72, size: [1336, 800] },
+      frames: { path: 'images/signature/signature-{n}.webp', count: 72, size: [1336, 800], phoneStep: 2 },
       penPath: 'images/signature/signature-path.json',
     },
   },
@@ -347,19 +355,48 @@ const STAGE = {
   },
 };
 
-/* Phones (narrower than 820px, or held sideways): instead of the pinned
-   stage, the treatments are a row of panels to swipe through. Each panel's
-   scene is its own short timeline (the same scene, without the stage's
-   entrance and exit fades), played from its start to its rest label over
-   the treatment's mobileSeconds once the panel has settled in view, and
-   reset once it has left the screen. */
-const CAROUSEL = {
+/* Phones (narrower than 820px, or held sideways): the same stage and master
+   timeline, one screen tall and not pinned; swiping sideways drives it
+   instead of scrolling. Every treatment's rest label is a resting point,
+   and after Signature comes an ending ("All treatments").
+   A move from one rest to the next is measured in "progress" (0 → 1): the
+   first `hold` of it crosses the finished picture that holds before the
+   exit (so the exit starts at once), the rest is the handover and the next
+   scene. While the finger is down, a full-width drag covers `reach` of it;
+   on release the stage plays on to the next rest (or eases back). */
+const SWIPE = {
   query: '(max-width: 819.98px), (pointer: coarse) and (max-height: 500px)',
-  seconds: 2.4,         // default time to play a scene to its rest
-  ease: 'power1.inOut',
-  activeRatio: 0.6,     // share of a panel in view before it counts as the current one
-  onScreen: 0.35,       // share of the carousel in view before a scene plays
+  seconds: 2.2,         // default time from one rest to the next (see mobileSeconds)
+  endSeconds: 1.6,      // from Signature's rest to the ending
+  back: 0.6,            // going back takes this share of the time
+  ease: 'power1.inOut', // arrows, names and the arrival
+  releaseEase: 'sine.out', // after a drag, the stage is already moving
+  hold: 0.02,
+  reach: 0.35,
+  commit: 0.2,          // share of the width past which a release moves on…
+  flick: 0.3,           // …or a release faster than this (px per ms)
+  lock: 8,              // px of movement before the direction is decided
+  retarget: 2,          // time scale when a swipe arrives mid-transition
+  springBack: 0.45,     // seconds to ease back to the rest
+  jump: 0.4,            // seconds for the cross-fade jump to a far treatment
+  hint: 0.07,           // how far the arrival hint leans towards the next treatment
+  endRest: 0.3,         // the ending's rest, in segments after Signature's exit begins
+  keep: 1,              // frame sequences are decoded this many treatments away (and released beyond one more)
 };
+
+// Phones: 800px-wide copies (<name>-sm.webp, made by
+// scripts/render-phone-assets.mjs) of the stage's pictures far wider than
+// that, chosen by srcset where the screen doesn't need the full size.
+const PHONE_COPIES = new Set([
+  'images/bone-left.webp', 'images/bone-right.webp', 'images/bone-left-clean.webp',
+  'images/bone-right-clean.webp', 'images/bone-whole.webp',
+  'images/myers/myers-flask-a.webp', 'images/myers/myers-flask-b.webp',
+  'images/myers/myers-left-a.webp', 'images/myers/myers-left-b.webp',
+  'images/myers/myers-right-a.webp', 'images/myers/myers-right-b.webp',
+  'images/signature/signature-card.webp',
+  'images/treatments/myers-cocktail-infusion.webp', 'images/treatments/signature-infusion.webp',
+]);
+const phoneCopy = (src) => src.replace(/\.webp$/, '-sm.webp');
 
 /* ==========================================================================
    3. Rendering
@@ -514,47 +551,53 @@ function staticListHTML(featured) {
   return `<div class="treatment-list">${blocks}</div>`;
 }
 
-// Images that only load once script.js asks for them (the carousel loads
-// each panel's pictures as it comes near).
+// Images that only load once script.js asks for them (on phones, the stage
+// loads each treatment's pictures in turn, in idle time).
 const deferImages = (html) => html.replace(/<img\b[^>]*>/g, (tag) => tag.replace(/\s(src|srcset)="/g, ' data-$1="'));
 
 const CHEVRON = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 
-// Phones: one panel per treatment, in stage order, each on its own tint, with
-// its scene (or, when animated is false, its finished picture) above its
-// text. The names, arrows and progress bar sit above the panels.
-function carouselHTML(featured, animated) {
-  const panels = featured.map((t, i) => {
+// Phones: the stage, one screen tall. At the top, the short names and a thin
+// progress line; then the picture (every scene, or with animated false the
+// finished pictures), with arrows over its edges; then the text. After the
+// last treatment comes an ending that leads to "All treatments".
+function phoneStageHTML(featured, animated) {
+  const scenes = featured.map((t, i) => {
     const def = SCENES[t.showcase.scene] || SCENES.fade;
-    const [w, h] = t.imageSize;
-    let visual;
-    if (animated) visual = `<div class="scene scene--${esc(t.showcase.scene)}" data-scene="${esc(t.id)}">${def.html(t)}</div>`;
-    else if (!t.image) visual = `<div class="carousel__still">${placeholderHTML(t)}</div>`;
-    else visual = `<div class="carousel__still${t.imageFit === 'cover' ? ' carousel__still--photo' : ''}"><img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" decoding="async"></div>`;
-    const hint = animated && i === 0 ? `
-        <p class="carousel__hint" aria-hidden="true"><span>Swipe</span>${CHEVRON('M3 8h10M9 4l4 4-4 4')}</p>` : '';
-    return `
-      <article class="carousel__panel" data-panel="${esc(t.id)}" style="--tint: ${esc(t.showcase.tint || '#F7F4EF')}" aria-labelledby="carousel-${esc(t.id)}-title">
-        <div class="carousel__visual">${deferImages(visual)}</div>
-        <div class="carousel__text">${textHTML(t, `carousel-${esc(t.id)}-title`)}</div>${hint}
-      </article>`;
+    let inner;
+    if (animated) inner = def.html(t, { phone: true });
+    else if (!t.image) inner = objHTML(t, 'still', placeholderHTML(t, ' placeholder--stage'), [1, 1]);
+    else inner = objHTML(t, `still${t.imageFit === 'cover' ? ' obj--photo' : ''}`, layerImg(t.image, t.imageSize));
+    const loading = animated ? ' is-loading' : '';
+    return `<div class="scene scene--${esc(animated ? t.showcase.scene : 'still')}${loading}" data-scene="${esc(t.id)}" style="z-index: ${featured.length - i}">${deferImages(inner)}</div>`;
   }).join('');
 
+  const copies = featured.map((t) =>
+    `<article class="stage__copy" data-copy="${esc(t.id)}">${textHTML(t, `stage-${esc(t.id)}-title`)}</article>`).join('');
+
   const names = featured.map((t, i) => `
-        <li><button type="button" class="carousel__name" data-index="${i}" aria-label="Go to ${esc(menuItem(t).name)}"><span>${esc(t.short)}</span></button></li>`).join('');
+          <li><button type="button" class="stage__name" data-index="${i}" aria-label="Go to ${esc(menuItem(t).name)}"><span>${esc(t.short)}</span></button></li>`).join('');
 
   return `
-    <section class="carousel${animated ? '' : ' carousel--still'}" id="stage" aria-label="Featured treatments">
-      <div class="carousel__bar">
-        <button type="button" class="carousel__arrow" data-step="-1" aria-label="Previous treatment">${CHEVRON('M10 3 5 8l5 5')}</button>
-        <nav class="carousel__names" aria-label="Featured treatments">
-          <ol>${names}
-          </ol>
-        </nav>
-        <button type="button" class="carousel__arrow" data-step="1" aria-label="Next treatment">${CHEVRON('M6 3l5 5-5 5')}</button>
-        <span class="carousel__progress" aria-hidden="true"><span class="carousel__progress-fill"></span></span>
-      </div>
-      <div class="carousel__track" data-lenis-prevent-horizontal>${panels}
+    <section class="stage stage--phone${animated ? '' : ' stage--still'}" id="stage" aria-label="Featured treatments">
+      <div class="stage__bg" aria-hidden="true"><span class="stage__tint"></span><span class="stage__tint"></span><span class="stage__tint"></span></div>
+      <nav class="stage__bar" aria-label="Featured treatments">
+        <ol class="stage__names">${names}
+        </ol>
+        <span class="stage__line" aria-hidden="true"><span class="stage__line-fill"></span></span>
+      </nav>
+      <div class="stage__inner">
+        <div class="stage__visual">
+          ${scenes}
+          <button type="button" class="stage__arrow stage__arrow--prev" data-step="-1" aria-label="Previous treatment">${CHEVRON('M10 3 5 8l5 5')}</button>
+          <button type="button" class="stage__arrow stage__arrow--next" data-step="1" aria-label="Next treatment">${CHEVRON('M6 3l5 5-5 5')}</button>
+          <p class="stage__hint" aria-hidden="true"><span>Swipe</span>${CHEVRON('M3 8h10M9 4l4 4-4 4')}</p>
+        </div>
+        <div class="stage__text">${copies}</div>
+        <div class="stage__end">
+          <p class="stage__end-title">All treatments</p>
+          <a class="btn btn--secondary" href="#treatments">See all treatments</a>
+        </div>
       </div>
     </section>`;
 }
@@ -652,7 +695,7 @@ function render() {
   const gridRoot = document.getElementById('treatment-grid');
   const standaloneRoot = document.getElementById('standalone-root');
   // The static list is the page's own content; the pinned stage (wider
-  // screens) or the carousel (phones) is added above it once motion starts.
+  // screens) or the swipeable stage (phones) is added above it once motion starts.
   if (stageRoot && FEATURED.length) stageRoot.innerHTML = staticListHTML(FEATURED);
   if (gridRoot) gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
   if (standaloneRoot && MENU.standalone) standaloneRoot.innerHTML = standaloneHTML(MENU.standalone);
@@ -688,14 +731,16 @@ function render() {
      c.live(effect)
                 a canvas/WebGL effect that only runs while on screen
      c.tl, c.start, c.L, c.label, c.isLast, c.isDesktop
-     c.mobile   true on phones: the scene is its panel's own timeline
-                (start 0, L 1, isLast true) and has no entrance or exit
-                fades (fadeIn, gateIn and fadeOut skip them)
-   The first treatment's entrance plays while the stage scrolls into view,
-   so the stage opens on its entered picture; the last one has no exit
-   (fadeOut skips it) and stays until the stage scrolls away.
-   A scene may also have preload(t, scene, { cap, half }), awaited before
-   its pictures show, and its own rest label.
+     c.phone    true on phones: no live WebGL; NAD+ and Hair & Scalp use
+                their pre-rendered frames instead (html(t, { phone }) too)
+   The first treatment's entrance plays while the stage scrolls into view
+   (on phones, when the stage first settles on screen), so the stage opens
+   on its entered picture; on wide screens the last one has no exit
+   (fadeOut skips it) and stays until the stage scrolls away, while on
+   phones it leaves for the ending like the others.
+   A scene may also have preload(t, scene, { cap, half, phone }), awaited
+   before its pictures show (on phones, the stage's loader calls it in
+   turn), and its own rest label.
    Every scene shows its natural, finished picture during its rest.
    Only transform, opacity, clip-path, masks and custom properties are animated.
    ========================================================================== */
@@ -713,26 +758,23 @@ function offsetWithin(el, ancestor) {
 // Default entrance and exit. The fades are sequential (the outgoing object
 // has fully faded at 0.90 of its segment, exactly when the incoming one starts
 // to appear at 0.08 of its own) while their movements overlap, so a handover
-// never shows two pictures at once. On phones (c.mobile) there are none: the
-// panel itself slides in and out.
+// never shows two pictures at once.
 const FADE_IN = [0.08, 0.2];
 const FADE_OUT = [0.82, 0.9];
-const fadeIn = ({ obj, ft, mobile }, from = { y: 40 }) => {
-  if (mobile) return;
+const fadeIn = ({ obj, ft }, from = { y: 40 }) => {
   gsap.set(obj, { autoAlpha: 0, ...from });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
   const to = Object.fromEntries(Object.keys(from).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0, 0.22, 'power2.out');
 };
-const fadeOut = ({ obj, ft, isLast, mobile }, to = { y: -30 }) => {
-  if (isLast || mobile) return;
+const fadeOut = ({ obj, ft, isLast }, to = { y: -30 }) => {
+  if (isLast) return;
   const from = Object.fromEntries(Object.keys(to).map((k) => [k, k === 'scale' ? 1 : 0]));
   ft(obj, from, to, 0.82, 1, 'power1.inOut');
   ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
 };
 // Visibility only, for scenes whose entrance is a reveal (a growing stem, a wipe).
-const gateIn = ({ obj, ft, mobile }) => {
-  if (mobile) return;
+const gateIn = ({ obj, ft }) => {
   gsap.set(obj, { autoAlpha: 0 });
   ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
 };
@@ -798,25 +840,31 @@ function dispose3D(scene) {
 // drawing on the scene's .fx--frames canvas. opts.cap caps the canvas's pixel
 // ratio; with opts.half, the half-size frames (<name>-half.webp) are used
 // whenever the canvas is no wider than them in device pixels (phones).
-function preloadFrames(t, scene, { cap, half }) {
-  const { path, count, size } = t.showcase.frames;
-  const canvas = scene.querySelector('.fx--frames');
+// On phones (opts.phone) a sequence with a phoneStep uses only every so many
+// frames (always the first and the last), and when its frames are decoded is
+// left to the stage's loader. opts.frames, canvas, key and loop set up the
+// phones' pre-rendered sequences (NAD+ and Hair & Scalp) the same way.
+function preloadFrames(t, scene, { cap, half, phone = false, frames: def = t.showcase.frames, canvas = scene.querySelector('.fx--frames'), key = 'frameSequence', loop = false }) {
+  const { path, count, size, phoneStep = 1 } = def;
   const need = canvas.clientWidth * Math.min(window.devicePixelRatio || 1, cap);
   const useHalf = half && need > 0 && need <= Math.floor(size[0] / 2);
-  const srcs = Array.from({ length: count }, (_, i) => {
-    const src = path.replace('{n}', pad(i + 1));
+  const shown = phone && phoneStep > 1 ? Math.ceil(count / phoneStep) : count;
+  const srcs = Array.from({ length: shown }, (_, i) => {
+    const n = shown === count ? i + 1 : 1 + Math.round((i * (count - 1)) / (shown - 1));
+    const src = path.replace('{n}', pad(n));
     return useHalf ? src.replace(/\.webp$/, '-half.webp') : src;
   });
   return Promise.all(srcs.map(loadFrame)).then((frames) => {
-    scene.frameSequence = createFrameSequence(canvas, frames, cap);
-    scene.frameSequence.setWanted(!!scene.framesWanted);
-    return scene.frameSequence;
+    const sequence = createFrameSequence(canvas, frames, cap, { loop, native: phone });
+    scene[key] = sequence;
+    if (!phone) sequence.setWanted(!!scene.framesWanted);
+    return sequence;
   });
 }
 
 // Drives a frame sequence from the segment: map(f) turns the segment
 // fraction into a position between 0 and 1 along the sequence.
-function scrubFrames({ scene, tl, start, L, live }, map) {
+function scrubFrames({ scene, tl, start, L, live, phone }, map) {
   const proxy = { p: 0 };
   tl.fromTo(proxy, { p: 0 }, {
     p: 1, duration: L, ease: 'none', immediateRender: false,
@@ -825,11 +873,29 @@ function scrubFrames({ scene, tl, start, L, live }, map) {
       if (seq) seq.setPosition(map(proxy.p) * (seq.count - 1));
     },
   }, start);
-  live({
+  // Decoded frames are kept only while the treatment is near (on phones,
+  // the stage's loader decides, never mid-swipe).
+  live(phone ? { frame: () => scene.frameSequence && scene.frameSequence.draw() } : {
     frame: () => scene.frameSequence && scene.frameSequence.draw(),
-    // Decoded frames are kept only while the treatment is near.
     warm: () => { scene.framesWanted = true; scene.frameSequence?.setWanted(true); },
     cool: () => { scene.framesWanted = false; scene.frameSequence?.setWanted(false); },
+  });
+}
+
+// Phones: plays a pre-rendered sequence (NAD+'s turn, the hair's sway) on a
+// canvas, at the frame position(time, dt, count), in place of the live
+// WebGL view. Once its first frame is drawn, `shown` gets the class that
+// crossfades from the picture to the canvas.
+function playFrames({ scene, live }, key, shown, className, position) {
+  live({
+    frame: (time, dt) => {
+      const sequence = scene[key];
+      if (!sequence || !sequence.ready()) return;
+      // Hundredths of a frame, so a slow idle drift redraws only when it shows.
+      sequence.setPosition(Math.round(position(time, dt, sequence.count) * 100) / 100);
+      sequence.draw();
+      if (!shown.classList.contains(className)) shown.classList.add(className);
+    },
   });
 }
 
@@ -920,7 +986,7 @@ const SCENES = {
       layerImg(t.showcase.layers.right, t.imageSize, ' data-layer="right"'),
       layerImg(t.showcase.layers.whole, t.imageSize, ' data-layer="whole"'),
     ].join('')),
-    animate({ scene, shadow, ft, isLast, mobile }) {
+    animate({ scene, shadow, ft, isLast }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const juice = q('juice'), left = q('left'), right = q('right'), whole = q('whole');
       const MEET = '49.8% 49.5%';
@@ -934,15 +1000,12 @@ const SCENES = {
       gsap.set(right, rightTogether);
       gsap.set(juice, { scale: 0.4 });
 
-      // Entrance: only the whole orange, rising gently into place (on phones
-      // it is already there as its panel slides in).
-      if (!mobile) {
-        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
-        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
-      }
+      // Entrance: only the whole orange, rising gently into place.
+      gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
 
       // The split: a quick crossfade from the whole orange to the pushed-together halves.
       ft(whole, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 1.03 }, 0.2, 0.28, 'power1.inOut');
@@ -991,7 +1054,7 @@ const SCENES = {
         layerImg(t.showcase.layers.whole, size, ' data-layer="whole"'),
       ].join(''), size);
     },
-    animate({ scene, shadow, ft, isLast, mobile }) {
+    animate({ scene, shadow, ft, isLast }) {
       const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
       const bottom = q('bottom'), splash = q('splash'), top = q('top'), whole = q('whole');
       // Measured so the closed lid and the bottom make exactly the whole coconut's outline.
@@ -1003,15 +1066,12 @@ const SCENES = {
       gsap.set(top, { transformOrigin: '53% 36%', ...closed });
       gsap.set(splash, { transformOrigin: '48.7% 55.1%', autoAlpha: 0, scale: 0.3 }); // the shell's opening
 
-      // Entrance: only the whole coconut, rising gently into place (on phones
-      // it is already there as its panel slides in).
-      if (!mobile) {
-        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
-        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
-      }
+      // Entrance: only the whole coconut, rising gently into place.
+      gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
+      gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
+      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
+      ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
+      ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
 
       // The crack: the split pieces are fully opaque underneath before the
       // whole coconut fades, so nothing ever looks see-through.
@@ -1076,14 +1136,35 @@ const SCENES = {
   // turntable once across its segment (facing front at rest), with a very
   // slow extra idle turn. nad.webp shows until the first 3D frame is drawn;
   // without WebGL (or if loading fails) the photo turns in-plane instead.
+  // On phones the same turn plays from its pre-rendered frames (showcase.spin,
+  // one full turn, frame 1 facing front) on a square canvas centred on the
+  // object, exactly where the 3D view would draw it.
   molecule: {
-    html: (t) => objHTML(t, 'molecule', threeHTML(spinHTML(t))),
+    html: (t, { phone } = {}) => objHTML(t, 'molecule', phone && t.showcase.spin
+      ? `<div class="layer three-fallback">${spinHTML(t)}</div><canvas class="nad-spin" aria-hidden="true"></canvas>`
+      : threeHTML(spinHTML(t))),
+    phoneFrames: (t, scene) => preloadFrames(t, scene, {
+      cap: 1.5, half: true, phone: true, frames: t.showcase.spin,
+      canvas: scene.querySelector('.nad-spin'), key: 'spinSequence', loop: true,
+    }),
     animate(c) {
-      const { t, obj, scene } = c;
+      const { t, obj, scene, ft, label, phone } = c;
       fadeIn(c, { scale: 0.9 });
       spinImage(c, scene.querySelector('.three-fallback'));
       fadeOut(c, { scale: 0.85 });
-      turntable3D(c, (cap) => createMolecule(obj, t.showcase.model, cap));
+      if (!phone || !t.showcase.spin) {
+        turntable3D(c, (cap) => createMolecule(obj, t.showcase.model, cap));
+        return;
+      }
+      const TURN = 2 * Math.PI;
+      const motion = { turn: -TURN * label };
+      ft(motion, { turn: -TURN * label }, { turn: TURN * (1 - label) }, 0, 1);
+      let idleAngle = 0;
+      playFrames(c, 'spinSequence', obj, 'is-3d', (time, dt, count) => {
+        idleAngle += MOLECULE.idleSpeed * dt;
+        const k = ((motion.turn + idleAngle) / TURN) % 1;
+        return (k < 0 ? k + 1 : k) * count;
+      });
     },
   },
 
@@ -1124,14 +1205,20 @@ const SCENES = {
   },
 
   // HAIR & SCALP: a soft-edged wipe from bottom to top while easing out from
-  // 1.1× scale; the hair then sways with the scroll (section 5).
+  // 1.1× scale; the hair then sways with the scroll (section 5). On phones
+  // the sway plays from pre-rendered frames (showcase.swayFrames, −1 → +1).
   wipe: {
-    html: (t) => objHTML(t, 'wipe', `
+    html: (t, { phone } = {}) => objHTML(t, 'wipe', `
       <div class="wipe-frame"><div class="wipe-mask"><div class="layer wipe-content">
-        <img class="wipe-img" src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" decoding="async" draggable="false">
+        <img class="wipe-img" src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" decoding="async" draggable="false">${phone && t.showcase.swayFrames ? `
+        <canvas class="wipe-canvas wipe-frames" aria-hidden="true"></canvas>` : ''}
       </div></div></div>`),
+    phoneFrames: (t, scene) => preloadFrames(t, scene, {
+      cap: 1.5, half: true, phone: true, frames: t.showcase.swayFrames,
+      canvas: scene.querySelector('.wipe-frames'), key: 'swaySequence',
+    }),
     animate(c) {
-      const { t, scene, shadow, ft, live, start, L, isDesktop } = c;
+      const { t, scene, shadow, ft, live, start, L, isDesktop, phone } = c;
       const mask = scene.querySelector('.wipe-mask');
       const content = mask.querySelector('.wipe-content');
 
@@ -1147,8 +1234,20 @@ const SCENES = {
       ft(shadow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.1, 0.3, 'power1.inOut');
       fadeOut(c, { y: -30 });
 
-      if (!t.showcase.swayMask) return;
       // One and a half slow oscillations across the segment: 0 → +1 → −1 → +0.6 → 0.
+      if (phone && t.showcase.swayFrames) {
+        const sway = { v: 0 };
+        [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
+          ft(sway, { v: from }, { v: to }, f0, f1, 'sine.inOut');
+        });
+        // Plus the same slow idle sway, played back and forth through the frames.
+        playFrames(c, 'swaySequence', content, 'is-swaying', (time, dt, count) => {
+          const idleSway = HAIR_SWAY.idle * Math.sin((time / HAIR_SWAY.idlePeriod) * Math.PI * 2);
+          return ((gsap.utils.clamp(-1, 1, sway.v + idleSway) + 1) / 2) * (count - 1);
+        });
+        return;
+      }
+      if (!t.showcase.swayMask) return;
       const sway = { v: 0 };
       const push = () => { if (scene.view3d?.view) scene.view3d.view.setSway(sway.v); };
       [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
@@ -1654,8 +1753,11 @@ const loadFrame = (src) => fetch(src).then((r) => {
 });
 
 // Decodes a frame at exactly the canvas's size in device pixels (off the main
-// thread), or at its own size where resizing isn't supported.
+// thread), or at its own size where resizing isn't supported or not wanted
+// (width 0: on phones, where resizing costs the main thread far more than
+// the canvas's own scaling does).
 function decodeFrame(blob, width, height) {
+  if (!width) return createImageBitmap(blob);
   return createImageBitmap(blob, { resizeWidth: width, resizeHeight: height, resizeQuality: 'high' })
     .catch(() => createImageBitmap(blob));
 }
@@ -1663,21 +1765,25 @@ function decodeFrame(blob, width, height) {
 // Image sequences (Muscle Recovery, Signature): every frame is drawn at the
 // same position and size (they are pre-aligned). Between two frames, frame
 // floor(p) and then frame ceil(p) on top with the fractional part as
-// opacity. Only redraws when the position changes.
+// opacity. Only redraws when the position changes. A loop (NAD+'s turn on
+// phones) blends its last frame into its first; native (phones) keeps the
+// frames at their own size.
 // The frames are decoded once, at the canvas's size, while the treatment is
 // near (setWanted(true)), so drawing never waits for a decode; they are
 // released again when it is far away, to keep memory down.
-function createFrameSequence(canvas, frames, cap) {
+function createFrameSequence(canvas, frames, cap, { loop = false, native = false } = {}) {
   const ctx = canvas.getContext('2d');
   let w = 0, h = 0, position = 0, drawn = -1;
   let wanted = false, bitmaps = null, decoding = '', decodedFor = '';
+  let waiting = [];
+  const done = () => { waiting.forEach((resolve) => resolve()); waiting = []; };
   const release = () => {
     if (bitmaps) bitmaps.forEach((b) => b.close());
     bitmaps = null;
     decodedFor = '';
   };
   const decode = () => {
-    const key = `${canvas.width}x${canvas.height}`;
+    const key = native ? 'native' : `${canvas.width}x${canvas.height}`;
     if (!wanted || !w || key === decodedFor || key === decoding) return;
     decoding = key;
     // Two at a time, so the decoding never crowds out the page's own painting.
@@ -1686,7 +1792,7 @@ function createFrameSequence(canvas, frames, cap) {
     for (let i = 0; i < frames.length; i += 2) {
       chain = chain.then(() => {
         if (decoding !== key) throw new Error('superseded');
-        return Promise.all(frames.slice(i, i + 2).map((blob) => decodeFrame(blob, canvas.width, canvas.height)))
+        return Promise.all(frames.slice(i, i + 2).map((blob) => decodeFrame(blob, native ? 0 : canvas.width, native ? 0 : canvas.height)))
           .then((pair) => { list.push(...pair); });
       });
     }
@@ -1698,7 +1804,8 @@ function createFrameSequence(canvas, frames, cap) {
       decoding = '';
       drawn = -1;
       draw();
-    }, () => { if (decoding === key) decoding = ''; });
+      done();
+    }, () => { if (decoding === key) { decoding = ''; done(); } });
   };
   const resize = () => {
     ({ w, h } = fitCanvas(canvas, ctx, cap));
@@ -1711,8 +1818,10 @@ function createFrameSequence(canvas, frames, cap) {
   };
   const draw = () => {
     if (drawn === position || !w || !bitmaps) return;
-    const i0 = Math.floor(position), i1 = Math.min(bitmaps.length - 1, Math.ceil(position));
-    const f = position - i0;
+    const n = bitmaps.length;
+    const i0 = loop ? Math.floor(position) % n : Math.floor(position);
+    const i1 = loop ? (i0 + 1) % n : Math.min(n - 1, Math.ceil(position));
+    const f = position - Math.floor(position);
     const blend = i1 !== i0 && f > 0.001;
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(bitmaps[i0], 0, 0, w, h);
@@ -1733,11 +1842,13 @@ function createFrameSequence(canvas, frames, cap) {
     setWanted(on) {
       wanted = on;
       if (on) decode();
-      else { decoding = ''; release(); }
+      else { decoding = ''; release(); done(); }
+      if (!on || bitmaps) return Promise.resolve();
+      return new Promise((resolve) => waiting.push(resolve));
     },
     ready: () => !!bitmaps,
     draw,
-    dispose() { observer.disconnect(); wanted = false; decoding = ''; release(); },
+    dispose() { observer.disconnect(); wanted = false; decoding = ''; release(); done(); },
   };
 }
 
@@ -2283,7 +2394,7 @@ window.addEventListener('resize', () => { layoutVersion++; }, { passive: true })
 
 let lenis = null;
 let stage = null; // { st, pin, tl, ids, anchors, labelScroll } once the stage is live
-let carousel = null; // { anchors, goTo(id, instant) } while the phones' carousel is live
+let phoneStage = null; // { anchors, goTo(id, instant) } while the phones' stage is live
 
 // Header gains its divider once the page has scrolled.
 function initHeader() {
@@ -2310,8 +2421,8 @@ function glideTo(y, duration, easing = easeInOutCubic) {
 }
 
 function scrollToTreatment(id) {
-  if (carousel) {
-    carousel.goTo(id);
+  if (phoneStage) {
+    phoneStage.goTo(id);
     return;
   }
   if (!stage) return;
@@ -2353,7 +2464,7 @@ function initAnchors() {
       return;
     }
     const id = decodeURIComponent(hash.slice(1));
-    const featured = stage || carousel;
+    const featured = stage || phoneStage;
     if (featured && featured.anchors.includes(id)) {
       event.preventDefault();
       scrollToTreatment(id);
@@ -2380,8 +2491,8 @@ function initAnchors() {
 function jumpToHash() {
   const id = decodeURIComponent(location.hash.slice(1));
   if (!id || id === 'top') return;
-  if (carousel && carousel.anchors.includes(id)) {
-    carousel.goTo(id, true);
+  if (phoneStage && phoneStage.anchors.includes(id)) {
+    phoneStage.goTo(id, true);
     return;
   }
   if (!lenis) return;
@@ -2436,13 +2547,19 @@ function initSnapInputs() {
 
 /* ---------- The stage ---------- */
 
-function buildStage(root, isDesktop) {
+// The master timeline, paused: driven by the scroll on wider screens, by
+// swiping on phones. With phone, the last treatment leaves like the others
+// and an ending follows ("All treatments", on Porcelain), the tints
+// cross-fade through opacity only, no WebGL runs, and the scenes' pictures
+// and frames are left to the phones' loader.
+function buildStage(root, isDesktop, phone = false) {
   const L = STAGE.segment;
   const n = FEATURED.length;
   const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
   const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
-  const steps = [...root.querySelectorAll('.stage__step')];
+  const steps = [...root.querySelectorAll(phone ? '.stage__name' : '.stage__step')];
   const bg = root.querySelector('.stage__bg');
+  const ending = phone ? root.querySelector('.stage__end') : null;
   const defs = FEATURED.map((t) => SCENES[t.showcase.scene] || SCENES.fade);
 
   // Where fraction f of treatment i's segment falls, from the segment's
@@ -2461,11 +2578,15 @@ function buildStage(root, isDesktop) {
   for (let i = 1; i < n; i++) starts.push(starts[i - 1] + at(i - 1, X));
   const labelAt = defs.map((d) => d.label ?? STAGE.label);
   const labels = starts.map((s, i) => s + at(i, labelAt[i]));
-  const end = starts[n - 1] + lengths[n - 1];
+  // Phones: the ending begins where the last treatment's exit does.
+  const endStart = starts[n - 1] + at(n - 1, X);
+  const endLabel = endStart + SWIPE.endRest * L;
+  const end = phone ? endLabel : starts[n - 1] + lengths[n - 1];
 
   // The active treatment changes in the middle of each text handover.
   const mid = ([a, b]) => (a + b) / 2;
   const switches = starts.map((s, i) => (i === 0 ? -Infinity : (starts[i - 1] + at(i - 1, mid(STAGE.textOut)) + s + at(i, mid(STAGE.textIn))) / 2));
+  if (phone) switches.push((starts[n - 1] + at(n - 1, mid(STAGE.textOut)) + endStart + mid(STAGE.textIn) * L) / 2);
 
   let active = -1;
   const setActive = (index) => {
@@ -2480,6 +2601,7 @@ function buildStage(root, isDesktop) {
       if (i === index) el.setAttribute('aria-current', 'step');
       else el.removeAttribute('aria-current');
     });
+    if (ending) ending.inert = index !== n;
   };
 
   // Safety net: only the treatments whose segment contains the playhead (the
@@ -2487,7 +2609,7 @@ function buildStage(root, isDesktop) {
   // scene (with its shadow, canvases and 3D) and text block is hidden, and
   // live effects only run inside their own segment. Within a segment the
   // tweens decide; re-entering a segment always crosses one of its tweens.
-  const windows = starts.map((s, i) => [s, i === n - 1 ? Infinity : s + lengths[i]]);
+  const windows = starts.map((s, i) => [s, i === n - 1 && !phone ? Infinity : s + lengths[i]]);
   const isHidden = (el) => el.style.visibility === 'hidden' && el.style.opacity === '0';
   const sync = (time) => {
     windows.forEach(([a, b], i) => {
@@ -2501,6 +2623,29 @@ function buildStage(root, isDesktop) {
     });
   };
 
+  // Background (phones): two stacked tints, the lower one showing the
+  // treatment being left and the upper one fading in with the next, so a
+  // handover changes only opacity (the colours change between handovers).
+  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
+  const handovers = phone ? tints.map((from, i) => {
+    const a = i < n - 1 ? starts[i + 1] : endStart;
+    return { a, b: a + (1 - X) * L, from, to: i < n - 1 ? tints[i + 1] : STAGE.finalTint };
+  }) : [];
+  const [lower, upper] = phone ? bg.children : [];
+  const tintEase = gsap.parseEase('power1.inOut');
+  const shown = { lower: '', upper: '', k: -1 };
+  const paintTint = (time) => {
+    let from = tints[0], to = tints[0], k = 0;
+    for (const h of handovers) {
+      if (time < h.a) break;
+      ({ from, to } = h);
+      k = tintEase(Math.min(1, (time - h.a) / (h.b - h.a)));
+    }
+    if (from !== shown.lower) lower.style.backgroundColor = shown.lower = from;
+    if (to !== shown.upper) upper.style.backgroundColor = shown.upper = to;
+    if (k !== shown.k) upper.style.opacity = shown.k = k;
+  };
+
   lives = [];
   const preloads = [];
   const onUpdate = () => {
@@ -2510,6 +2655,7 @@ function buildStage(root, isDesktop) {
     sync(time);
     setActive(index);
     updateLives(time);
+    if (phone) paintTint(time);
   };
 
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' }, onUpdate });
@@ -2518,7 +2664,7 @@ function buildStage(root, isDesktop) {
   FEATURED.forEach((t, i) => {
     const start = starts[i];
     const scene = scenes[i];
-    const isLast = i === n - 1;
+    const isLast = i === n - 1 && !phone;
     // Live effects run while the treatment can be seen (after its fade in
     // starts, until its fade out ends), and keep their frames decoded from
     // one treatment before until one after.
@@ -2536,8 +2682,8 @@ function buildStage(root, isDesktop) {
 
     const obj = scene.querySelector('.obj');
     const shadow = scene.querySelector('.obj__shadow');
-    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop, mobile: false });
-    if (defs[i].preload) preloads.push(defs[i].preload(t, scene, { cap: isDesktop ? 2 : 1.5, half: false }).catch(() => null));
+    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop, phone });
+    if (defs[i].preload && !phone) preloads.push(defs[i].preload(t, scene, { cap: isDesktop ? 2 : 1.5, half: false }).catch(() => null));
     tl.addLabel(t.id, labels[i]);
   });
 
@@ -2547,28 +2693,39 @@ function buildStage(root, isDesktop) {
   const [out0, out1] = STAGE.textOut;
   copies.forEach((copy, i) => {
     tl.fromTo(copy, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: at(i, in1) - at(i, in0), ease: 'power2.out', immediateRender: false }, starts[i] + at(i, in0));
-    if (i < n - 1) {
+    if (i < n - 1 || phone) {
       tl.fromTo(copy, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: at(i, out1) - at(i, out0), ease: 'power1.inOut', immediateRender: false }, starts[i] + at(i, out0));
     }
   });
 
-  // Background: a gentle cross-fade between tints during each handover,
-  // then to Porcelain so the stage releases seamlessly into the grid.
-  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
-  gsap.set(bg, { backgroundColor: tints[0] });
-  for (let i = 0; i < n - 1; i++) {
-    tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - STAGE.exitStart) * L, ease: 'power1.inOut', immediateRender: false }, starts[i + 1]);
+  if (phone) {
+    // The ending's heading and button arrive like a treatment's text.
+    gsap.set(ending, { autoAlpha: 0, y: 30 });
+    tl.fromTo(ending, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: (in1 - in0) * L, ease: 'power2.out', immediateRender: false }, endStart + in0 * L);
+    tl.addLabel('ending', endLabel);
+  } else {
+    // Background: a gentle cross-fade between tints during each handover,
+    // then to Porcelain so the stage releases seamlessly into the grid.
+    gsap.set(bg, { backgroundColor: tints[0] });
+    for (let i = 0; i < n - 1; i++) {
+      tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - STAGE.exitStart) * L, ease: 'power1.inOut', immediateRender: false }, starts[i + 1]);
+    }
+    const lastFade = 0.14 * L;
+    tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
   }
-  const lastFade = 0.14 * L;
-  tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
 
   tl.set({}, {}, end); // the timeline runs to the very end of the pin
   sync(0);
   setActive(0);
   updateLives(0);
+  if (phone) paintTint(0);
   // After a refresh (resize, fonts) the playhead may not move, so re-apply.
   const resync = () => { const time = tl.time(); sync(time); updateLives(time); };
-  return { tl, labels, end, preloads, resync };
+  // Phones: the resting points (every rest label, then the ending) and where
+  // each exit begins (the way on from each resting point).
+  const rests = phone ? [...labels, endLabel] : labels;
+  const leaves = phone ? [...starts.slice(1), endStart] : starts.slice(1);
+  return { tl, labels, end, preloads, resync, rests, leaves, defs, scenes };
 }
 
 // Every stage image (layers, 3D fallbacks) is loaded and decoded, and every
@@ -2677,229 +2834,481 @@ function initStage(context, isDesktop) {
   };
 }
 
-/* ---------- Phones: the treatments as swipeable panels ----------
-   The track scrolls natively (scroll snap, one treatment per swipe), so
-   vertical page scrolling keeps working when a swipe starts on it. Only the
-   current panel and its two neighbours are built: their pictures load, their
-   scenes' timelines exist and their frames are decoded. A scene plays to its
-   rest once its panel is the current one (CAROUSEL.activeRatio in view) and
-   the carousel is on screen; it is reset once the panel has completely left
-   the screen, so it plays again when the user comes back. Idle loops and
-   WebGL views only run while their panel can be seen. With animated false
-   (reduced motion) every panel shows its finished picture. */
+/* ---------- Phones: the same stage, driven by swiping ----------
+   One screen tall below the header and not pinned: the page scrolls past it
+   natively (Lenis is off on phones) and settles onto it through CSS scroll
+   snapping. Sideways swipes drive the master timeline between its resting
+   points (each rest label, then the ending), measured in progress P: P = i
+   is treatment i at rest, and between two rests the first SWIPE.hold of the
+   way crosses the finished picture that holds before the exit, the rest is
+   the handover and the next scene. −1 → 0 is Hydration's entrance, played
+   when the stage first settles on screen.
+   While a finger drags from rest, the timeline follows it (a full-width drag
+   covers SWIPE.reach of the way); on release it plays on to the next rest,
+   or eases back. A swipe during a transition retargets it and speeds it up.
+   Pictures load before they are needed: the first three treatments before
+   the stage responds, then the rest in turn in idle time, never during a
+   swipe or a transition; frame sequences stay decoded only near the current
+   treatment. A treatment that isn't ready yet shows its finished picture.
+   With animated false (reduced motion) there is no timeline: the finished
+   pictures change instantly. */
 
-function initCarousel(context, animated) {
+function initPhoneStage(context, animated) {
   const stageRoot = document.getElementById('stage-root');
   if (!stageRoot || !MENU || !FEATURED.length) return () => {};
-  stageRoot.insertAdjacentHTML('afterbegin', carouselHTML(FEATURED, animated));
+  stageRoot.insertAdjacentHTML('afterbegin', phoneStageHTML(FEATURED, animated));
   const root = document.getElementById('stage');
-  const track = root.querySelector('.carousel__track');
-  const namesNav = root.querySelector('.carousel__names');
-  const names = [...root.querySelectorAll('.carousel__name')];
-  const [prev, next] = root.querySelectorAll('.carousel__arrow');
-  const fill = root.querySelector('.carousel__progress-fill');
-  const hint = root.querySelector('.carousel__hint');
-  const reduce = !animated;
-  document.documentElement.classList.add('has-carousel');
+  const inner = root.querySelector('.stage__inner');
+  const namesList = root.querySelector('.stage__names');
+  const names = [...root.querySelectorAll('.stage__name')];
+  const prev = root.querySelector('.stage__arrow--prev');
+  const next = root.querySelector('.stage__arrow--next');
+  const fill = root.querySelector('.stage__line-fill');
+  const hint = root.querySelector('.stage__hint');
+  const ending = root.querySelector('.stage__end');
+  const [lower, upper, veil] = root.querySelector('.stage__bg').children;
+  const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
+  const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
+  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
+  const n = FEATURED.length; // the ending's index
+  const clamp = (lo, hi, v) => Math.max(lo, Math.min(hi, v));
+  document.documentElement.classList.add('has-phone-stage');
 
-  const panels = FEATURED.map((t, i) => {
-    const el = track.children[i];
-    const def = SCENES[t.showcase.scene] || SCENES.fade;
-    return {
-      t, i, el, def,
-      scene: el.querySelector('.scene'),
-      label: def.label ?? STAGE.label,
-      seconds: t.mobileSeconds || CAROUSEL.seconds,
-      ratio: 0, visible: false, near: false,
-      built: false, ready: false, tl: null, play: null, idles: [], lives: [],
-    };
-  });
-  const byEl = new Map(panels.map((p) => [p.el, p]));
   let alive = true;
-  let active = -1;
-  let onScreen = false;  // any part of the carousel in the viewport
-  let settled = false;   // enough of it in view for a scene to play
-  const cancels = [];
+  const offs = [];
+  const on = (el, type, fn, opts) => { el.addEventListener(type, fn, opts); offs.push(() => el.removeEventListener(type, fn, opts)); };
 
-  // Pictures load only when their panel is built.
-  const loadImages = (el) => el.querySelectorAll('img[data-src], img[data-srcset]').forEach((img) => {
-    if (img.dataset.srcset) img.srcset = img.dataset.srcset;
-    if (img.dataset.src) img.src = img.dataset.src;
-    img.removeAttribute('data-src');
-    img.removeAttribute('data-srcset');
-  });
-
-  function build(p) {
-    if (!p || p.built) return;
-    p.built = true;
-    loadImages(p.el);
-    const images = [...p.el.querySelectorAll('img')];
-    let preload = null;
-    if (animated) {
-      // The scene as designed, on its own paused timeline of length 1.
-      const { t, scene } = p;
-      const obj = scene.querySelector('.obj');
-      const shadow = scene.querySelector('.obj__shadow');
-      context.add(() => {
-        const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
-        const ft = (target, a, b, f0, f1, ease = 'none') =>
-          tl.fromTo(target, a, { ...b, duration: f1 - f0, ease, immediateRender: false }, f0);
-        const idle = (target, vars) => p.idles.push(gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true }));
-        const live = (effect) => p.lives.push({ visible: false, near: false, inited: false, last: 0, ...effect });
-        p.def.animate({ t, tl, scene, obj, shadow, ft, idle, live, start: 0, L: 1, label: p.label, isLast: true, isDesktop: false, mobile: true });
-        tl.set({}, {}, 1);
-        tl.addLabel(t.id, p.label);
-        p.tl = tl;
-      });
-      if (p.def.preload) preload = p.def.preload(t, scene, { cap: 1.5, half: true }).catch(() => null);
-    }
-    Promise.all([...images.map((img) => img.decode().catch(() => {})), preload]).then(() => {
-      if (!alive) return;
-      p.ready = true;
-      p.el.classList.add('is-ready');
-      if (p.lives.some((l) => l.init)) cancels.push(initWhenIdle(p.lives));
-      update(p);
+  /* Pictures. The largest have 800px copies, chosen through srcset. */
+  const units = FEATURED.map((t, i) => ({ i, t, scene: scenes[i], obj: scenes[i].querySelector('.obj'), def: SCENES[t.showcase.scene] || SCENES.fade }));
+  if (animated) {
+    // Each scene's finished picture, shown until the scene is ready.
+    units.forEach((u) => {
+      const [w, h] = u.t.imageSize;
+      const img = document.createElement('img');
+      img.className = 'layer scene-still';
+      img.alt = '';
+      img.width = w;
+      img.height = h;
+      img.decoding = 'async';
+      img.draggable = false;
+      // The finished deadlift pose is a frame: its half-size copy is plenty.
+      img.dataset.src = u.t.showcase.scene === 'frames' ? u.t.image.replace(/\.webp$/, '-half.webp') : u.t.image;
+      u.obj.append(img);
+      u.still = img;
     });
   }
+  root.querySelectorAll('img[data-src]').forEach((img) => {
+    const src = img.dataset.src;
+    if (PHONE_COPIES.has(src)) img.dataset.srcset = `${phoneCopy(src)} 800w, ${src} ${img.getAttribute('width')}w`;
+  });
+  const loadImg = (img, width) => {
+    if (img.dataset.srcset) {
+      img.sizes = `${Math.ceil(width || 400)}px`;
+      img.srcset = img.dataset.srcset;
+      img.removeAttribute('data-srcset');
+    }
+    if (img.dataset.src) {
+      img.src = img.dataset.src;
+      img.removeAttribute('data-src');
+    }
+    return img.decode().catch(() => {});
+  };
 
-  // Starts, stops, plays or resets a panel's scene to match where it is.
-  function update(p) {
-    if (!p.tl) return;
-    const visible = onScreen && p.ratio > 0;
-    const near = Math.abs(p.i - active) <= 1;
-    if (near !== p.near) {
-      p.near = near;
-      p.lives.forEach((l) => (near ? l.warm?.() : l.cool?.()));
-    }
-    if (visible !== p.visible) {
-      p.visible = visible;
-      p.idles.forEach((tween) => (visible ? tween.play() : tween.pause()));
-      p.lives.forEach((l) => {
-        l.visible = visible;
-        l.last = 0;
-        if (visible) {
-          if (!l.inited) { l.inited = true; l.init?.(); } // needed now, idle or not
-          l.start?.();
-        } else l.stop?.();
-      });
-    }
-    if (!p.ready) return;
-    if (!visible) {
-      // Completely out of view: back to the start, ready to play again.
-      if (p.play) p.play.kill();
-      p.play = null;
-      if (p.tl.time() !== 0) p.tl.pause(0);
-    } else if (p.i === active && settled && !p.play && p.tl.time() === 0) {
-      p.play = p.tl.tweenFromTo(0, p.label, { duration: p.seconds, ease: CAROUSEL.ease });
-    }
-  }
+  /* Sizes: measured once and on resize, never while a finger or a transition moves. */
+  const size = { width: 1, list: 0, names: [], objs: [] };
+  const measure = () => {
+    size.width = root.clientWidth || 1;
+    size.list = namesList.clientWidth;
+    size.names = names.map((el) => [el.parentElement.offsetLeft, el.parentElement.offsetWidth]);
+    size.objs = units.map((u) => (u.obj ? u.obj.offsetWidth : 0));
+  };
+  measure();
 
-  function setActive(i) {
-    if (i === active) return;
-    const first = active === -1;
-    active = i;
+  /* The timeline and where each resting point sits on it. */
+  let tl = null, rests = [], leaves = [];
+  if (animated) ({ tl, rests, leaves } = buildStage(root, false, true));
+  const H = SWIPE.hold;
+  const timeAt = (P) => {
+    if (P <= -1) return 0;
+    if (P < 0) return (P + 1) * rests[0];
+    if (P >= n) return rests[n];
+    const k = Math.floor(P), p = P - k;
+    return p <= H
+      ? rests[k] + (p / H) * (leaves[k] - rests[k])
+      : leaves[k] + ((p - H) / (1 - H)) * (rests[k + 1] - leaves[k]);
+  };
+  // Seconds for the way from rest k to rest k + 1 (k = −1: the arrival).
+  const pairSeconds = (k) => {
+    if (k < 0) return SWIPE.seconds;
+    if (k >= n - 1) return SWIPE.endSeconds;
+    return FEATURED[k + 1].mobileSeconds || SWIPE.seconds;
+  };
+  const secondsBetween = (a, b) => {
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    let seconds = 0;
+    for (let k = Math.floor(lo); k < hi; k++) seconds += (Math.min(hi, k + 1) - Math.max(lo, k)) * pairSeconds(k);
+    return b < a ? seconds * SWIPE.back : seconds;
+  };
+
+  // The finished pictures (reduced motion): one at a time, instantly.
+  let stillShown = -1;
+  const showStill = (i) => {
+    if (i === stillShown) return;
+    stillShown = i;
+    scenes.forEach((el, k) => gsap.set(el, { autoAlpha: k === i ? 1 : 0 }));
+    copies.forEach((el, k) => {
+      gsap.set(el, { autoAlpha: k === i ? 1 : 0 });
+      el.classList.toggle('is-active', k === i);
+      el.inert = k !== i;
+    });
+    gsap.set(ending, { autoAlpha: i === n ? 1 : 0 });
+    ending.inert = i !== n;
     names.forEach((el, k) => {
       el.classList.toggle('is-active', k === i);
       if (k === i) el.setAttribute('aria-current', 'step');
       else el.removeAttribute('aria-current');
     });
-    prev.disabled = i === 0;
-    next.disabled = i === panels.length - 1;
-    fill.style.transform = `scaleX(${(i + 1) / panels.length})`;
-    // Keep the current name in view (only the row scrolls, never the page).
-    const chip = names[i];
-    const left = chip.offsetLeft - (namesNav.clientWidth - chip.offsetWidth) / 2;
-    namesNav.scrollTo({ left: Math.max(0, left), behavior: first || reduce ? 'auto' : 'smooth' });
-    if (!first && hint) hint.classList.add('is-gone');
-    [i - 1, i, i + 1].forEach((k) => build(panels[k]));
-    panels.forEach(update);
+    lower.style.backgroundColor = i === n ? STAGE.finalTint : tints[i];
+    [i - 1, i, i + 1].forEach((k) => units[k]?.scene.querySelectorAll('img[data-src]').forEach((img) => loadImg(img, size.objs[k])));
+  };
+
+  const pos = { P: animated ? -1 : 0 };
+  let cur = 0, target = 0;
+  const apply = () => {
+    if (tl) tl.time(timeAt(pos.P));
+    else showStill(Math.round(pos.P));
+    fill.style.transform = `scaleX(${clamp(0, 1, (pos.P + 1) / (n + 1))})`;
+  };
+
+  let tween = null, hintTween = null, jumpTl = null, gesture = null;
+  let interactive = !animated, arrived = !animated, swiped = false;
+  let lastMoveAt = -Infinity; // a swipe or transition ended (the loader waits a moment)
+  const busy = () => !!(tween || hintTween || jumpTl || gesture?.scrub)
+    || performance.now() - lastScrollAt < 300 || performance.now() - lastMoveAt < 200;
+
+  /* The loader. */
+  const sequences = (u) => [u.scene.frameSequence, u.scene.spinSequence, u.scene.swaySequence].filter(Boolean);
+  const ready = (u) => !!u.loaded && u.done && (!u.scene.frameSequence || u.scene.frameSequence.ready());
+  // Shows the scene once it is ready (or its finished picture while it isn't),
+  // but never swaps pictures while it can be seen moving.
+  const refresh = (u) => {
+    const isReady = ready(u);
+    if (isReady === !u.scene.classList.contains('is-loading')) return;
+    if (isReady && busy() && u.scene.style.visibility !== 'hidden') return;
+    u.scene.classList.toggle('is-loading', !isReady);
+  };
+  const loadStill = (u) => {
+    if (u.stillLoading || ready(u)) return;
+    u.stillLoading = true;
+    loadImg(u.still, size.objs[u.i]);
+  };
+  const loadUnit = (u) => u.loaded || (u.loaded = Promise.all([
+    ...[...u.scene.querySelectorAll('img[data-src]')].filter((img) => img !== u.still).map((img) => loadImg(img, size.objs[u.i])),
+    u.def.preload ? u.def.preload(u.t, u.scene, { cap: 1.5, half: true, phone: true }).catch(() => null) : null,
+  ]).then(() => { u.done = true; }));
+  const loadExtra = (u) => u.extra || (u.extra = u.def.phoneFrames(u.t, u.scene).catch(() => null));
+  const decode = (u) => Promise.race([
+    Promise.all(sequences(u).map((s) => s.setWanted(true))),
+    new Promise((resolve) => setTimeout(resolve, 6000)),
+  ]);
+  const near = (u, d) => Math.abs(u.i - target) <= d;
+  // The next piece of work: the current treatment and its neighbours first
+  // (pictures, pre-rendered frames, then decoding), then the rest in order.
+  const nextJob = () => {
+    const close = [target, target + 1, target - 1].map((k) => units[k]).filter(Boolean);
+    for (const u of close) if (!u.loaded) return () => loadUnit(u);
+    for (const u of close) if (u.def.phoneFrames && !u.extra) return () => loadExtra(u);
+    for (const u of close) if (sequences(u).some((s) => !s.ready())) return () => decode(u);
+    for (const u of units) if (!u.loaded) return () => loadUnit(u);
+    for (const u of units) if (u.def.phoneFrames && !u.extra) return () => loadExtra(u);
+    return null;
+  };
+  const idleCall = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 800 }) : setTimeout(fn, 60));
+  let pumping = false;
+  const pump = () => {
+    if (pumping || !animated) return;
+    pumping = true;
+    const step = () => {
+      if (!alive) return;
+      if (busy()) { setTimeout(() => idleCall(step), 150); return; }
+      const job = nextJob();
+      if (!job) { pumping = false; return; }
+      job().then(() => {
+        units.forEach(refresh);
+        idleCall(step);
+      });
+    };
+    idleCall(step);
+  };
+  // Frame sequences far from the current treatment give their memory back.
+  const trim = () => units.forEach((u) => {
+    if (near(u, SWIPE.keep + 1)) return;
+    sequences(u).forEach((s) => { if (s.ready()) s.setWanted(false); });
+  });
+  // Where the stage is headed: its neighbours' finished pictures are fetched
+  // at once if their scenes aren't ready.
+  const heading = (to) => [to - 1, to, to + 1].forEach((k) => { if (units[k] && animated && !ready(units[k])) loadStill(units[k]); });
+
+  /* Arrows, names and the hint. */
+  const marks = () => {
+    prev.classList.toggle('is-off', target <= 0);
+    next.classList.toggle('is-off', target >= n);
+    prev.disabled = target <= 0;
+    next.disabled = target >= n;
+  };
+  const centreName = (i, smooth) => {
+    const [left, width] = size.names[Math.min(i, n - 1)] || [0, 0];
+    namesList.scrollTo({ left: Math.max(0, left + width / 2 - size.list / 2), behavior: smooth && animated ? 'smooth' : 'auto' });
+  };
+  const dismissHint = () => {
+    swiped = true;
+    hint.classList.remove('is-shown');
+    if (hintTween) { hintTween.kill(); hintTween = null; }
+  };
+  const showHint = () => {
+    if (swiped) return;
+    hint.classList.add('is-shown');
+    // One gentle lean towards the next treatment, and back.
+    hintTween = gsap.timeline({ delay: 0.4, onComplete: () => { hintTween = null; lastMoveAt = performance.now(); pump(); } })
+      .to(pos, { P: SWIPE.hint, duration: 0.6, ease: 'sine.inOut', onUpdate: apply })
+      .to(pos, { P: 0, duration: 0.7, ease: 'sine.inOut', onUpdate: apply });
+  };
+  if (!animated) hint.classList.add('is-shown');
+
+  /* Moving between resting points. */
+  const settle = () => {
+    cur = target;
+    lastMoveAt = performance.now();
+    marks();
+    centreName(cur, true);
+    if (!animated) return;
+    trim();
+    units.forEach(refresh);
+    pump();
+  };
+  // from: 'tap' (arrows, names, the arrival), 'drag' (a release that moves
+  // on) or 'spring' (a release that eases back).
+  function go(to, from = 'tap', then) {
+    to = clamp(0, n, to);
+    if (!animated) {
+      target = to;
+      pos.P = to;
+      apply();
+      settle();
+      return;
+    }
+    const moving = !!tween;
+    if (tween) tween.kill();
+    if (hintTween) { hintTween.kill(); hintTween = null; }
+    tween = null;
+    target = to;
+    marks();
+    heading(to);
+    let duration = secondsBetween(pos.P, to);
+    let ease = from === 'drag' ? SWIPE.releaseEase : SWIPE.ease;
+    if (from === 'spring') { duration = SWIPE.springBack; ease = 'power2.out'; }
+    else if (moving) { duration /= SWIPE.retarget; ease = 'power1.out'; }
+    if (Math.abs(pos.P - to) < 1e-4) {
+      pos.P = to;
+      apply();
+      settle();
+      return;
+    }
+    tween = gsap.to(pos, {
+      P: to, duration, ease, onUpdate: apply,
+      onComplete: () => { tween = null; settle(); if (then) then(); },
+    });
+  }
+  // A far treatment: a quick cross-fade instead of playing through everything in between.
+  function jump(to) {
+    to = clamp(0, n, to);
+    if (!animated) { go(to); return; }
+    if (tween) { tween.kill(); tween = null; }
+    if (hintTween) { hintTween.kill(); hintTween = null; }
+    if (jumpTl) jumpTl.kill();
+    target = to;
+    marks();
+    heading(to);
+    const half = SWIPE.jump / 2;
+    jumpTl = gsap.timeline({ onComplete: () => { jumpTl = null; settle(); } })
+      .to(inner, { autoAlpha: 0, duration: half, ease: 'power1.in' })
+      .add(() => {
+        // The old tint stays over the new one for a moment, then fades.
+        veil.style.backgroundColor = Number(upper.style.opacity) >= 0.5 ? upper.style.backgroundColor : lower.style.backgroundColor;
+        veil.style.opacity = 1;
+        pos.P = to;
+        apply();
+      })
+      .to(inner, { autoAlpha: 1, duration: half, ease: 'power1.out' })
+      .to(veil, { opacity: 0, duration: half, ease: 'power1.out' }, '<');
+  }
+  // Arrows and names: a neighbour plays the transition, a far one jumps.
+  const select = (i) => {
+    if (!interactive) return;
+    i = clamp(0, n, i);
+    arrived = true;
+    dismissHint();
+    if (i === target) return;
+    if (Math.abs(i - target) === 1) go(i);
+    else jump(i);
+  };
+
+  /* The arrival: once the stage first settles on screen, Hydration enters and
+     its scene plays, then the hint. */
+  let inView = false, arriveTimer = 0;
+  const arrive = () => {
+    clearTimeout(arriveTimer);
+    if (arrived || !interactive || !inView) return;
+    const wait = 150 - (performance.now() - lastScrollAt);
+    if (wait > 0) { arriveTimer = setTimeout(arrive, wait + 20); return; }
+    arrived = true;
+    go(0, 'tap', showHint);
+  };
+  const setOnScreen = (visible) => {
+    if (visible === stageOnScreen) return;
+    stageOnScreen = visible;
+    // Idle loops pause while the stage is off screen (frames stop in tickLives).
+    lives.forEach((l) => {
+      if (!l.visible) return;
+      l.last = 0;
+      if (visible) l.start?.();
+      else l.stop?.();
+    });
+  };
+  const screenObserver = new IntersectionObserver(([entry]) => {
+    setOnScreen(entry.isIntersecting);
+    inView = entry.intersectionRatio >= 0.75;
+    arrive();
+  }, { threshold: [0, 0.75] });
+  screenObserver.observe(root);
+  const resizeObserver = new ResizeObserver(() => { measure(); if (!tween && !jumpTl) centreName(cur, false); });
+  resizeObserver.observe(root);
+  if (animated) gsap.ticker.add(tickLives);
+
+  /* Gestures: vertical swipes stay the page's; sideways ones drive the stage. */
+  on(root, 'pointerdown', (e) => {
+    if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (e.target.closest('a, button, .stage__bar')) return;
+    gesture = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, locked: false, scrub: false, base: cur, samples: [[e.timeStamp, e.clientX]] };
+  });
+  on(root, 'pointermove', (e) => {
+    const g = gesture;
+    if (!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (!g.locked) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE.lock) return;
+      if (Math.abs(dx) <= Math.abs(dy) || !interactive) { gesture = null; return; }
+      g.locked = true;
+      try { root.setPointerCapture(e.pointerId); } catch (error) { /* already released */ }
+      if (!arrived) { arrived = true; go(0); }
+      dismissHint();
+      // From rest the stage follows the finger; mid-transition the release decides.
+      g.scrub = animated && !tween && !jumpTl;
+      g.base = cur;
+    }
+    g.dx = dx;
+    g.samples.push([e.timeStamp, e.clientX]);
+    while (g.samples.length > 2 && e.timeStamp - g.samples[0][0] > 100) g.samples.shift();
+    if (g.scrub) {
+      pos.P = clamp(0, n, g.base + clamp(-1, 1, -dx / size.width) * SWIPE.reach);
+      apply();
+    }
+  });
+  const release = (e, cancelled) => {
+    const g = gesture;
+    if (!g || e.pointerId !== g.id) return;
+    gesture = null;
+    if (!g.locked) return;
+    const [t0, x0] = g.samples[0];
+    const [t1, x1] = g.samples[g.samples.length - 1];
+    const velocity = t1 > t0 ? (x1 - x0) / (t1 - t0) : 0; // px per ms, negative leftwards
+    const far = Math.abs(g.dx) > SWIPE.commit * size.width;
+    let way = 0;
+    if (!cancelled && g.dx < 0 && (far || velocity < -SWIPE.flick)) way = 1;
+    if (!cancelled && g.dx > 0 && (far || velocity > SWIPE.flick)) way = -1;
+    lastMoveAt = performance.now();
+    if (g.scrub) {
+      const to = g.base + way;
+      if (way && to >= 0 && to <= n) go(to, 'drag');
+      else go(g.base, 'spring');
+    } else if (way) {
+      if (animated) go(target + way);
+      else go(cur + way);
+    }
+  };
+  on(root, 'pointerup', (e) => release(e, false));
+  on(root, 'pointercancel', (e) => release(e, true));
+  on(root, 'click', (e) => {
+    const name = e.target.closest('.stage__name');
+    const arrow = e.target.closest('.stage__arrow');
+    if (name) select(Number(name.dataset.index));
+    else if (arrow && !arrow.disabled) select(target + Number(arrow.dataset.step));
+  });
+
+  /* Start: the first three treatments' pictures, then the stage responds. */
+  marks();
+  apply();
+  if (animated) {
+    Promise.all(units.slice(0, 3).map((u) => loadUnit(u).then(() => decode(u)))).then(() => {
+      if (!alive) return;
+      interactive = true;
+      units.forEach(refresh);
+      arrive();
+      pump();
+    });
   }
 
-  const goToIndex = (i, instant) => {
-    const p = panels[Math.max(0, Math.min(panels.length - 1, i))];
-    track.scrollTo({ left: p.el.offsetLeft, behavior: instant || reduce ? 'auto' : 'smooth' });
-  };
-
-  // Which panels are in view (horizontally, within the track). A panel
-  // counts as out of view below 2% (a panel that has just left sits edge to
-  // edge with the track, which still counts as intersecting at 0%).
-  const OUT = 0.02;
-  const panelObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      const ratio = entry.isIntersecting ? entry.intersectionRatio : 0;
-      byEl.get(entry.target).ratio = ratio < OUT ? 0 : ratio;
-    });
-    const best = panels.reduce((a, b) => (b.ratio > a.ratio ? b : a));
-    if (best.ratio >= CAROUSEL.activeRatio) setActive(best.i);
-    panels.forEach(update);
-  }, { root: track, threshold: [0, OUT, CAROUSEL.activeRatio, 1] });
-  panels.forEach((p) => panelObserver.observe(p.el));
-
-  // Whether the carousel itself is on screen (vertically, in the page).
-  const pageObserver = new IntersectionObserver(([entry]) => {
-    onScreen = entry.isIntersecting;
-    settled = entry.intersectionRatio >= CAROUSEL.onScreen;
-    panels.forEach(update);
-  }, { threshold: [0, CAROUSEL.onScreen] });
-  pageObserver.observe(root);
-
-  const onClick = (event) => {
-    const name = event.target.closest('.carousel__name');
-    const arrow = event.target.closest('.carousel__arrow');
-    if (name) goToIndex(Number(name.dataset.index));
-    else if (arrow && !arrow.disabled) goToIndex(active + Number(arrow.dataset.step));
-  };
-  root.addEventListener('click', onClick);
-
-  const tick = (time) => {
-    if (!onScreen) return;
-    for (const p of panels) if (p.visible) p.lives.forEach((l) => frameLive(l, time));
-  };
-  if (animated) gsap.ticker.add(tick);
-
-  setActive(0);
-
   const anchors = FEATURED.filter((t) => !t.standalone).map((t) => t.id);
-  carousel = {
+  phoneStage = {
     anchors,
-    // Brings the carousel into view with the treatment's panel showing.
+    // Brings the stage into view, at the treatment's rest.
     goTo(id, instant) {
       const i = FEATURED.findIndex((t) => t.id === id);
       if (i < 0) return;
-      goToIndex(i, true);
-      if (lenis) lenis.scrollTo(root, { offset: -document.getElementById('site-header').offsetHeight, immediate: !!instant, force: !!instant });
-      else root.scrollIntoView({ behavior: instant || reduce ? 'auto' : 'smooth' });
+      const header = document.getElementById('site-header');
+      const top = root.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : 0);
+      window.scrollTo({ top, behavior: instant || !animated ? 'auto' : 'smooth' });
+      arrived = true;
+      clearTimeout(arriveTimer);
+      if (instant || !interactive) {
+        [tween, hintTween, jumpTl].forEach((t) => t && t.kill());
+        tween = hintTween = jumpTl = null;
+        target = i;
+        heading(i);
+        pos.P = i;
+        apply();
+        settle();
+      } else if (i !== target) {
+        if (Math.abs(i - target) === 1) go(i);
+        else jump(i);
+      }
     },
   };
-  // The carousel changed the page's height: re-measure the reveals below it,
+  // The stage changed the page's height: re-measure the reveals below it,
   // then honour a #hash. Done after this matchMedia callback has returned
   // (a refresh inside it would file the reveals' context under this one, and
   // the next layout switch would revert them with it).
   requestAnimationFrame(() => {
     if (!alive) return;
     ScrollTrigger.refresh();
-    if (lenis) lenis.resize();
     jumpToHash();
   });
 
   return () => {
     alive = false;
-    carousel = null;
-    cancels.forEach((cancel) => cancel());
-    panelObserver.disconnect();
-    pageObserver.disconnect();
-    root.removeEventListener('click', onClick);
-    gsap.ticker.remove(tick);
-    panels.forEach((p) => {
-      if (p.play) p.play.kill();
-      p.lives.forEach((l) => { if (l.visible) l.stop?.(); });
-      if (p.scene) {
-        dispose3D(p.scene);
-        p.scene.frameSequence?.dispose();
-      }
-    });
+    phoneStage = null;
+    offs.forEach((off) => off());
+    screenObserver.disconnect();
+    resizeObserver.disconnect();
+    clearTimeout(arriveTimer);
+    [tween, hintTween, jumpTl].forEach((t) => t && t.kill());
+    lives.forEach((l) => { if (l.visible) l.stop?.(); l.visible = false; });
+    lives = [];
+    gsap.ticker.remove(tickLives);
+    stageOnScreen = true;
+    scenes.forEach((scene) => sequences({ scene }).forEach((s) => s.dispose()));
     root.remove();
-    document.documentElement.classList.remove('has-carousel');
+    document.documentElement.classList.remove('has-phone-stage');
   };
 }
 
@@ -2909,15 +3318,18 @@ function initHeroIntro() {
   });
 }
 
+// On phones the reveals are lighter (a shorter rise, a smaller stagger), so
+// fast scrolling stays smooth.
 function initSectionReveals() {
+  const phone = window.matchMedia(SWIPE.query).matches;
   const targets = gsap.utils.toArray('[data-fade], [data-card]');
-  gsap.set(targets, { y: 24, autoAlpha: 0 });
+  gsap.set(targets, { y: phone ? 12 : 24, autoAlpha: 0 });
   ScrollTrigger.batch(targets, {
     start: 'top 88%',
     once: true,
-    onEnter: (batch) => gsap.to(batch, {
-      y: 0, autoAlpha: 1, duration: 0.8, ease: 'power2.out', stagger: window.innerWidth >= 768 ? 0.08 : 0.05, overwrite: true,
-    }),
+    onEnter: (batch) => gsap.to(batch, phone
+      ? { y: 0, autoAlpha: 1, duration: 0.6, ease: 'power2.out', stagger: 0.03, overwrite: true }
+      : { y: 0, autoAlpha: 1, duration: 0.8, ease: 'power2.out', stagger: window.innerWidth >= 768 ? 0.08 : 0.05, overwrite: true }),
   });
 }
 
@@ -2941,13 +3353,13 @@ function initMotion() {
 
   const mm = gsap.matchMedia();
 
-  // Smooth scrolling, snapping and the page's entrance and reveals only when
-  // the user hasn't asked for reduced motion.
-  mm.add('(prefers-reduced-motion: no-preference)', () => {
+  // Smooth scrolling and snapping only on wider screens (phones scroll
+  // natively) and when the user hasn't asked for reduced motion.
+  mm.add({ motion: '(prefers-reduced-motion: no-preference)', isMobile: SWIPE.query }, (context) => {
+    const { motion, isMobile } = context.conditions;
+    if (!motion || isMobile) return;
     lenis = startLenis();
     if (lenis) lenis.on('scroll', scheduleSnap);
-    initHeroIntro();
-    initSectionReveals();
     return () => {
       if (!lenis) return;
       lenis.stopTicker();
@@ -2957,17 +3369,23 @@ function initMotion() {
     };
   });
 
-  // The featured treatments: on phones, the swipeable carousel (with
+  // The page's entrance and reveals, unless the user asked for reduced motion.
+  mm.add('(prefers-reduced-motion: no-preference)', () => {
+    initHeroIntro();
+    initSectionReveals();
+  });
+
+  // The featured treatments: on phones, the stage driven by swiping (with
   // finished pictures under reduced motion); on wider screens, the pinned
   // stage, or under reduced motion calm stacked blocks with no pinning.
   // Crossing between the two reverts one completely and builds the other.
   mm.add({
-    isMobile: CAROUSEL.query,
+    isMobile: SWIPE.query,
     reduceMotion: '(prefers-reduced-motion: reduce)',
     always: 'all',
   }, (context) => {
     const { isMobile, reduceMotion } = context.conditions;
-    if (isMobile) return initCarousel(context, !reduceMotion);
+    if (isMobile) return initPhoneStage(context, !reduceMotion);
     if (reduceMotion) return;
     return initStage(context, true);
   });
