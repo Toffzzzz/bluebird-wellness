@@ -676,11 +676,30 @@ function treatmentsHTML(featured) {
     </div>`;
 }
 
+// A featured treatment's summary, shown beside its drawing on laptops: the
+// opening sentences of its description in the menu (data/drips.json), word
+// for word, up to about SUMMARY_LENGTH characters (always at least the first
+// sentence). A source number after a sentence (e.g. "deficiency.1") is shown
+// small and links to that source at the foot of the treatment's page.
+const SUMMARY_LENGTH = 260;
+function summaryHTML(m) {
+  if (!m || !m.drip || !m.drip.description) return '';
+  const text = String(m.drip.description).replace(/\s+/g, ' ').trim();
+  const ends = [...text.matchAll(/[.!?](\d*)(?=\s+[A-Z]|$)/g)].map((e) => e.index + e[0].length);
+  if (!ends.length) return '';
+  const cut = ends.filter((e, k) => k === 0 || e <= SUMMARY_LENGTH).pop();
+  const html = esc(text.slice(0, cut)).replace(/([.!?])(\d+)(?= |$)/g,
+    (_, stop, n) => `${stop}<sup><a class="tx__source" href="${esc(m.href)}#footnote-${n}" aria-label="Source ${n}, on the treatment's page">${n}</a></sup>`);
+  return `<p class="tx__summary" data-verbatim="drips.${esc(m.drip.slug)}.description" data-verbatim-part="start">${html}</p>`;
+}
+
 // The line drawings: a treatment's section is a column down the middle of
 // the page: the line coming in from above, the drawing, then the line going
-// on down. On laptops the text sits beside the drawing (left and right in
-// turn); on phones it's a card under it, with the line running into the card
-// and out of the bottom.
+// on down. On laptops the text (name, Book, Learn more, price) sits on one
+// side of the drawing and its summary on the other, swapping sides each
+// time; on phones the text is a card under the drawing, with the line
+// running into the card and out of the bottom, and the summary isn't shown
+// (it's on the treatment's page).
 function lineSectionHTML(t, i) {
   const art = window.LINE_ART[t.id];
   return `
@@ -691,6 +710,7 @@ function lineSectionHTML(t, i) {
             ${lineArtSVG(art, `tx-clip-${esc(t.id)}`, ' aria-hidden="true" focusable="false"')}
           </div>
           <div class="tx__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
+          ${summaryHTML(menuItem(t))}
         </div>
       </section>`;
 }
@@ -1186,9 +1206,10 @@ function initTreatments(animated) {
       }
     }, { rootMargin: '0px 0px -12% 0px' });
     items.forEach((it) => {
-      const text = it.section.querySelector('.tx__text');
-      text.classList.add('tx-rise');
-      rise.observe(text);
+      for (const text of it.section.querySelectorAll('.tx__text, .tx__summary')) {
+        text.classList.add('tx-rise');
+        rise.observe(text);
+      }
     });
   }
 

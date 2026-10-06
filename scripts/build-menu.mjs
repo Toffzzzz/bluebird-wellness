@@ -31,7 +31,8 @@
 
    Rule zero: every treatment string is shown exactly as it is in
    data/drips.json, escaped as text. Elements that show one carry
-   data-verbatim with its path in the JSON; the check compares each of them
+   data-verbatim with its path in the JSON (data-verbatim-part="start" marks
+   a string's opening sentences only); the check compares each of them
    with the JSON and confirms nothing is missing.
    ========================================================================== */
 
@@ -1012,7 +1013,8 @@ function verbatimElements(html) {
     }
     if (!closing) {
       const path = attrs.match(/\sdata-verbatim="([^"]*)"/);
-      stack.push({ tag, path: path ? decode(path[1]) : null, start: tagRe.lastIndex });
+      const part = attrs.match(/\sdata-verbatim-part="([^"]*)"/);
+      stack.push({ tag, path: path ? decode(path[1]) : null, part: part ? part[1] : null, start: tagRe.lastIndex });
       continue;
     }
     let i = stack.length - 1;
@@ -1020,7 +1022,7 @@ function verbatimElements(html) {
     if (i < 0) continue;
     const el = stack[i];
     stack.length = i;
-    if (el.path !== null) found.push({ path: el.path, text: textOf(html.slice(el.start, m.index)) });
+    if (el.path !== null) found.push({ path: el.path, part: el.part, text: textOf(html.slice(el.start, m.index)) });
   }
   return found;
 }
@@ -1080,10 +1082,15 @@ function requiredForHome() {
 function checkStrings(html, required) {
   const problems = [];
   const found = verbatimElements(html);
-  for (const { path, text } of found) {
+  for (const { path, part, text } of found) {
     const value = resolve(path);
     if (typeof value !== 'string') problems.push(`${path}: not a string in data/drips.json`);
-    else if (text !== collapse(value)) problems.push(`${path}: shows "${text.slice(0, 80)}…", expected "${collapse(value).slice(0, 80)}…"`);
+    // data-verbatim-part="start": the opening sentences of the string, word for word.
+    else if (part === 'start') {
+      if (!text || !collapse(value).startsWith(text) || !(text === collapse(value) || /[.!?]\d*$/.test(text))) {
+        problems.push(`${path}: shows "${text.slice(0, 80)}…", which isn't the string's opening sentences`);
+      }
+    } else if (text !== collapse(value)) problems.push(`${path}: shows "${text.slice(0, 80)}…", expected "${collapse(value).slice(0, 80)}…"`);
   }
   const shown = new Set(found.map((f) => f.path));
   for (const path of required) if (!shown.has(path)) problems.push(`${path}: not shown`);
@@ -1138,8 +1145,9 @@ for (const name of LEGAL) {
 }
 
 /* The home page is built by script.js, so it is checked as script.js renders
-   it: data/menu.js and script.js run here with a minimal stand-in for the
-   page (no browser needed), and the HTML they insert is checked the same way. */
+   it: site-config.js, data/line-art.js, data/menu.js and script.js run here
+   with a minimal stand-in for the page (no browser needed), and the HTML
+   they insert is checked the same way. */
 
 function renderedHome() {
   const noop = () => {};
@@ -1154,6 +1162,9 @@ function renderedHome() {
   };
   const window = { addEventListener: noop, matchMedia: () => ({ matches: false, addEventListener: noop }) };
   const context = vm.createContext({ window, document, location: { hash: '' }, history: { pushState: noop }, console });
+  // The page's own settings and drawings first, as index.html loads them.
+  vm.runInContext(read('site-config.js'), context, { filename: 'site-config.js', timeout: 5000 });
+  if (existsSync(at('data/line-art.js'))) vm.runInContext(read('data/line-art.js'), context, { filename: 'data/line-art.js', timeout: 5000 });
   vm.runInContext(read('data/menu.js'), context, { filename: 'data/menu.js', timeout: 5000 });
   vm.runInContext(read('script.js'), context, { filename: 'script.js', timeout: 5000 });
   // render() writes the featured treatments' sections, the cards and the

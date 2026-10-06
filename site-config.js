@@ -49,7 +49,7 @@ window.SITE = {
   // signature. Every drip still has its card under "All treatments" and its
   // own page. Leave the list empty ([]) to show all of them. Run the
   // generator after changing it (it checks the ids).
-  featured: ['iron', 'hydration', 'myers', 'nad', 'signature'],
+  featured: ['iron', 'skin', 'hydration', 'muscle-recovery', 'signature'],
 
   /* ---------- The business and its policies ----------
      Shown in every page's footer and in the policy pages (privacy/, terms/,

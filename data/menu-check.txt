@@ -23,7 +23,7 @@ PASS  terms/ (policy)                              16 gaps for the clinic to fil
 PASS  cancellations/ (policy)                      8 gaps for the clinic to fill in
 PASS  cookies/ (policy)                            complete
 PASS  accessibility/ (policy)                      2 gaps for the clinic to fill in
-PASS  index.html (home page, as script.js renders it) 80 strings
+PASS  index.html (home page, as script.js renders it) 67 strings
 
 Result: all passed
 

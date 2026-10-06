@@ -3074,8 +3074,9 @@ html.is-locked body { overflow: hidden; }
 /* ---------- Featured treatments as line drawings (script.js: TX_STYLE = 'lines') ----------
    One Bluebird Blue line comes down the middle of the page, draws each
    treatment's picture (data/line-art.js) and carries on to the next. On
-   laptops the text sits beside the drawing, left and right in turn; on
-   phones it's a card under the drawing, which the line runs into and out of.
+   laptops the text sits on one side of the drawing and the summary on the
+   other, swapping sides each time; on phones the text is a card under the
+   drawing, which the line runs into and out of (no summary).
    Everything is the same even, round-ended line. */
 
 .tx--line {
@@ -3122,7 +3123,11 @@ html.is-locked body { overflow: hidden; }
   overflow: visible;
 }
 
-/* Laptops: the text beside the drawing, alternately left and right of the line. */
+/* The summary beside the drawing: laptops only (phones keep just the card). */
+.tx__summary { display: none; }
+
+/* Laptops: the text on one side of the drawing and its summary on the other,
+   swapping sides each time. */
 @media (min-width: 820px) {
   .tx--line .tx__text {
     position: absolute;
@@ -3138,6 +3143,22 @@ html.is-locked body { overflow: hidden; }
   }
   .tx--text-left .tx__text .treatment-actions { justify-content: flex-end; }
   .tx--text-right .tx__text { left: calc(50% + var(--art) / 2 + 48px); }
+  .tx--line .tx__summary {
+    display: block;
+    position: absolute;
+    top: 50%;
+    width: min(22rem, calc(50% - var(--art) / 2 - 64px));
+    margin: 0;
+    transform: translateY(-50%);
+    color: var(--color-slate);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+  .tx--text-left .tx__summary { left: calc(50% + var(--art) / 2 + 48px); }
+  .tx--text-right .tx__summary { right: calc(50% + var(--art) / 2 + 48px); text-align: right; }
+  .tx__summary sup { font-size: 0.7em; line-height: 0; }
+  .tx__source { color: var(--color-bluebird); text-decoration: none; }
+  .tx__source:hover { text-decoration: underline; }
   .tx--line .treatment-title { font-size: clamp(36px, 4vw, 60px); }
   .tx--line .treatment-title--long { font-size: clamp(32px, 3.4vw, 52px); }
 }

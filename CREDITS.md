@@ -18,6 +18,7 @@ Where everything on the website comes from, and the terms it's used under.
 ## Line drawings
 
 - The treatments' line drawings (`data/line-art.js`) were drawn for this website, as code, by `scripts/line-art/make-line-art.py`. The Signature drawing uses the Bluebird logo, with its strokes made thinner by `scripts/line-art/thin-logo.py`.
+- Four of them (Energy's runner, Muscle & Fitness's deadlift, Beauty & Glow's face and Hair & Scalp's woman with wavy hair) were traced by `scripts/line-art/trace-drawings.py` from line art generated with OpenAI's ChatGPT image generation from prompts written for this website (kept in `scripts/line-art/sources/`), with small details such as creases left out. Under OpenAI's terms of use, OpenAI assigns its rights in the output to the user who generated it. They show no real people or brands.
 
 ## Icons
 
