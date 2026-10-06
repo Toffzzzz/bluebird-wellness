@@ -3160,3 +3160,44 @@ html.is-locked body { overflow: hidden; }
 
 /* The hero's "Scroll to explore" line is the start of the line. */
 .tx-lines .hero__cue::after { background: var(--color-bluebird); width: 2.5px; }
+
+/* ---------- Line drawings on the cards and treatment pages ----------
+   The same drawings as the home page's line (data/line-art.js), in the same
+   blue, each drawing itself in from the top down as it comes into view
+   (site.js). The line keeps the same visible thickness at every size. */
+
+.line-art { display: block; overflow: visible; }
+.line-art path {
+  fill: none;
+  stroke: var(--color-bluebird);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.line-art .tx-art__fill { fill: var(--color-bluebird); stroke: none; }
+
+/* A card: the drawing fills its well like the pictures did. */
+.card__media--art .line-art {
+  width: 80%;
+  height: 80%;
+  stroke-width: 4.4;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .card:hover .card__media--art .line-art { transform: scale(1.03); }
+}
+
+/* A treatment page: the drawing beside the text, as the picture was. */
+.drip-picture--art .line-art {
+  width: min(100%, 440px, 62vh);
+  height: auto;
+  aspect-ratio: 1;
+  stroke-width: 2.7;
+}
+@media (max-width: 899.98px) {
+  .drip-picture--art .line-art { width: min(100%, 300px, 40vh); stroke-width: 3.6; }
+}
+/* Phones: the cards are rows with a 64px picture, so the drawing is fuller,
+   with a thicker line, to read at icon size. */
+@media (max-width: 819.98px) {
+  .card__media--art .line-art { width: 100%; height: 100%; stroke-width: 14; }
+}

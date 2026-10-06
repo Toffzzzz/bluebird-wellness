@@ -426,9 +426,12 @@ const CARD_FILL = 0.76;
 
 // The card is one link that already carries the drip's name, so its picture
 // is decorative. A Pro drip's picture says "PRO" in its corner.
-function cardMediaHTML(v, isPro) {
+function cardMediaHTML(v, isPro, slug) {
   const pro = isPro ? '<span class="card__pro" aria-hidden="true">Pro</span>' : '';
   const cls = isPro ? ' card__media--pro' : '';
+  // The line drawing (a Pro drip shows its standard version's), drawn as the card comes into view.
+  const art = LINES && v.art && window.LINE_ART[v.art];
+  if (art) return `<div class="card__media card__media--art${cls}" aria-hidden="true">${lineArtSVG(art, `card-clip-${esc(slug)}`, ' class="line-art" data-draw focusable="false"')}${pro}</div>`;
   if (!v.image) return `<div class="card__media${cls}" aria-hidden="true">${placeholderHTML(v)}${pro}</div>`;
   const [w, h] = v.imageSize;
   const img = `<img src="${esc(v.image)}" alt="" width="${w}" height="${h}" loading="lazy" decoding="async">`;
@@ -456,7 +459,7 @@ function cardHTML(drip) {
   const isPro = !!drip.baseVariantSlug;
   return `
     <article class="card${isPro ? ' card--pro' : ''}" data-card>
-      ${cardMediaHTML(v, isPro)}
+      ${cardMediaHTML(v, isPro, drip.slug)}
       <h3 class="card__title"><a class="card__link" href="treatments/${esc(drip.slug)}/"><span data-verbatim="${esc(at)}.name">${esc(drip.name)}</span></a>${isPro ? ` ${PRO_BADGE}` : ''}</h3>
       ${badgeHTML(v.badge)}
       ${proChipHTML(proOf(drip), ' card__upgrade')}
@@ -521,7 +524,11 @@ function render() {
   const standaloneRoot = document.getElementById('standalone-root');
   // The featured treatments: the bar of names and a section each.
   if (stageRoot && FEATURED.length) stageRoot.innerHTML = treatmentsHTML(FEATURED);
-  if (gridRoot) gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
+  if (gridRoot) {
+    gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
+    // The cards' line drawings draw themselves as they come into view (site.js).
+    if (window.SiteDraw) window.SiteDraw.watch(gridRoot);
+  }
   if (standaloneRoot && MENU.standalone) standaloneRoot.innerHTML = standaloneHTML(MENU.standalone);
 }
 
@@ -572,12 +579,30 @@ function render() {
      treatments).
    ========================================================================== */
 
-// How the featured treatments are shown: 'lines' (one blue line drawn down
-// the middle of the page as you scroll, drawing each treatment's picture on
-// the way; data/line-art.js) or 'videos' (each treatment's pre-rendered
-// animation; images/treatment-videos/).
-const TX_STYLE = 'lines';
+// The site's pictures (site-config.js: pictures): 'lines', the line drawings
+// (data/line-art.js) everywhere: the featured treatments are one blue line
+// drawn down the middle of the page as you scroll, and the cards (and the
+// treatment pages) show the same drawings; or 'photos': the featured
+// treatments' pre-rendered animations (images/treatment-videos/) and the
+// photographic pictures.
+const TX_STYLE = window.SITE && window.SITE.pictures === 'photos' ? 'videos' : 'lines';
 const LINES = TX_STYLE === 'lines' && !!window.LINE_ART;
+
+// A treatment's line drawing as an inline SVG. A filled shape (the logo) is
+// revealed from the top down through a clip, whose id starts with idPrefix.
+function lineArtSVG(art, idPrefix, attrs = '') {
+  const clips = [];
+  const paths = art.paths.map((p, k) => {
+    const o = typeof p === 'string' ? { d: p } : p;
+    const move = o.transform ? ` transform="${esc(o.transform)}"` : '';
+    if (!o.fill) return `<path d="${esc(o.d)}"${move}/>`;
+    const [x, y, w, h] = o.box;
+    const id = `${idPrefix}-${k}`;
+    clips.push(`<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" data-h="${h}"/></clipPath>`);
+    return `<path class="tx-art__fill" d="${esc(o.d)}"${move} clip-path="url(#${id})"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 400 400"${attrs}><defs>${clips.join('')}</defs><g class="tx-art" data-top="${art.top}" data-bottom="${art.bottom}">${paths}</g></svg>`;
+}
 
 const TREATMENT_VIDEO = {
   dir: 'images/treatment-videos/',
@@ -652,37 +677,27 @@ function treatmentsHTML(featured) {
 // and out of the bottom.
 function lineSectionHTML(t, i) {
   const art = window.LINE_ART[t.id];
-  const clips = [];
-  const paths = art.paths.map((p, k) => {
-    const o = typeof p === 'string' ? { d: p } : p;
-    const move = o.transform ? ` transform="${esc(o.transform)}"` : '';
-    if (!o.fill) return `<path d="${esc(o.d)}"${move}/>`;
-    // A filled shape (the logo) is revealed from the top down instead.
-    const [x, y, w, h] = o.box;
-    const id = `tx-clip-${esc(t.id)}-${k}`;
-    clips.push(`<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" data-h="${h}"/></clipPath>`);
-    return `<path class="tx-art__fill" d="${esc(o.d)}"${move} clip-path="url(#${id})"/>`;
-  }).join('');
   return `
       <section class="tx tx--line tx--text-${i % 2 ? 'right' : 'left'}" id="${esc(txAnchor(t))}" data-tx="${i}" aria-labelledby="${esc(t.id)}-title">
         <div class="tx-line">
           <svg class="tx-line__svg" aria-hidden="true" focusable="false"><path data-seg="in"/><path data-seg="out"/><path data-seg="after"/></svg>
           <div class="tx-line__art" role="img" aria-label="${esc(art.alt)}">
-            <svg viewBox="0 0 400 400" aria-hidden="true" focusable="false"><defs>${clips.join('')}</defs><g class="tx-art" data-top="${art.top}" data-bottom="${art.bottom}">${paths}</g></svg>
+            ${lineArtSVG(art, `tx-clip-${esc(t.id)}`, ' aria-hidden="true" focusable="false"')}
           </div>
           <div class="tx__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
         </div>
       </section>`;
 }
 
-// The line drawings, drawn by the scroll. The "pen" is the middle of the
-// screen: everything in a section above it is drawn, and as the page moves
+// The line drawings, drawn by the scroll. The "pen" is a little below the
+// middle of the screen (LINE.pen): everything in a section above it is drawn, and as the page moves
 // up the line comes down the middle, draws the treatment's picture from the
 // top down, and carries on to the next. It only ever draws forwards: once
 // drawn, a picture stays drawn when you scroll back up. Arriving by a jump
 // (the bar, Next, a link), the picture draws itself. With reduced motion
 // everything is shown already drawn.
 const LINE = {
+  pen: 0.66,      // where the pen is, as a share of the screen's height from the top (lower: drawings finish lower down, so they stay in view longer)
   follow: 0.1,    // seconds: how closely the drawing follows the scroll (a little smoothing)
   minRange: 28,   // px of scrolling over which even a level stroke (a base line) is drawn
   jump: 1.6,      // seconds a picture takes to draw itself after a jump
@@ -692,6 +707,7 @@ const LINE = {
 function initLines(items, animated) {
   const html = document.documentElement;
   html.classList.add('tx-lines');
+  html.dataset.linePen = String(LINE.pen);
   const clamp = (v) => Math.min(1, Math.max(0, v));
   const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
 
@@ -780,7 +796,7 @@ function initLines(items, animated) {
     const dt = last ? Math.min(now - last, 50) / 1000 : 1 / 60;
     last = now;
     const k = 1 - Math.exp(-dt / LINE.follow);
-    const pen = window.innerHeight / 2;
+    const pen = window.innerHeight * LINE.pen;
     let moving = false;
     for (const sec of secs) {
       if (sec.done) continue;

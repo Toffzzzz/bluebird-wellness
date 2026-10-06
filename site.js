@@ -7,6 +7,10 @@
    - window.SiteDialog.open(el, options): a modal (the menu, the home page's
      list of treatments) that keeps focus inside it, closes with Escape or
      its [data-close] buttons, and locks the page's scroll while open.
+   - window.SiteDraw.watch(root): every line drawing marked data-draw in it
+     (the treatment cards, a treatment page's picture) draws itself, from
+     the top down, once it comes into view. Ones already on the page are
+     watched straight away. With reduced motion they're simply shown.
    ========================================================================== */
 
 (() => {
@@ -68,6 +72,63 @@
   }
 
   window.SiteDialog = { open, close: () => current && current.close() };
+
+  // Line drawings that draw themselves once they come into view.
+  const DRAW = { duration: 1.5, stroke: 0.7 }; // seconds in all, and for each stroke
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window);
+  const drawIn = (svg) => {
+    const box = svg.getBoundingClientRect();
+    const parts = [...svg.querySelectorAll('path')].map((el) => {
+      const r = el.getBoundingClientRect();
+      const fill = el.getAttribute('clip-path');
+      return {
+        el,
+        clip: fill ? svg.querySelector(`${fill.slice(4, -1)} rect`) : null,
+        len: fill ? 0 : el.getTotalLength(),
+        // Higher strokes start sooner, so it draws from the top down.
+        delay: box.height ? Math.max(0, (r.top - box.top) / box.height) * (DRAW.duration - DRAW.stroke) : 0,
+      };
+    });
+    const set = (p, v) => {
+      if (p.clip) { p.clip.setAttribute('height', String(Number(p.clip.dataset.h) * v)); return; }
+      p.el.style.strokeDasharray = `${p.len} ${p.len + 2}`;
+      p.el.style.strokeDashoffset = String(p.len * (1 - v));
+      p.el.style.visibility = v > 0.001 ? 'visible' : 'hidden';
+    };
+    return { parts, set };
+  };
+  const seen = still ? null : new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      seen.unobserve(entry.target);
+      const { parts, set } = entry.target.__draw;
+      const start = performance.now();
+      const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+      const frame = (now) => {
+        const t = (now - start) / 1000;
+        let more = false;
+        for (const p of parts) {
+          const u = Math.min(1, Math.max(0, (t - p.delay) / DRAW.stroke));
+          set(p, ease(u));
+          if (u < 1) more = true;
+        }
+        if (more) requestAnimationFrame(frame);
+        else entry.target.classList.add('is-drawn');
+      };
+      requestAnimationFrame(frame);
+    }
+  }, { threshold: 0.35 });
+  const watch = (root) => {
+    if (!root) return;
+    for (const svg of root.querySelectorAll('svg[data-draw]')) {
+      if (svg.__draw || still) { svg.classList.add('is-drawn'); continue; }
+      svg.__draw = drawIn(svg);
+      svg.__draw.parts.forEach((p) => svg.__draw.set(p, 0));
+      seen.observe(svg);
+    }
+  };
+  window.SiteDraw = { watch };
+  watch(document);
 
   // The phones' menu. A link in it closes it first, then goes where it goes
   // (on the home page, straight to that section).

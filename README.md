@@ -47,16 +47,16 @@ A drip with a `proVariantSlug` shows an "Upgrade to Pro" card: its Pro version's
 
 `TREATMENTS` in `script.js` sets the featured treatments' order, pictures and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field.
 
-They can be shown two ways, chosen by `TX_STYLE` at the top of the treatments part of `script.js`:
+They can be shown two ways, chosen by `pictures` in `site-config.js` (run the generator after changing it):
 
-- `'lines'` (the live version): the line drawings, below;
-- `'videos'`: each treatment's pre-rendered animation, described after them.
+- `'lines'` (the live version): the line drawings, below. The cards under "All treatments" and each treatment's page (Learn more) show the same drawings, each drawing itself in from the top down as it comes into view (`SiteDraw` in `site.js`); a Pro drip shows its standard version's drawing;
+- `'photos'`: each treatment's pre-rendered animation, described after them, and the photographic pictures on the cards and treatment pages.
 
 A bar of the treatments' names sticks under the header while they're on screen either way: it shows where you are, jumps to any treatment, and its Next button goes to the next one (after the last, to All treatments). A link to somewhere far down the page jumps straight there rather than scrolling past everything.
 
 ### The line drawings
 
-One line in Bluebird Blue runs down the middle of the page, starting from the hero's "Scroll to explore" line, and draws as you scroll, on laptops and phones alike. The "pen" is the middle of the screen: everything above it is drawn. The line comes down to the top of each treatment's drawing, stops while the drawing is drawn from the top down, then carries on from the bottom of the drawing to the next one. It only ever draws forwards: once drawn, a drawing stays drawn when you scroll back up. Arriving by a jump (the bar, Next, a link), the drawing draws itself. With reduced motion everything is shown already drawn.
+One line in Bluebird Blue runs down the middle of the page, starting from the hero's "Scroll to explore" line, and draws as you scroll, on laptops and phones alike. The "pen" is a little below the middle of the screen (two thirds of the way down, `LINE.pen`), so each drawing is finished while it's still low on the screen and stays in view for longer: everything above it is drawn. The line comes down to the top of each treatment's drawing, stops while the drawing is drawn from the top down, then carries on from the bottom of the drawing to the next one. It only ever draws forwards: once drawn, a drawing stays drawn when you scroll back up. Arriving by a jump (the bar, Next, a link), the drawing draws itself. With reduced motion everything is shown already drawn.
 
 - On laptops each treatment's name, price and buttons sit beside its drawing, left and right in turn; on phones they're a card under the drawing, with the line running into the card and out of the bottom.
 - The drawings are in `data/line-art.js`, made by `scripts/line-art/make-line-art.py` (run `python3 scripts/line-art/make-line-art.py` after changing it, and commit both). Each is clean, even line art in a 400 x 400 box; the Signature drawing reveals the logo itself. The comments at the top of both files explain the format.
@@ -86,6 +86,7 @@ They live in one place, `site-config.js` (used by the generator, which writes th
 | `email` | the clinic's email address | "Email us" and "Ask a question" (`mailto:`) |
 | `whatsapp` | the WhatsApp number in international form, digits only, e.g. `447700900000` | "WhatsApp" (`https://wa.me/…`) and the WhatsApp button on every page |
 | `whatsappIcon` | optional: an icon for the WhatsApp button, e.g. `images/whatsapp-icon.svg` (the official one from WhatsApp's brand resources) | the WhatsApp button (empty: a chat bubble) |
+| `pictures` | `'lines'` or `'photos'` | the treatments' pictures everywhere: the line drawings, or the videos and photos (see "The featured treatments") |
 | `chatAssistant` | `true` or `false` | the chat assistant, "Speak to a doctor" (`false` hides it everywhere) |
 | `legalName`, `companyNumber`, `registeredIn`, `registeredOffice`, `clinicAddress`, `vatNumber`, `icoNumber`, `cqcNumber` | the business's details | every page's footer, and the policy pages |
 | `bookingProvider`, `callOutFee`, `cancellationNotice`, `cancellationFee`, `minimumAge`, `policiesUpdated`, `legalDraft` | the policies' details | the policy pages; `callOutFee` also shows in the booking calendar and the booking section; `minimumAge` in booking and the chat; `legalDraft: false` removes the "Draft" note |

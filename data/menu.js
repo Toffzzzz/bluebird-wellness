@@ -1303,6 +1303,7 @@ window.MENU = {
 window.MENU_VISUALS = {
   "hydration-infusion": {
     "image": "images/hydration.webp",
+    "art": "hydration",
     "imageSize": [
       760,
       803
@@ -1314,6 +1315,7 @@ window.MENU_VISUALS = {
   },
   "immunity-infusion": {
     "image": "images/immunity.webp",
+    "art": "immunity",
     "imageSize": [
       1040,
       919
@@ -1325,6 +1327,7 @@ window.MENU_VISUALS = {
   },
   "immunity-pro-infusion": {
     "image": "images/immunity.webp",
+    "art": "immunity",
     "imageSize": [
       1040,
       919
@@ -1336,6 +1339,7 @@ window.MENU_VISUALS = {
   },
   "recovery-infusion": {
     "image": "images/treatments/recovery-infusion.webp",
+    "art": "recovery",
     "imageSize": [
       1000,
       1000
@@ -1347,6 +1351,7 @@ window.MENU_VISUALS = {
   },
   "recovery-pro-infusion": {
     "image": "images/treatments/recovery-pro-infusion.webp",
+    "art": "recovery",
     "imageSize": [
       1000,
       1000
@@ -1358,6 +1363,7 @@ window.MENU_VISUALS = {
   },
   "detox-infusion": {
     "image": "images/detox-card.webp",
+    "art": "detox",
     "imageSize": [
       570,
       1015
@@ -1369,6 +1375,7 @@ window.MENU_VISUALS = {
   },
   "hair-and-scalp-infusion": {
     "image": "images/hair.webp",
+    "art": "hair",
     "imageSize": [
       720,
       1024
@@ -1380,6 +1387,7 @@ window.MENU_VISUALS = {
   },
   "hair-and-scalp-pro-infusion": {
     "image": "images/hair.webp",
+    "art": "hair",
     "imageSize": [
       720,
       1024
@@ -1391,6 +1399,7 @@ window.MENU_VISUALS = {
   },
   "beauty-and-glow-infusion": {
     "image": "images/treatments/beauty-and-glow-infusion.webp",
+    "art": "skin",
     "imageSize": [
       900,
       800
@@ -1402,6 +1411,7 @@ window.MENU_VISUALS = {
   },
   "myers-cocktail-infusion": {
     "image": "images/treatments/myers-cocktail-infusion.webp",
+    "art": "myers",
     "imageSize": [
       1200,
       920
@@ -1413,6 +1423,7 @@ window.MENU_VISUALS = {
   },
   "energy-infusion": {
     "image": "images/energy.webp",
+    "art": "energy",
     "imageSize": [
       772,
       955
@@ -1424,6 +1435,7 @@ window.MENU_VISUALS = {
   },
   "muscle-and-fitness-infusion": {
     "image": "images/deadlift/deadlift-30.webp",
+    "art": "muscle-recovery",
     "imageSize": [
       792,
       1310
@@ -1435,6 +1447,7 @@ window.MENU_VISUALS = {
   },
   "nad-plus-infusion": {
     "image": "images/treatments/nad-plus-infusion.webp",
+    "art": "nad",
     "imageSize": [
       1200,
       1200
@@ -1446,6 +1459,7 @@ window.MENU_VISUALS = {
   },
   "longevity-infusion": {
     "image": "images/longevity.webp",
+    "art": "longevity",
     "imageSize": [
       860,
       911
@@ -1457,6 +1471,7 @@ window.MENU_VISUALS = {
   },
   "signature-infusion": {
     "image": "images/treatments/signature-infusion.webp",
+    "art": "signature",
     "imageSize": [
       1556,
       795
@@ -1468,6 +1483,7 @@ window.MENU_VISUALS = {
   },
   "iron-infusion": {
     "image": "images/iron.webp",
+    "art": "iron",
     "imageSize": [
       760,
       707

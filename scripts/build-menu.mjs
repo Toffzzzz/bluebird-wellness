@@ -125,6 +125,16 @@ function readTreatments() {
 }
 const TREATMENTS = readTreatments();
 
+// The line drawings (data/line-art.js, made by scripts/line-art/make-line-art.py),
+// shown on the treatment pages while site-config.js says pictures: 'lines'.
+const LINE_ART = (() => {
+  if (!existsSync(at('data/line-art.js'))) return {};
+  const window = {};
+  vm.runInNewContext(read('data/line-art.js'), { window }, { timeout: 1000 });
+  return window.LINE_ART || {};
+})();
+const USE_LINES = SITE.pictures !== 'photos';
+
 // Width and height of a WebP file, from its header.
 function webpSize(file) {
   const b = readFileSync(at(file));
@@ -165,6 +175,7 @@ function visualsFor(drip) {
     const same = image === stage.image; // the stage's own image: its size and fit apply
     return {
       image,
+      art: LINE_ART[stage.id] ? stage.id : null,
       imageSize: checkedSize(image, same ? stage.imageSize : null),
       imageFit: (same && stage.imageFit) || null,
       alt: extra?.alt || stage.alt || '',
@@ -360,7 +371,28 @@ const bookHref = (up) => (SITE.bookingUrl ? esc(SITE.bookingUrl) : `${up}#book`)
 
 /* ---------- Treatment page ---------- */
 
+// A treatment's line drawing (a Pro drip shows its standard version's), as
+// inline SVG; site.js draws it in from the top down as it comes into view.
+function lineArtSVG(art, idPrefix) {
+  const clips = [];
+  const paths = art.paths.map((p, k) => {
+    const o = typeof p === 'string' ? { d: p } : p;
+    const move = o.transform ? ` transform="${esc(o.transform)}"` : '';
+    if (!o.fill) return `<path d="${esc(o.d)}"${move}/>`;
+    const [x, y, w, h] = o.box;
+    clips.push(`<clipPath id="${idPrefix}-${k}"><rect x="${x}" y="${y}" width="${w}" height="${h}" data-h="${h}"/></clipPath>`);
+    return `<path class="tx-art__fill" d="${esc(o.d)}"${move} clip-path="url(#${idPrefix}-${k})"/>`;
+  }).join('');
+  return `<svg class="line-art" viewBox="0 0 400 400" data-draw aria-hidden="true" focusable="false"><defs>${clips.join('')}</defs><g class="tx-art">${paths}</g></svg>`;
+}
+
 function pictureHTML(drip, v) {
+  const art = USE_LINES && v.art && LINE_ART[v.art];
+  if (art) {
+    return `<div class="drip-picture drip-picture--art" role="img" aria-label="${esc(art.alt)}">
+            ${lineArtSVG(art, 'art-clip')}
+          </div>`;
+  }
   if (!v.image) {
     return `<div class="drip-picture drip-picture--placeholder" data-reveal-load>
             <!-- No picture yet. Save it as images/treatments/${drip.slug}.webp and run the generator.

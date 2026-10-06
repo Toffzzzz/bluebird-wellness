@@ -105,14 +105,47 @@ ART['myers'] = {
     ],
 }
 
-# 4. Iron: a red blood cell, a rounded disc with a dimple
+# 4. Iron: a red blood cell, a soft kidney-bean shape with a curved crease
+def cubic(p0, p1, p2, p3, t):
+    u = 1 - t
+    return tuple(u**3 * a + 3 * u * u * t * b + 3 * u * t * t * c + t**3 * d for a, b, c, d in zip(p0, p1, p2, p3))
+def split(p0, p1, p2, p3, t):
+    # de Casteljau: the two halves of a cubic at t
+    lerp = lambda a, b: tuple(x + (y - x) * t for x, y in zip(a, b))
+    a, b, c = lerp(p0, p1), lerp(p1, p2), lerp(p2, p3)
+    d, e = lerp(a, b), lerp(b, c)
+    f = lerp(d, e)
+    return (p0, a, d, f), (f, e, c, p3)
+def at_x(seg, x):
+    lo, hi = 0.0, 1.0
+    rising = cubic(*seg, 1)[0] > cubic(*seg, 0)[0]
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if (cubic(*seg, mid)[0] < x) == rising: lo = mid
+        else: hi = mid
+    return (lo + hi) / 2
+C = lambda *pts: ' '.join(P(*q) for q in pts)
+# The outline, clockwise from where the line meets it (on the upper lobe's
+# shoulder): over the upper lobe, down the rounded side, round the lower lobe,
+# up the left side and in through the dent.
+s1 = ((200, 92), (222, 70), (300, 66), (318, 126))
+s2 = ((318, 126), (336, 186), (300, 262), (236, 304))
+s3 = ((236, 304), (180, 340), (96, 338), (80, 286))
+s4 = ((80, 286), (66, 240), (100, 206), (138, 192))
+s5 = ((138, 192), (178, 176), (178, 114), (200, 92))
+t = at_x(s3, 200)
+s3a, s3b = split(*s3, t)
+bottom = s3a[3]
+rev = lambda seg: (seg[3], seg[2], seg[1], seg[0])
+right = f"M{P(*s1[0])} " + ' '.join(f"C{C(*seg[1:])}" for seg in [s1, s2, s3a])
+left = f"M{P(*s5[3])} " + ' '.join(f"C{C(*seg[1:])}" for seg in [rev(s5), rev(s4), rev(s3b)])
 ART['iron'] = {
     'alt': 'A line drawing of a red blood cell',
-    'top': 116, 'bottom': 284,
+    'top': 92, 'bottom': round(bottom[1], 1),
     'paths': [
-        *halves_ellipse(200, 200, 132, 84),
-        *halves_ellipse(200, 194, 70, 36),
-        "M96 226 Q200 286 304 226",
+        right,
+        left,
+        "M276 122 C300 166 286 226 238 252",
     ],
 }
 
