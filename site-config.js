@@ -42,6 +42,15 @@ window.SITE = {
   // changing it.
   pictures: 'lines',
 
+  // The treatments the home page's line draws as you scroll (or, with
+  // 'photos', the ones shown as videos), in this order. Use the ids from
+  // TREATMENTS in script.js: hydration, energy, myers, iron, muscle-recovery,
+  // nad, detox, immunity, recovery, vitamin-d, longevity, skin, hair,
+  // signature. Every drip still has its card under "All treatments" and its
+  // own page. Leave the list empty ([]) to show all of them. Run the
+  // generator after changing it (it checks the ids).
+  featured: ['iron', 'hydration', 'myers', 'nad', 'signature'],
+
   /* ---------- The business and its policies ----------
      Shown in every page's footer and in the policy pages (privacy/, terms/,
      cancellations/, cookies/, accessibility/). The law says a business

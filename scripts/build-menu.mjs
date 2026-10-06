@@ -90,6 +90,8 @@ const notes = [];
 const MENU = JSON.parse(read('data/drips.json'));
 
 // The booking link and contact details (site-config.js, shared with script.js).
+// FEATURED_IDS: its featured list (the treatments the home page's line draws).
+let FEATURED_IDS = [];
 const SITE = (() => {
   const window = {};
   try {
@@ -97,7 +99,10 @@ const SITE = (() => {
   } catch (error) {
     fail(`Could not read site-config.js: ${error.message}`);
   }
-  return Object.fromEntries(Object.entries(window.SITE || {}).map(([k, v]) => [k, String(v ?? '').trim()]));
+  const featured = window.SITE && window.SITE.featured;
+  if (featured !== undefined && !Array.isArray(featured)) fail('featured in site-config.js must be a list, e.g. [\'iron\', \'nad\'].');
+  FEATURED_IDS = (featured || []).map((id) => String(id).trim());
+  return Object.fromEntries(Object.entries(window.SITE || {}).filter(([k]) => k !== 'featured').map(([k, v]) => [k, String(v ?? '').trim()]));
 })();
 const DRIPS = MENU.drips;
 if (!Array.isArray(DRIPS) || !DRIPS.length) fail('data/drips.json has no drips.');
@@ -192,6 +197,11 @@ function visualsFor(drip) {
 }
 
 const VISUALS = Object.fromEntries(DRIPS.map((d) => [d.slug, visualsFor(d)]));
+
+for (const id of FEATURED_IDS) {
+  if (!TREATMENTS.some((t) => t.id === id)) fail(`featured in site-config.js lists "${id}", which isn't in TREATMENTS (script.js). Use one of: ${TREATMENTS.map((t) => t.id).join(', ')}.`);
+}
+if (new Set(FEATURED_IDS).size !== FEATURED_IDS.length) fail('featured in site-config.js lists a treatment twice.');
 
 for (const t of TREATMENTS) {
   if (t.menuSlug && !bySlug[t.menuSlug]) fail(`TREATMENTS entry "${t.id}" links to "${t.menuSlug}", which isn't on the menu.`);

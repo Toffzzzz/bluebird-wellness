@@ -45,7 +45,9 @@ A drip with a `proVariantSlug` shows an "Upgrade to Pro" card: its Pro version's
 
 ## The featured treatments
 
-`TREATMENTS` in `script.js` sets the featured treatments' order, pictures and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field.
+`featured` in `site-config.js` chooses which treatments the home page features, and in what order: now Iron, Hydration, Myers Cocktail, NAD+ and Signature (`['iron', 'hydration', 'myers', 'nad', 'signature']`). Every drip still has its card under "All treatments" and its own page. An empty list (`[]`) features all of them; the generator stops with a message if an id isn't in `TREATMENTS`.
+
+`TREATMENTS` in `script.js` holds every treatment's pictures and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field.
 
 They can be shown two ways, chosen by `pictures` in `site-config.js` (run the generator after changing it):
 
@@ -59,7 +61,7 @@ A bar of the treatments' names sticks under the header while they're on screen e
 One line in Bluebird Blue runs down the middle of the page, starting from the hero's "Scroll to explore" line, and draws as you scroll, on laptops and phones alike. The "pen" is a little below the middle of the screen (two thirds of the way down, `LINE.pen`), so each drawing is finished while it's still low on the screen and stays in view for longer: everything above it is drawn. The line comes down to the top of each treatment's drawing, stops while the drawing is drawn from the top down, then carries on from the bottom of the drawing to the next one. It only ever draws forwards: once drawn, a drawing stays drawn when you scroll back up. Arriving by a jump (the bar, Next, a link), the drawing draws itself. With reduced motion everything is shown already drawn.
 
 - On laptops each treatment's name, price and buttons sit beside its drawing, left and right in turn; on phones they're a card under the drawing, with the line running into the card and out of the bottom.
-- The drawings are in `data/line-art.js`, made by `scripts/line-art/make-line-art.py` (run `python3 scripts/line-art/make-line-art.py` after changing it, and commit both). Each is clean, even line art in a 400 x 400 box; the Signature drawing reveals the logo itself. The comments at the top of both files explain the format.
+- The drawings are in `data/line-art.js`, made by `scripts/line-art/make-line-art.py` (run `python3 scripts/line-art/make-line-art.py` after changing it, and commit both). The Signature drawing uses a version of the logo with thinner strokes, `images/logo/bluebird-mark-thin.svg`, made by `scripts/line-art/thin-logo.py` (its `THICKNESS` sets how thin; it needs scikit-image). The site's own logo in the header and footer is unchanged. Each is clean, even line art in a 400 x 400 box; the Signature drawing reveals the logo itself. The comments at the top of both files explain the format.
 - How closely the drawing follows the scroll, the line's thickness and how long a drawing takes to draw itself after a jump are `LINE` in `script.js`.
 
 ### The videos
@@ -91,6 +93,7 @@ They live in one place, `site-config.js` (used by the generator, which writes th
 | `whatsapp` | the WhatsApp number in international form, digits only, e.g. `447700900000` | "WhatsApp" (`https://wa.me/…`) and the WhatsApp button on every page |
 | `whatsappIcon` | optional: an icon for the WhatsApp button, e.g. `images/whatsapp-icon.svg` (the official one from WhatsApp's brand resources) | the WhatsApp button (empty: a chat bubble) |
 | `pictures` | `'lines'` or `'photos'` | the treatments' pictures everywhere: the line drawings, or the videos and photos (see "The featured treatments") |
+| `featured` | a list of treatment ids, e.g. `['iron', 'hydration', 'myers', 'nad', 'signature']` | which treatments the home page's line draws, in that order (`[]`: all of them) |
 | `chatAssistant` | `true` or `false` | the chat assistant, "Speak to a doctor" (`false` hides it everywhere) |
 | `legalName`, `companyNumber`, `registeredIn`, `registeredOffice`, `clinicAddress`, `vatNumber`, `icoNumber`, `cqcNumber` | the business's details | every page's footer, and the policy pages |
 | `bookingProvider`, `callOutFee`, `cancellationNotice`, `cancellationFee`, `minimumAge`, `policiesUpdated`, `legalDraft` | the policies' details | the policy pages; `callOutFee` also shows in the booking calendar and the booking section; `minimumAge` in booking and the chat; `legalDraft: false` removes the "Draft" note |

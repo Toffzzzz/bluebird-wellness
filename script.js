@@ -21,8 +21,9 @@
    here repeats it. The booking link comes from site-config.js.
 
    TREATMENTS holds the featured treatments' pictures and tints, and the
-   menuSlug that links each one to its drip in the menu. Its order is the
-   order of the featured sections and their bar of names. Each one's video
+   menuSlug that links each one to its drip in the menu. Which of them the
+   home page features, and in what order, is set by featured in
+   site-config.js (all of them, in this order, when that list is empty). Each one's video
    is images/treatment-videos/<id>-*.mp4 (see section 3). The generator reads
    the image, alt, tint and badge of each entry for the treatment pages and
    the "All treatments" cards, so run it after changing them.
@@ -514,8 +515,13 @@ function standaloneHTML(s) {
     </section>`;
 }
 
-// Featured treatments the menu has (all of them, unless data/menu.js is missing).
-const FEATURED = TREATMENTS.filter((t) => t.showcase && menuItem(t));
+// The featured treatments: the ids in site-config.js's featured list, in
+// that order (all of TREATMENTS, in its order, when the list is empty), each
+// one only if the menu has it.
+const FEATURED_IDS = window.SITE && Array.isArray(window.SITE.featured) && window.SITE.featured.length
+  ? window.SITE.featured
+  : TREATMENTS.map((t) => t.id);
+const FEATURED = FEATURED_IDS.map((id) => TREATMENTS.find((t) => t.id === id)).filter((t) => t && t.showcase && menuItem(t));
 
 function render() {
   if (!MENU) return;
@@ -701,7 +707,7 @@ const LINE = {
   follow: 0.1,    // seconds: how closely the drawing follows the scroll (a little smoothing)
   minRange: 28,   // px of scrolling over which even a level stroke (a base line) is drawn
   jump: 1.6,      // seconds a picture takes to draw itself after a jump
-  width: 2.5,     // px: the line's thickness, the same everywhere
+  width: 3.2,     // px: the line's thickness, the same everywhere
 };
 
 function initLines(items, animated) {

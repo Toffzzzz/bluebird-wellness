@@ -17,7 +17,7 @@ Where everything on the website comes from, and the terms it's used under.
 
 ## Line drawings
 
-- The treatments' line drawings (`data/line-art.js`) were drawn for this website, as code, by `scripts/line-art/make-line-art.py`. The Signature drawing uses the Bluebird logo.
+- The treatments' line drawings (`data/line-art.js`) were drawn for this website, as code, by `scripts/line-art/make-line-art.py`. The Signature drawing uses the Bluebird logo, with its strokes made thinner by `scripts/line-art/thin-logo.py`.
 
 ## Icons
 

@@ -41,6 +41,18 @@ def polar(cx, cy, r, deg):
     a = math.radians(deg)
     return cx + r * math.cos(a), cy + r * math.sin(a)
 
+# Smooth curves through key points (Catmull-Rom), for the portraits and the lifter.
+def through(pts):
+    d = f"M{P(*pts[0])}"
+    for i in range(len(pts) - 1):
+        p0 = pts[i - 1] if i > 0 else pts[i]
+        p1, p2 = pts[i], pts[i + 1]
+        p3 = pts[i + 2] if i + 2 < len(pts) else pts[i + 1]
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        d += f" C{P(*c1)} {P(*c2)} {P(*p2)}"
+    return d
+
 ART = {}
 
 # 1. Hydration: a coconut cut open, with a straw, and a drop of water
@@ -149,27 +161,50 @@ ART['iron'] = {
     ],
 }
 
-# 5. Muscle & Fitness: a figure standing tall at the top of a deadlift
-def plate(x, h):
-    return f"M{P(x - 5, 208 - h)} L{P(x + 5, 208 - h)} L{P(x + 5, 208 + h)} L{P(x - 5, 208 + h)} Z"
+# 5. Muscle & Fitness: a lifter at the bottom of a deadlift, side on and facing
+# right, his arms straight down to the bar, with a big plate at each end; drawn
+# as an outline. The page's line comes into the back of his head and leaves
+# from the floor.
+def plate(cx, side):
+    # a plate seen at an angle: its oval face, its hub, and its rim on the outer side
+    return [*halves_ellipse(cx, 300, 17, 56), *halves_ellipse(cx, 300, 6, 15),
+            halves_ellipse(cx + 8 * side, 300, 17, 56)[0 if side < 0 else 1]]
 ART['muscle-recovery'] = {
-    'alt': 'A line drawing of a figure standing tall, holding a barbell at the top of a deadlift',
-    'top': 44, 'bottom': 318,
+    'alt': 'A line drawing of a lifter at the bottom of a deadlift, gripping a barbell with a big plate at each end',
+    'top': 94, 'bottom': 356,
     'paths': [
-        circle_from_top(200, 64, 20),
-        "M200 84 L200 98",
-        "M162 100 L238 100",
-        "M176 100 L186 196",
-        "M224 100 L214 196",
-        "M186 196 L214 196",
-        "M162 100 L154 206",
-        "M238 100 L246 206",
-        "M190 196 L184 306 L168 308",
-        "M210 196 L216 306 L232 308",
-        "M86 208 L314 208",
-        plate(104, 30), plate(118, 24),
-        plate(296, 30), plate(282, 24),
-        *ground(318, 90),
+        # the head, from where the line comes in
+        "M200 94 A20 20 0 0 1 232 118 A20 20 0 0 1 200 94",
+        # the back of the neck, the broad back, the glutes, the back of the leg and the heel
+        through([(197, 113), (189, 115.5), (180, 114), (168, 111), (157, 111), (146.5, 113.5), (136, 119.5), (124, 129.5),
+                 (111, 142), (98, 155), (85, 166.5), (72, 177), (61, 187.5), (54, 199), (54, 209), (60, 218.5), (70, 224),
+                 (90, 231), (112, 238.5), (134.5, 245), (156.5, 250.5), (167, 254.5), (169.5, 260), (167.5, 266),
+                 (163, 276), (159.5, 287), (155.5, 298.5), (151.5, 309), (147.5, 319.5), (143.5, 329.5), (140, 338),
+                 (135.5, 345.5), (137.5, 352.5), (145, 356)]),
+        # the shoulder and the arm hanging straight down: its back, then its front
+        through([(181, 122.5), (172, 127), (167.5, 138), (166, 152), (165.5, 168), (167, 186), (169, 203), (168.5, 222),
+                 (168, 244), (168, 266), (168, 287.5)]),
+        through([(181, 122.5), (193, 125), (200, 134), (202, 148), (199.5, 165), (196, 184), (193, 201), (192, 216),
+                 (190, 236), (188, 256), (185.5, 272), (183, 285.5)]),
+        # the throat
+        through([(212, 125.5), (206, 129.5), (202, 135)]),
+        # the chest and belly, down to the hip, and the top of the thigh back to the arm
+        through([(167, 172), (152, 178.5), (137, 185), (124, 191), (115.5, 196.5)]),
+        through([(115.5, 196.5), (126, 201.5), (136.5, 206.5), (146.5, 211.5), (156.5, 216.5), (167.5, 221.5)]),
+        # the knee in front of the arm, and the shin down to the hand
+        through([(189, 231.5), (198.5, 237), (204, 246.5), (200.5, 256), (194.5, 266), (188.5, 276), (183, 286.5)]),
+        # the hand round the bar
+        through([(183, 285.5), (186.5, 291), (188.5, 300), (186, 309), (177, 313.5)]),
+        through([(168, 287.5), (166, 296), (168, 306.5), (177, 313.5)]),
+        # the shin below the hand, and the foot
+        through([(169.5, 310), (164, 320), (158.5, 330), (154, 339), (161, 343), (174.5, 345.5), (187, 348),
+                 (195, 351.5), (194, 356)]),
+        # the bar, either side of the lifter, and the two plates
+        "M86 300 L155.5 300", "M188.5 300 L268 300",
+        "M44 300 L35 300", "M310 300 L319 300",
+        *plate(69, -1), *plate(285, 1),
+        # the floor
+        *ground(356, 168),
     ],
 }
 
@@ -266,64 +301,53 @@ ART['longevity'] = {
     ],
 }
 
-# 12. Beauty & Glow: a pearl in an open scallop shell
-H = (200, 300)
-R = 168
-angles = list(range(200, 341, 20))   # 200 .. 340
-ends = {a: polar(*H, R, a) for a in angles}
-ribs = []
-for a in angles:
-    if a in (200, 340):
-        continue
-    outer, inner = polar(*H, R - 2, a), polar(*H, 64, a)
-    ribs.append(f"M{P(*outer)} L{P(*inner)}")
-# the scalloped edge, from the middle out to each side, each scallop a soft curve
-seq_l = [260, 240, 220, 200]
-seq_r = [280, 300, 320, 340]
-def edge(seq):
-    d = f"M{P(*polar(*H, R + 14, 270))}"
-    prev = 270
-    first = True
-    for a in seq:
-        # the first is a half scallop, from the top centre to the first rib's end
-        c = polar(*H, R + 16 if first else R + 18, (prev + a) / 2)
-        d += f" Q{P(*c)} {P(*ends[a])}"
-        first = False
-        prev = a
-    return d
+# 12. Beauty & Glow: a face turned up, in profile, in one line: forehead, a
+# closed eye under a soft brow, the nose, the lips, the chin and the long neck
 ART['skin'] = {
-    'alt': 'A line drawing of a pearl in an open scallop shell',
-    'top': round(H[1] - R - 14, 1), 'bottom': 321,
+    'alt': 'A line drawing of a face in profile, turned up, with closed eyes',
+    'top': 36, 'bottom': 392,
     'paths': [
-        edge(seq_l), edge(seq_r),
-        f"M{P(*ends[200])} L{P(*polar(*H, 30, 200))}",
-        f"M{P(*ends[340])} L{P(*polar(*H, 30, 340))}",
-        *ribs,
-        circle_from_top(200, 266, 24),
-        "M190 258 A12 12 0 0 1 200 252",
-        "M96 292 Q150 321 200 321",
-        "M304 292 Q250 321 200 321",
-        "M96 292 Q200 312 304 292",
+        through([(200, 36), (198, 70), (204, 104), (226, 126), (248, 140), (256, 150), (290, 168), (318, 177), (313, 188),
+                 (300, 190), (296, 197), (310, 208), (298, 214), (308, 224), (296, 232), (302, 244), (294, 256), (266, 268),
+                 (236, 282), (226, 300), (220, 340), (210, 370), (200, 392)]),
+        through([(214, 150), (230, 142), (244, 143)]),
+        through([(226, 170), (244, 180), (264, 174)]),
+        through([(298, 214), (290, 213)]),
     ],
 }
 
-# 13. Hair & Scalp: a head seen from behind, with long hair
+# 13. Hair & Scalp: a woman with long, wavy hair, her face turned to the right,
+# eyes closed. Drawn on a 626-wide grid, then fitted to the box.
+def fit(pts):
+    return [(200 + (x - 313) * 0.62, 46 + (y - 60) * 0.62) for x, y in pts]
 ART['hair'] = {
-    'alt': 'A line drawing of a head seen from behind, with long flowing hair',
-    'top': 56, 'bottom': 344,
-    'paths': [
-        "M200 56 C154 56 132 92 134 140 C136 188 132 238 118 292 C112 318 150 340 200 344",
-        "M200 56 C246 56 268 92 266 140 C264 188 268 238 282 292 C288 318 250 340 200 344",
-        "M196 70 C172 140 160 240 154 330",
-        "M204 70 C228 140 240 240 246 330",
-        "M200 66 C197 160 202 260 200 344",
-        "M131 236 Q96 246 62 286",
-        "M269 236 Q304 246 338 286",
-    ],
+    'alt': 'A line drawing of a woman with long, wavy hair and closed eyes',
+    'top': 46, 'bottom': 356,
+    'paths': [through(fit(pts)) for pts in [
+        # the hair: the crown and the waves falling on the left
+        [(313, 60), (230, 70), (160, 110), (120, 180), (105, 260), (140, 330), (120, 400), (80, 450), (90, 510), (130, 545)],
+        [(300, 70), (240, 110), (200, 180), (195, 250), (230, 300), (220, 360), (160, 420), (140, 480), (150, 540)],
+        # the hair falling on the right
+        [(313, 60), (400, 62), (460, 100), (490, 160), (480, 220), (520, 290), (500, 370), (470, 430), (480, 500), (460, 530)],
+        # the hair framing the face, which is also its far cheek
+        [(340, 80), (305, 125), (288, 190), (290, 250), (296, 320)],
+        # the profile: forehead, nose, lips, chin, and the jaw back to the cheek
+        [(372, 98), (405, 150), (415, 190), (412, 215), (428, 245), (446, 266), (442, 280), (430, 281), (434, 292), (446, 306),
+         (432, 314), (442, 322), (432, 331), (441, 345), (432, 362), (400, 374), (352, 370), (316, 348), (296, 320)],
+        # the nostril, the corner of the mouth, the brow and the closed eye
+        [(436, 274), (426, 268), (420, 276), (428, 284), (438, 280)],
+        [(432, 314), (418, 311)],
+        [(352, 202), (378, 188), (406, 193)],
+        [(356, 232), (378, 244), (402, 236)],
+        # the neck, carrying on down the middle, the other side of it, and the shoulder
+        [(332, 368), (328, 440), (320, 500), (313, 560)],
+        [(410, 380), (412, 430), (422, 472)],
+        [(220, 526), (268, 512), (316, 530)],
+    ]],
 }
 
 # 14. Signature: a fountain pen nib, the Bluebird logo, and a signature line
-logo = open(os.path.join(ROOT, 'images', 'logo', 'bluebird-mark.svg')).read()
+logo = open(os.path.join(ROOT, 'images', 'logo', 'bluebird-mark-thin.svg')).read()  # the logo with thinner strokes (thin-logo.py)
 d = re.search(r' d="([^"]+)"', logo).group(1)
 # The logo is 463.9 x 613.9; fit it 226 tall, centred, from y = 112. It is
 # filled (as the logo is), revealed from the top down as the pen passes.
