@@ -1266,21 +1266,51 @@ function initAnchors() {
     if (!target) return;
     if (id === 'top') window.scrollTo({ top: 0, behavior: reduceMotion() || window.scrollY > window.innerHeight * 1.5 ? 'auto' : 'smooth' });
     else goTo(target);
-    if (location.hash !== hash) history.pushState(null, '', hash);
+    // The address stays the plain home page (no #section), so opening or
+    // reloading it always starts at the top.
   });
-  // Going back or forward between anchors, or arriving at one: straight
-  // there (the page is built by this script, so the browser can't find it
-  // on its own when it first loads).
-  const toHash = () => {
-    const id = decodeURIComponent(location.hash.slice(1));
-    if (!id || id === 'top') return;
-    const target = document.getElementById(id);
-    if (target) goTo(target, { instant: true });
-  };
-  window.addEventListener('popstate', toHash);
-  toHash();
-  // Web fonts can move things a little: settle on the target again once they've loaded.
-  if (location.hash && document.fonts && document.fonts.ready) document.fonts.ready.then(toHash);
+  initStart();
+}
+
+// Where the home page starts. Opening the site (from a link, a bookmark or
+// by typing it) or reloading it always starts at the top, never where the
+// browser last was or at a #section left in the address. Two exceptions:
+// arriving from one of the site's own pages by a link to a section (e.g. a
+// treatment page's "Back to all treatments") goes to that section, and
+// going Back or Forward to the home page returns to where you were on it.
+// Either way the address is then left as the plain home page.
+function initStart() {
+  if (!history.replaceState || !window.scrollTo) return;
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  const perf = window.performance;
+  const entry = perf && perf.getEntriesByType ? perf.getEntriesByType('navigation')[0] : null;
+  const type = entry ? entry.type : 'navigate';
+  let fromHere = false;
+  try { fromHere = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) { /* no referrer */ }
+  const saved = history.state && typeof history.state.y === 'number' ? history.state.y : null;
+  const target = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+  if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+
+  // Remember where you are in this history entry (for Back and Forward), not on the device.
+  let timer = 0;
+  window.addEventListener('scroll', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      try { history.replaceState({ ...(history.state || {}), y: Math.round(window.scrollY) }, ''); } catch (e) { /* the browser limits how often; the next pause tries again */ }
+    }, 400);
+  }, { passive: true });
+
+  let go;
+  if (type === 'back_forward' && saved !== null) go = () => window.scrollTo(0, saved);
+  else if (target && type === 'navigate' && fromHere) go = () => goTo(target, { instant: true });
+  else go = () => window.scrollTo(0, 0);
+  go();
+  // The fonts and pictures can move things a little: settle again once they've loaded.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => go());
+  window.addEventListener('load', () => go(), { once: true });
+  // Once the visitor scrolls themselves, they're in charge.
+  const stop = () => { go = () => {}; };
+  ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach((e) => window.addEventListener(e, stop, { once: true, passive: true }));
 }
 
 // Each block below the hero (headings, cards, tiles) rises gently as it

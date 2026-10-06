@@ -75,6 +75,10 @@ The videos are recordings of the scroll animations the site used to run (the pin
 
 (it needs Playwright, ffmpeg and Python with numpy and Pillow; see the top of the script). Without a video, a treatment shows its picture instead, so a new treatment works straight away. `scripts/render-assets.mjs` also uses the old stage code: to re-render the NAD+ finished picture, run it in a checkout of the `stage-animations` commit (`git worktree add ../bluebird-stage stage-animations`) and copy `images/treatments/nad-plus-infusion.webp` back.
 
+## Where the home page starts
+
+Opening the site (from a link, a bookmark or by typing it) or reloading it always starts at the top of the home page, on laptops and phones: never where the browser last was, and never at a #section left in the address. In-page links (Treatments, the bar of names, Next…) move the page without adding #sections to the address. Two exceptions: a link from one of the site's own pages to a section (e.g. a treatment page's "Back to all treatments") goes to that section, and going Back to the home page returns to where you were on it. This is `initStart` in `script.js`.
+
 ## Booking and contact details
 
 They live in one place, `site-config.js` (used by the generator, which writes them into every page, and by the home page's treatments):
