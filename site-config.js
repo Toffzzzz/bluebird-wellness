@@ -35,4 +35,42 @@ window.SITE = {
   chatAssistant: true,
   // A Google Maps link to the clinic, e.g. 'https://maps.app.goo.gl/…'. "Get directions".
   mapsUrl: '',
+
+  /* ---------- The business and its policies ----------
+     Shown in every page's footer and in the policy pages (privacy/, terms/,
+     cancellations/, cookies/, accessibility/). The law says a business
+     website must show who runs it. Until a value is filled in, the policy
+     pages show a highlighted gap where it goes. Run the generator after
+     changing these. */
+
+  // The business's full legal name, e.g. 'Bluebird Wellness Ltd'.
+  legalName: '',
+  // Companies House number, if it is a limited company.
+  companyNumber: '',
+  // Where the company is registered (shown with the company number).
+  registeredIn: 'England and Wales',
+  // Registered office address (for a limited company), or the business address.
+  registeredOffice: '',
+  // The clinic's full address, e.g. 'Bluebird Dentists, 1 Example Road, London W12 0AA'.
+  clinicAddress: '',
+  // VAT number, if VAT-registered.
+  vatNumber: '',
+  // ICO data protection registration number (every business handling personal data pays the ICO's fee).
+  icoNumber: '',
+  // Care Quality Commission provider or location ID, if registered with the CQC.
+  cqcNumber: '',
+  // The online booking system's provider, e.g. 'Semble' (named in the privacy policy).
+  bookingProvider: '',
+  // An extra charge for mobile call-outs, e.g. '£50'. Shown wherever call-outs are offered. Empty: none shown.
+  callOutFee: '',
+  // How much notice to cancel or move an appointment, e.g. '24 hours'.
+  cancellationNotice: '',
+  // What a late cancellation or missed appointment costs, e.g. '50% of the treatment price'.
+  cancellationFee: '',
+  // The minimum age for treatment (booking and the chat ask people to confirm it).
+  minimumAge: '18',
+  // The date the policies were last changed, as shown on them.
+  policiesUpdated: '6 October 2026',
+  // true: each policy page says it is a draft awaiting the clinic's details and a compliance review.
+  legalDraft: true,
 };

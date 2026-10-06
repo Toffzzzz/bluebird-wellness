@@ -538,9 +538,12 @@ function render() {
    is pinned). It starts once the treatment's section fills most of the
    screen (its top within SCRUB.start of the space below the bar) and is at
    its end by the time the section's top has gone SCRUB.end above the bar;
-   in between, the scroll sets how far it has got. It never runs faster than
-   its natural speed (SCRUB.rate): scroll quickly and it catches up at its
-   own pace; stop part-way and it stops where the scroll put it. It only
+   in between, the scroll sets how far it has got. The video itself plays
+   towards that point (playing is smoother than jumping frame to frame),
+   faster the further behind it is, gliding to a stop when it gets there
+   (SCRUB.ease), and never faster than SCRUB.maxRate times its natural
+   speed: scroll quickly and it catches up quickly but smoothly; stop
+   part-way and it settles where the scroll put it. It only
    ever moves forwards: scrolling back up leaves it where it got to; once
    finished, or once its section has left the screen after it started, it
    stays finished. Arriving by a jump (the bar, Next, a link), it plays on
@@ -569,6 +572,13 @@ function render() {
      treatments).
    ========================================================================== */
 
+// How the featured treatments are shown: 'lines' (one blue line drawn down
+// the middle of the page as you scroll, drawing each treatment's picture on
+// the way; data/line-art.js) or 'videos' (each treatment's pre-rendered
+// animation; images/treatment-videos/).
+const TX_STYLE = 'lines';
+const LINES = TX_STYLE === 'lines' && !!window.LINE_ART;
+
 const TREATMENT_VIDEO = {
   dir: 'images/treatment-videos/',
   play: 0.5,      // phones: share of a video in view before it plays by itself
@@ -578,9 +588,11 @@ const TREATMENT_VIDEO = {
 // Laptops and desktops: the animation follows the scroll.
 const SCRUB = {
   query: '(min-width: 820px) and (hover: hover) and (pointer: fine)',
-  start: 0.2,   // it starts when the section's top is this share of the visible space below the bar
-  end: 0.15,    // and is at its end when the section's top has gone this share above the bar
-  rate: 1,      // the fastest it ever plays: 1 = its natural speed
+  start: 0.3,    // it starts when the section's top is this share of the visible space below the bar
+  end: 0.2,      // and is at its end when the section's top has gone this share above the bar
+  maxRate: 2,    // the fastest it ever plays: 2 = twice its natural speed
+  ease: 0.25,    // how closely it follows the scroll: it catches up over about this many seconds
+  minRate: 0.25, // the slowest it plays while catching up (so it glides to a stop)
 };
 
 const TX_ICON = {
@@ -610,6 +622,7 @@ function treatmentsHTML(featured) {
     </nav>`;
 
   const sections = featured.map((t, i) => {
+    if (LINES && window.LINE_ART[t.id]) return lineSectionHTML(t, i);
     const base = `${TREATMENT_VIDEO.dir}${esc(t.id)}`;
     const name = esc(menuItem(t).name);
     return `
@@ -632,6 +645,194 @@ function treatmentsHTML(featured) {
     </div>`;
 }
 
+// The line drawings: a treatment's section is a column down the middle of
+// the page: the line coming in from above, the drawing, then the line going
+// on down. On laptops the text sits beside the drawing (left and right in
+// turn); on phones it's a card under it, with the line running into the card
+// and out of the bottom.
+function lineSectionHTML(t, i) {
+  const art = window.LINE_ART[t.id];
+  const clips = [];
+  const paths = art.paths.map((p, k) => {
+    const o = typeof p === 'string' ? { d: p } : p;
+    const move = o.transform ? ` transform="${esc(o.transform)}"` : '';
+    if (!o.fill) return `<path d="${esc(o.d)}"${move}/>`;
+    // A filled shape (the logo) is revealed from the top down instead.
+    const [x, y, w, h] = o.box;
+    const id = `tx-clip-${esc(t.id)}-${k}`;
+    clips.push(`<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" data-h="${h}"/></clipPath>`);
+    return `<path class="tx-art__fill" d="${esc(o.d)}"${move} clip-path="url(#${id})"/>`;
+  }).join('');
+  return `
+      <section class="tx tx--line tx--text-${i % 2 ? 'right' : 'left'}" id="${esc(txAnchor(t))}" data-tx="${i}" aria-labelledby="${esc(t.id)}-title">
+        <div class="tx-line">
+          <svg class="tx-line__svg" aria-hidden="true" focusable="false"><path data-seg="in"/><path data-seg="out"/><path data-seg="after"/></svg>
+          <div class="tx-line__art" role="img" aria-label="${esc(art.alt)}">
+            <svg viewBox="0 0 400 400" aria-hidden="true" focusable="false"><defs>${clips.join('')}</defs><g class="tx-art" data-top="${art.top}" data-bottom="${art.bottom}">${paths}</g></svg>
+          </div>
+          <div class="tx__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
+        </div>
+      </section>`;
+}
+
+// The line drawings, drawn by the scroll. The "pen" is the middle of the
+// screen: everything in a section above it is drawn, and as the page moves
+// up the line comes down the middle, draws the treatment's picture from the
+// top down, and carries on to the next. It only ever draws forwards: once
+// drawn, a picture stays drawn when you scroll back up. Arriving by a jump
+// (the bar, Next, a link), the picture draws itself. With reduced motion
+// everything is shown already drawn.
+const LINE = {
+  follow: 0.1,    // seconds: how closely the drawing follows the scroll (a little smoothing)
+  minRange: 28,   // px of scrolling over which even a level stroke (a base line) is drawn
+  jump: 1.6,      // seconds a picture takes to draw itself after a jump
+  width: 2.5,     // px: the line's thickness, the same everywhere
+};
+
+function initLines(items, animated) {
+  const html = document.documentElement;
+  html.classList.add('tx-lines');
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+
+  const secs = items.map((it) => {
+    const section = it.section;
+    const overlay = section.querySelector('.tx-line__svg');
+    const art = section.querySelector('.tx-line__art');
+    const g = art.querySelector('.tx-art');
+    const strokes = [...g.querySelectorAll('path')].map((el) => ({
+      el,
+      clip: el.classList.contains('tx-art__fill') ? section.querySelector(`${el.getAttribute('clip-path').slice(4, -1)} rect`) : null,
+      len: 0, y0: 0, y1: 0, reached: 0, shown: -1,
+    }));
+    const segs = [...overlay.querySelectorAll('[data-seg]')].map((el) => ({ el, seg: true, len: 0, y0: 0, y1: 0, reached: 0, shown: -1 }));
+    return { it, section, overlay, art, g, text: section.querySelector('.tx__text'), top: Number(g.dataset.top), bottom: Number(g.dataset.bottom), parts: [...segs, ...strokes], auto: null, done: false };
+  });
+
+  // Where everything is, in each section's own coordinates (redone on resize).
+  const layout = () => {
+    for (const sec of secs) {
+      const box = sec.section.getBoundingClientRect();
+      const a = sec.art.getBoundingClientRect();
+      const scale = a.width / 400;
+      const cx = a.left - box.left + a.width / 2;
+      const artTop = a.top - box.top;
+      sec.overlay.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+      sec.g.style.strokeWidth = String(LINE.width / scale);
+      // Phones: the text is a card in the column; the line stops at it and starts again under it.
+      // (Measured without the text's rise-in movement.)
+      const card = getComputedStyle(sec.text).position !== 'absolute';
+      const textTop = offsetWithin(sec.text, null).top - offsetWithin(sec.section, null).top;
+      const lines = {
+        in: [0, artTop + sec.top * scale],
+        out: [artTop + sec.bottom * scale, card ? textTop : box.height],
+        after: card ? [textTop + sec.text.offsetHeight, box.height] : null,
+      };
+      for (const p of sec.parts) {
+        if (p.seg) {
+          const span = lines[p.el.dataset.seg];
+          p.el.setAttribute('d', span ? `M${cx.toFixed(1)} ${span[0].toFixed(1)} V${span[1].toFixed(1)}` : '');
+          p.len = span ? Math.max(0, span[1] - span[0]) : 0;
+          p.y0 = span ? span[0] : 0;
+          p.y1 = span ? span[1] : 0;
+        } else {
+          const r = p.el.getBoundingClientRect();
+          p.y0 = r.top - box.top;
+          p.y1 = r.bottom - box.top;
+          if (!p.clip) p.len = p.el.getTotalLength();
+        }
+        if (p.y1 - p.y0 < LINE.minRange) p.y1 = p.y0 + LINE.minRange;
+        p.shown = -1; // draw it afresh at its new size
+      }
+    }
+  };
+
+  // Shows how much of a part is drawn (0 to 1).
+  const draw = (p, v) => {
+    if (p.shown === v) return;
+    p.shown = v;
+    if (p.clip) { p.clip.setAttribute('height', String(Number(p.clip.dataset.h) * v)); return; }
+    if (!p.len) return;
+    p.el.style.strokeDasharray = `${p.len} ${p.len + 2}`;
+    p.el.style.strokeDashoffset = String(p.len * (1 - v));
+    p.el.style.visibility = v > 0.001 ? 'visible' : 'hidden';
+  };
+
+  if (!animated) {
+    layout();
+    secs.forEach((sec) => sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); }));
+    const redo = () => { layout(); secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 1))); };
+    window.addEventListener('resize', redo, { passive: true });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(redo);
+    return;
+  }
+
+  // A jump to a treatment: its picture draws itself.
+  document.addEventListener('tx:arrive', (event) => {
+    const sec = secs.find((x) => x.section === event.detail);
+    if (sec && !sec.done) sec.auto = { start: performance.now(), from: null };
+  });
+
+  let ticking = false;
+  let last = 0;
+  const tick = (now) => {
+    ticking = false;
+    const dt = last ? Math.min(now - last, 50) / 1000 : 1 / 60;
+    last = now;
+    const k = 1 - Math.exp(-dt / LINE.follow);
+    const pen = window.innerHeight / 2;
+    let moving = false;
+    for (const sec of secs) {
+      if (sec.done) continue;
+      const box = sec.section.getBoundingClientRect();
+      // Below the screen: nothing yet.
+      if (box.top > window.innerHeight) continue;
+      // Gone by above the screen (e.g. after a jump past it): drawn.
+      if (box.bottom < 0) {
+        sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); });
+        sec.done = true;
+        continue;
+      }
+      let at = pen - box.top;
+      if (sec.auto) {
+        if (sec.auto.from === null) sec.auto.from = at;
+        const u = Math.min(1, (now - sec.auto.start) / (LINE.jump * 1000));
+        at = Math.max(at, sec.auto.from + (box.height - sec.auto.from) * ease(u));
+        if (u < 1) moving = true; else sec.auto = null;
+      }
+      let all = true;
+      for (const p of sec.parts) {
+        p.reached = Math.max(p.reached, clamp((at - p.y0) / (p.y1 - p.y0)));
+        const from = Math.max(p.shown, 0);
+        const v = p.reached - from < 0.002 ? p.reached : from + (p.reached - from) * k;
+        draw(p, v);
+        if (v < p.reached) moving = true;
+        if (v < 1) all = false;
+      }
+      if (all) sec.done = true;
+    }
+    if (moving) wake();
+  };
+  function wake() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(tick);
+  }
+
+  layout();
+  secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 0)));
+  wake();
+  window.addEventListener('scroll', wake, { passive: true });
+  const relayout = () => {
+    layout();
+    secs.forEach((sec) => sec.parts.forEach((p) => draw(p, Math.max(0, p.reached === 1 ? 1 : p.reached))));
+    wake();
+  };
+  window.addEventListener('resize', relayout, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+  window.addEventListener('load', relayout);
+}
+
 function initTreatments(animated) {
   const root = document.getElementById('stage-root');
   const sections = root ? [...root.querySelectorAll('.tx')] : [];
@@ -641,8 +842,6 @@ function initTreatments(animated) {
   const navItems = [...nav.querySelectorAll('[data-tx-go]')];
   const next = nav.querySelector('[data-tx-next]');
   const row = nav.querySelector('.tx-nav__list');
-  const scrubQuery = window.matchMedia(SCRUB.query);
-
   const items = sections.map((section, i) => ({
     i,
     t: FEATURED[i],
@@ -661,248 +860,273 @@ function initTreatments(animated) {
     shown: 0,        // laptops: the time the video is being moved to (smoothed)
   }));
 
-  // Laptops with motion: the animation follows the scroll. Decided afresh if
-  // the window crosses the breakpoint (e.g. a laptop window made narrow).
-  let scrub = false;
+  if (LINES) initLines(items, animated);
+  else {
+    const scrubQuery = window.matchMedia(SCRUB.query);
+    // Laptops with motion: the animation follows the scroll. Decided afresh if
+    // the window crosses the breakpoint (e.g. a laptop window made narrow).
+    let scrub = false;
 
-  // Showing the finished picture instead of the video (reduced motion, a
-  // video that can't play by itself, or one that can't load).
-  const showStill = (it, still) => it.section.classList.toggle('is-still', still);
+    // Showing the finished picture instead of the video (reduced motion, a
+    // video that can't play by itself, or one that can't load).
+    const showStill = (it, still) => it.section.classList.toggle('is-still', still);
 
-  const setButton = (it, state) => {
-    if (!state) { it.button.hidden = true; it.button.removeAttribute('data-state'); return; }
-    const verb = { pause: 'Pause', play: 'Play', replay: 'Replay' }[state];
-    it.button.hidden = false;
-    it.button.dataset.state = state;
-    it.button.innerHTML = TX_ICON[state];
-    it.button.setAttribute('aria-label', `${verb} the ${it.button.dataset.name} animation`);
-  };
+    const setButton = (it, state) => {
+      if (!state) { it.button.hidden = true; it.button.removeAttribute('data-state'); return; }
+      const verb = { pause: 'Pause', play: 'Play', replay: 'Replay' }[state];
+      it.button.hidden = false;
+      it.button.dataset.state = state;
+      it.button.innerHTML = TX_ICON[state];
+      it.button.setAttribute('aria-label', `${verb} the ${it.button.dataset.name} animation`);
+    };
 
-  // The file for the current behaviour: laptops scrub <id>-scrub.mp4;
-  // phones play the 720 video where that's already sharp, else the 1080 one.
-  const sourceFor = (it) => {
-    const base = it.video.dataset.base;
-    if (scrub) return `${base}-scrub.mp4`;
-    const needed = it.media.getBoundingClientRect().width * (window.devicePixelRatio || 1);
-    return `${base}-${needed > 0 && needed <= TREATMENT_VIDEO.sharp720 ? 720 : 1080}.mp4`;
-  };
+    // The file for the current behaviour: laptops scrub <id>-scrub.mp4;
+    // phones play the 720 video where that's already sharp, else the 1080 one.
+    const sourceFor = (it) => {
+      const base = it.video.dataset.base;
+      if (scrub) return `${base}-scrub.mp4`;
+      const needed = it.media.getBoundingClientRect().width * (window.devicePixelRatio || 1);
+      return `${base}-${needed > 0 && needed <= TREATMENT_VIDEO.sharp720 ? 720 : 1080}.mp4`;
+    };
 
-  items.forEach((it) => {
-    const v = it.video;
-    v.muted = true;
-    v.defaultMuted = true;
-    v.playsInline = true;
-    v.addEventListener('loadeddata', () => { if (scrub) wake(); });
-    v.addEventListener('playing', () => { showStill(it, false); if (!scrub) setButton(it, 'pause'); });
-    // Paused part-way: the button plays it on; stopped as it left the screen
-    // (showing its finished picture): the button replays it.
-    v.addEventListener('pause', () => {
-      if (scrub || v.ended) return;
-      setButton(it, it.done && it.section.classList.contains('is-still') ? 'replay' : 'play');
-    });
-    v.addEventListener('ended', () => {
-      it.done = true;
-      if (scrub) { it.autoplaying = false; it.reached = 1; it.shown = v.currentTime; return; }
-      setButton(it, 'replay');
-    });
-    // No video (e.g. a new treatment that hasn't been rendered yet): its
-    // finished picture, or failing that the treatment's own picture.
-    v.addEventListener('error', () => {
-      if (!v.getAttribute('src')) return;
-      it.failed = true;
-      showStill(it, true);
-      setButton(it, null);
-      it.still.addEventListener('error', () => {
-        if (it.t.image && !it.still.src.endsWith(it.t.image)) it.still.src = it.t.image;
-      }, { once: true });
-    });
-  });
-
-  const load = (it) => {
-    if (it.failed) return;
-    const src = sourceFor(it);
-    if (it.src === src) return;
-    it.src = src;
-    const v = it.video;
-    v.poster = `${v.dataset.base}-start.webp`;
-    v.preload = 'auto';
-    v.src = src;
-    v.load();
-  };
-
-  const play = (it, fromStart) => {
-    if (it.failed) return;
-    load(it);
-    const v = it.video;
-    if (fromStart) {
-      try { v.currentTime = 0; } catch (e) { /* not loaded yet: it starts at 0 anyway */ }
-    }
-    const attempt = v.play();
-    if (attempt && attempt.catch) {
-      attempt.catch(() => {
-        // Not allowed to play by itself: the finished picture, with the button to play it.
-        if (v.paused) { showStill(it, true); setButton(it, 'play'); }
-      });
-    }
-  };
-
-  items.forEach((it) => it.button.addEventListener('click', () => {
-    const v = it.video;
-    if (it.button.dataset.state === 'pause') {
-      it.held = true;
-      v.pause();
-      return;
-    }
-    it.held = false;
-    it.armed = false;
-    showStill(it, false);
-    play(it, v.ended || it.button.dataset.state === 'replay' || v.currentTime === 0);
-  }));
-
-  /* Laptops: the video follows the scroll. */
-  let below = 0; // the bottom of the header and the bar: the screen's visible space starts here
-  const header = document.getElementById('site-header');
-  const measure = () => { below = (header ? header.offsetHeight : 0) + nav.offsetHeight; };
-  // 0 until the section fills most of the screen, 1 once it has moved on a little past the bar.
-  const progress = (it) => {
-    const top = it.section.getBoundingClientRect().top;
-    const space = window.innerHeight - below;
-    const from = below + space * SCRUB.start;
-    const to = below - space * SCRUB.end;
-    return Math.min(1, Math.max(0, (from - top) / (from - to)));
-  };
-  // A jump (the bar, Next, a link) to a treatment that hasn't finished: it
-  // plays on by itself from where it is, rather than leaping to where the
-  // scroll would put it.
-  document.addEventListener('tx:arrive', (event) => {
-    const it = items.find((x) => x.section === event.detail);
-    if (it && scrub && !it.done) it.jumped = true;
-  });
-  let ticking = false;
-  let lastTick = 0;
-  const tick = (now) => {
-    ticking = false;
-    if (!scrub) return;
-    // How far a video may move this frame: its natural speed (a long gap, e.g. a hidden tab, counts as one frame).
-    const elapsed = lastTick ? Math.min(now - lastTick, 50) : 16.7;
-    lastTick = now;
-    const maxStep = (elapsed / 1000) * SCRUB.rate;
-    let moving = false;
-    for (const it of items) {
-      if (!it.inView || it.failed) continue;
+    items.forEach((it) => {
       const v = it.video;
-      if (v.readyState < 1 || !v.duration) continue;
-      const end = Math.max(0, v.duration - 0.001);
-      // Arrived by a jump: play on from where it is (once it ends, it's done).
-      if (it.jumped) {
-        it.jumped = false;
-        it.autoplaying = true;
-        try { v.currentTime = it.shown; } catch (e) { /* starts where it is */ }
-        const attempt = v.play();
-        if (attempt && attempt.catch) attempt.catch(() => { it.autoplaying = false; it.reached = 1; it.done = true; });
-        continue;
+      v.muted = true;
+      v.defaultMuted = true;
+      v.playsInline = true;
+      v.addEventListener('loadeddata', () => { if (scrub) wake(); });
+      v.addEventListener('playing', () => { showStill(it, false); if (!scrub) setButton(it, 'pause'); });
+      // Paused part-way: the button plays it on; stopped as it left the screen
+      // (showing its finished picture): the button replays it.
+      v.addEventListener('pause', () => {
+        if (scrub || v.ended) return;
+        setButton(it, it.done && it.section.classList.contains('is-still') ? 'replay' : 'play');
+      });
+      v.addEventListener('ended', () => {
+        it.done = true;
+        if (scrub) { it.autoplaying = false; it.reached = 1; it.shown = v.currentTime; return; }
+        setButton(it, 'replay');
+      });
+      // No video (e.g. a new treatment that hasn't been rendered yet): its
+      // finished picture, or failing that the treatment's own picture.
+      v.addEventListener('error', () => {
+        if (!v.getAttribute('src')) return;
+        it.failed = true;
+        showStill(it, true);
+        setButton(it, null);
+        it.still.addEventListener('error', () => {
+          if (it.t.image && !it.still.src.endsWith(it.t.image)) it.still.src = it.t.image;
+        }, { once: true });
+      });
+    });
+
+    const load = (it) => {
+      if (it.failed) return;
+      const src = sourceFor(it);
+      if (it.src === src) return;
+      it.src = src;
+      const v = it.video;
+      v.poster = `${v.dataset.base}-start.webp`;
+      v.preload = 'auto';
+      v.src = src;
+      v.load();
+    };
+
+    const play = (it, fromStart) => {
+      if (it.failed) return;
+      load(it);
+      const v = it.video;
+      if (fromStart) {
+        try { v.currentTime = 0; } catch (e) { /* not loaded yet: it starts at 0 anyway */ }
       }
-      if (it.autoplaying) continue;
-      // Only forwards: scrolling back up leaves it where it got to.
-      it.reached = Math.max(it.reached, progress(it));
-      const target = it.reached * end;
-      // Come into view already past its end (e.g. scrolling up into it): its finished picture.
-      if (it.snap) { if (it.reached >= 1) it.shown = target; it.snap = false; }
-      // Towards where the scroll puts it, never faster than its natural speed.
-      it.shown = Math.min(target, it.shown + maxStep);
-      if (it.shown >= end) it.done = true;
-      if (it.shown < target) moving = true;
-      // One seek at a time; the next frame asks for wherever the scroll is by then.
-      if (v.seeking) { moving = true; continue; }
-      if (Math.abs(v.currentTime - it.shown) > 0.012) { v.currentTime = it.shown; moving = true; }
-    }
-    if (moving) wake();
-  };
-  function wake() {
-    if (ticking || !scrub) return;
-    ticking = true;
-    requestAnimationFrame(tick);
-  }
-  window.addEventListener('scroll', () => { if (scrub) wake(); }, { passive: true });
-  window.addEventListener('resize', () => { if (scrub) { measure(); wake(); } }, { passive: true });
+      const attempt = v.play();
+      if (attempt && attempt.catch) {
+        attempt.catch(() => {
+          // Not allowed to play by itself: the finished picture, with the button to play it.
+          if (v.paused) { showStill(it, true); setButton(it, 'play'); }
+        });
+      }
+    };
 
-  /* Loading ahead (a screen below the viewport). */
-  const near = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      const it = items[Number(e.target.dataset.txIndex)];
-      it.near = e.isIntersecting;
-      if (e.isIntersecting && animated) load(it);
-    }
-  }, { rootMargin: '100% 0px 100% 0px' });
+    items.forEach((it) => it.button.addEventListener('click', () => {
+      const v = it.video;
+      if (it.button.dataset.state === 'pause') {
+        it.held = true;
+        v.pause();
+        return;
+      }
+      it.held = false;
+      it.armed = false;
+      showStill(it, false);
+      play(it, v.ended || it.button.dataset.state === 'replay' || v.currentTime === 0);
+    }));
 
-  /* On screen: laptops follow the scroll; phones play once half in view. */
-  const seen = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      const it = items[Number(e.target.dataset.txIndex)];
-      if (!e.isIntersecting) {
-        it.inView = false;
-        // Phones: one that leaves the screen while it's still playing stops,
-        // and its finished picture (the -end image) takes its place, so
-        // nothing is decoded off screen and it's finished when you come back.
-        // Laptops: likewise one that had started (by the scroll or a jump).
+    /* Laptops: the video follows the scroll. */
+    let below = 0; // the bottom of the header and the bar: the screen's visible space starts here
+    const header = document.getElementById('site-header');
+    const measure = () => { below = (header ? header.offsetHeight : 0) + nav.offsetHeight; };
+    // 0 until the section fills most of the screen, 1 once it has moved on a little past the bar.
+    const progress = (it) => {
+      const top = it.section.getBoundingClientRect().top;
+      const space = window.innerHeight - below;
+      const from = below + space * SCRUB.start;
+      const to = below - space * SCRUB.end;
+      return Math.min(1, Math.max(0, (from - top) / (from - to)));
+    };
+    // A jump (the bar, Next, a link) to a treatment that hasn't finished: it
+    // plays on by itself from where it is, rather than leaping to where the
+    // scroll would put it.
+    document.addEventListener('tx:arrive', (event) => {
+      const it = items.find((x) => x.section === event.detail);
+      if (it && scrub && !it.done) it.jumped = true;
+    });
+    let ticking = false;
+    let lastTick = 0;
+    const tick = (now) => {
+      ticking = false;
+      if (!scrub) return;
+      const elapsed = lastTick ? Math.min(now - lastTick, 50) : 16.7;
+      lastTick = now;
+      let moving = false;
+      for (const it of items) {
+        if (!it.inView || it.failed) continue;
         const v = it.video;
-        if (scrub && !it.done && (it.shown > 0 || it.autoplaying)) {
-          if (!v.paused) v.pause();
-          it.autoplaying = false;
-          it.done = true;
-          it.reached = 1;
-          showStill(it, true);
+        if (v.readyState < 1 || !v.duration) continue;
+        const end = Math.max(0, v.duration - 0.001);
+        // Arrived by a jump: play on from where it is, at its natural speed (once it ends, it's done).
+        if (it.jumped) {
+          it.jumped = false;
+          it.autoplaying = true;
+          v.playbackRate = 1;
+          const attempt = v.play();
+          if (attempt && attempt.catch) attempt.catch(() => { it.autoplaying = false; it.reached = 1; it.done = true; });
           continue;
         }
-        if (!scrub && !v.paused && !it.held) {
-          v.pause();
-          it.done = true;
-          showStill(it, true);
-          setButton(it, 'replay');
+        if (it.autoplaying) continue;
+        // Only forwards: scrolling back up leaves it where it got to.
+        it.reached = Math.max(it.reached, progress(it));
+        const target = it.reached * end;
+        // Come into view already past its end (e.g. scrolling up into it): its finished picture.
+        if (it.snap) {
+          it.snap = false;
+          if (it.reached >= 1 && v.currentTime < end) { v.pause(); v.currentTime = end; it.shown = end; it.done = true; continue; }
         }
-        continue;
+        const at = v.currentTime;
+        it.shown = at;
+        if (at >= end) { it.done = true; if (!v.paused) v.pause(); continue; }
+        const gap = target - at;
+        // Faster the further behind it is, slower as it arrives, within its limits.
+        const rate = Math.min(SCRUB.maxRate, Math.max(SCRUB.minRate, gap / SCRUB.ease));
+        if (!it.seekOnly) {
+          // Playing towards the scroll: start once it's a frame or so behind, stop once it's there.
+          if (gap > (v.paused ? 0.04 : 0.008)) {
+            if (Math.abs(v.playbackRate - rate) > rate * 0.08) v.playbackRate = rate;
+            if (v.paused) {
+              const attempt = v.play();
+              // Not allowed to play: it moves frame by frame instead.
+              if (attempt && attempt.catch) attempt.catch(() => { it.seekOnly = true; wake(); });
+            }
+            moving = true;
+          } else if (!v.paused) v.pause();
+          continue;
+        }
+        // Frame by frame (only if playing isn't allowed): the same pace, one seek at a time.
+        if (gap <= 0.008) continue;
+        moving = true;
+        if (v.seeking) continue;
+        v.currentTime = Math.min(target, at + Math.max(rate * (elapsed / 1000), 0.012));
       }
-      if (!it.inView) it.snap = true;
-      it.inView = true;
-      if (scrub) { wake(); continue; }
-      if (animated && it.armed && !it.held && e.intersectionRatio >= TREATMENT_VIDEO.play) {
-        it.armed = false;
-        play(it, true);
+      if (moving) wake();
+    };
+    function wake() {
+      if (ticking || !scrub) return;
+      ticking = true;
+      requestAnimationFrame(tick);
+    }
+    window.addEventListener('scroll', () => { if (scrub) wake(); }, { passive: true });
+    window.addEventListener('resize', () => { if (scrub) { measure(); wake(); } }, { passive: true });
+
+    /* Loading ahead (a screen below the viewport). */
+    const near = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const it = items[Number(e.target.dataset.txIndex)];
+        it.near = e.isIntersecting;
+        if (e.isIntersecting && animated) load(it);
       }
-    }
-  }, { threshold: [0, TREATMENT_VIDEO.play, 1] });
+    }, { rootMargin: '100% 0px 100% 0px' });
 
-  items.forEach((it) => {
-    it.media.dataset.txIndex = it.i;
-    seen.observe(it.media);
-    near.observe(it.media);
-  });
+    /* On screen: laptops follow the scroll; phones play once half in view. */
+    const seen = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const it = items[Number(e.target.dataset.txIndex)];
+        if (!e.isIntersecting) {
+          it.inView = false;
+          // Phones: one that leaves the screen while it's still playing stops,
+          // and its finished picture (the -end image) takes its place, so
+          // nothing is decoded off screen and it's finished when you come back.
+          // Laptops: likewise one that had started (by the scroll or a jump).
+          const v = it.video;
+          if (scrub && !it.done && (it.shown > 0 || it.autoplaying)) {
+            if (!v.paused) v.pause();
+            it.autoplaying = false;
+            it.done = true;
+            it.reached = 1;
+            showStill(it, true);
+            continue;
+          }
+          if (!scrub && !v.paused && !it.held) {
+            v.pause();
+            it.done = true;
+            showStill(it, true);
+            setButton(it, 'replay');
+          }
+          continue;
+        }
+        if (!it.inView) it.snap = true;
+        it.inView = true;
+        if (scrub) { wake(); continue; }
+        if (animated && it.armed && !it.held && e.intersectionRatio >= TREATMENT_VIDEO.play) {
+          it.armed = false;
+          play(it, true);
+        }
+      }
+    }, { threshold: [0, TREATMENT_VIDEO.play, 1] });
 
-  // Choosing the behaviour (and again if the window crosses the breakpoint).
-  const setMode = () => {
-    scrub = animated && scrubQuery.matches;
-    html.classList.toggle('tx-scrub', scrub);
-    for (const it of items) {
-      const v = it.video;
-      it.held = false;
-      it.jumped = false;
-      it.autoplaying = false;
-      if (!v.paused) v.pause();
-      if (!animated) { showStill(it, true); setButton(it, 'play'); continue; }
-      if (it.failed) continue;
-      // A finished one stays finished: on a laptop the scroll can't take it
-      // back; on a phone its finished picture shows, with the replay button.
-      it.armed = !it.done;
-      it.reached = it.done ? 1 : 0;
-      it.shown = 0;
-      showStill(it, it.done);
-      setButton(it, scrub ? null : (it.done ? 'replay' : (it.src ? 'play' : null)));
-      if (it.src) { it.src = ''; if (it.near) load(it); }
-    }
-    if (scrub) { measure(); wake(); }
-  };
-  setMode();
-  if (scrubQuery.addEventListener) scrubQuery.addEventListener('change', setMode);
+    items.forEach((it) => {
+      it.media.dataset.txIndex = it.i;
+      seen.observe(it.media);
+      near.observe(it.media);
+    });
+
+    // Choosing the behaviour (and again if the window crosses the breakpoint).
+    const setMode = () => {
+      scrub = animated && scrubQuery.matches;
+      html.classList.toggle('tx-scrub', scrub);
+      for (const it of items) {
+        const v = it.video;
+        it.held = false;
+        it.jumped = false;
+        it.autoplaying = false;
+        it.seekOnly = false;
+        if (!v.paused) v.pause();
+        v.playbackRate = 1;
+        if (!animated) { showStill(it, true); setButton(it, 'play'); continue; }
+        if (it.failed) continue;
+        // A finished one stays finished: on a laptop the scroll can't take it
+        // back; on a phone its finished picture shows, with the replay button.
+        it.armed = !it.done;
+        it.reached = it.done ? 1 : 0;
+        it.shown = 0;
+        showStill(it, it.done);
+        setButton(it, scrub ? null : (it.done ? 'replay' : (it.src ? 'play' : null)));
+        if (it.src) { it.src = ''; if (it.near) load(it); }
+      }
+      if (scrub) { measure(); wake(); }
+    };
+    setMode();
+    if (scrubQuery.addEventListener) scrubQuery.addEventListener('change', setMode);
+
+  }
 
   /* Which treatment is current: the one across the middle of the screen. */
   let current = -1;

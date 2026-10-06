@@ -11,6 +11,10 @@
                                    offers, on every page
      treatments/<slug>/index.html  one static page per drip, with all its
                                    text in the HTML
+     privacy/, terms/, cancellations/, cookies/, accessibility/
+                                   the policy pages, from content/legal/
+                                   and the business's details in
+                                   site-config.js
      ingredients/index.html        the ingredient glossary (the menu's
                                    glossary), with where each one is used
      index.html                    only its Book and contact links (from
@@ -285,7 +289,24 @@ const setLink = (tag, href) => {
   const withHref = / href="/.test(clean) ? clean.replace(/\shref="[^"]*"/, ` href="${esc(href || '#book')}"`) : clean.replace(/^<a\b/, `<a href="${esc(href || '#book')}"`);
   return href ? withHref : withHref.replace(/>$/, ' hidden>');
 };
+// The business's details in the footer (site-config.js), only what is filled in.
+function businessLine() {
+  const parts = [];
+  if (SITE.legalName) parts.push(esc(SITE.legalName));
+  if (SITE.companyNumber) parts.push(`${SITE.registeredIn ? `Registered in ${esc(SITE.registeredIn)}, company` : 'Company'} number ${esc(SITE.companyNumber)}`);
+  if (SITE.registeredOffice) parts.push(`Registered office: ${esc(SITE.registeredOffice)}`);
+  if (SITE.vatNumber) parts.push(`VAT number ${esc(SITE.vatNumber)}`);
+  if (SITE.icoNumber) parts.push(`ICO registration ${esc(SITE.icoNumber)}`);
+  if (SITE.cqcNumber) parts.push(`Care Quality Commission ID ${esc(SITE.cqcNumber)}`);
+  return parts.join(' · ');
+}
 const withSite = (html) => html
+  .replace(/<p class="contact-item__note" data-callout-fee[^>]*>[\s\S]*?<\/p>/g, () =>
+    `<p class="contact-item__note" data-callout-fee${SITE.callOutFee ? '' : ' hidden'}>${SITE.callOutFee ? `Call-out charge: ${esc(SITE.callOutFee)}` : ''}</p>`)
+  .replace(/<p class="site-footer__business" data-business[^>]*>[\s\S]*?<\/p>/g, () => {
+    const line = businessLine();
+    return `<p class="site-footer__business" data-business${line ? '' : ' hidden'}>${line}</p>`;
+  })
   .replace(/<a\b[^>]*\sdata-book(?:="([^"]*)")?(?=[\s>])[^>]*>/g, (tag, where) =>
     setLink(tag, SITE.bookingUrl || (where === 'here' ? '' : '#book')))
   .replace(/<a\b[^>]*\sdata-contact="([a-z]+)"[^>]*>/g, (tag, kind) =>
@@ -570,9 +591,7 @@ function pageHTML(drip) {
   <meta name="robots" content="noindex, nofollow">
   ${rebase(ICONS, '../../')}
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+  <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="../../styles.css">
 </head>
 <body class="drip-page" data-book-item="${esc(drip.name)}">
@@ -692,9 +711,7 @@ ${paras(item.text, '                  ')}
   <meta name="robots" content="noindex, nofollow">
   ${rebase(ICONS, '../')}
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+  <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body class="drip-page glossary-page">
@@ -761,6 +778,130 @@ ${paras(item.text, '                  ')}
 `;
 }
 
+/* ---------- Policy pages ----------
+   privacy/, terms/, cancellations/, cookies/ and accessibility/, written from
+   content/legal/<name>.html (a comment with the title and description, then
+   the page's text). In the text, {{name}} is a value from site-config.js
+   (a highlighted gap until it's filled in), {{businessDetails}} is the list
+   of the business's details, and [[text]] is a highlighted gap for something
+   the clinic still has to decide. */
+
+const LEGAL = ['privacy', 'terms', 'cancellations', 'cookies', 'accessibility'];
+const LEGAL_GAPS = {
+  legalName: "the business's legal name",
+  companyNumber: 'company number, if a limited company',
+  registeredIn: 'where the company is registered',
+  registeredOffice: 'registered office address',
+  clinicAddress: "the clinic's full address",
+  vatNumber: 'VAT number, if VAT-registered',
+  icoNumber: 'ICO registration number',
+  cqcNumber: 'Care Quality Commission ID, if registered',
+  bookingProvider: "the booking system's provider",
+  callOutFee: 'the call-out charge, or "none"',
+  cancellationNotice: 'how much notice, e.g. 24 hours',
+  cancellationFee: 'the charge, e.g. 50% of the treatment price',
+  minimumAge: 'the minimum age',
+  policiesUpdated: 'the date',
+  email: "the clinic's email address",
+  phone: "the clinic's phone number",
+};
+const LEGAL_DEFAULTS = { clinicAddress: 'Bluebird Dentists, near Westfield, London' };
+const legalGap = (text) => `<mark class="legal-gap">[${esc(text)}]</mark>`;
+const legalValue = (key) => SITE[key] || LEGAL_DEFAULTS[key] || '';
+function legalField(key) {
+  if (key === 'businessDetails') return businessDetailsHTML();
+  if (!(key in LEGAL_GAPS)) fail(`content/legal: unknown {{${key}}}.`);
+  const value = legalValue(key);
+  if (!value) return legalGap(LEGAL_GAPS[key]);
+  if (key === 'email') return `<a href="mailto:${esc(value)}">${esc(value)}</a>`;
+  if (key === 'phone') return `<a href="${esc(contactHref.phone(value))}">${esc(value)}</a>`;
+  return esc(value);
+}
+function businessDetailsHTML() {
+  const rows = [
+    ['Business', 'legalName'],
+    ['Company number', 'companyNumber'],
+    ['Registered in', 'registeredIn'],
+    ['Registered office', 'registeredOffice'],
+    ['Clinic', 'clinicAddress'],
+    ['VAT number', 'vatNumber'],
+    ['ICO registration', 'icoNumber'],
+    ['Care Quality Commission', 'cqcNumber'],
+    ['Phone', 'phone'],
+    ['Email', 'email'],
+  ];
+  return `<dl class="legal-details">${rows.map(([label, key]) => `
+  <div><dt>${esc(label)}</dt><dd>${legalField(key)}</dd></div>`).join('')}
+</dl>`;
+}
+function legalSource(name) {
+  const text = read(`content/legal/${name}.html`);
+  const head = text.match(/^<!--([\s\S]*?)-->/);
+  const meta = Object.fromEntries((head ? head[1] : '').split('\n').map((l) => l.match(/^\s*(\w+):\s*(.+?)\s*$/)).filter(Boolean).map((m) => [m[1], m[2]]));
+  if (!meta.title) fail(`content/legal/${name}.html: no title.`);
+  const body = text.slice(head ? head[0].length : 0).trim()
+    .replace(/\{\{(\w+)\}\}/g, (m, key) => legalField(key))
+    .replace(/\[\[([^\]]+)\]\]/g, (m, gapText) => legalGap(gapText));
+  return { name, title: meta.title, description: meta.description || '', body };
+}
+function legalPageHTML(name) {
+  const page = legalSource(name);
+  const header = rebase(HEADER_HTML, '../');
+  const footer = rebase(FOOTER_HTML, '../').replace(`<a href="../${name}/">`, '<a href="./" aria-current="page">');
+  const sections = [...page.body.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)];
+  const toc = sections.length > 2 ? `
+      <nav class="legal-toc" aria-labelledby="legal-toc-title">
+        <p class="legal-toc__title" id="legal-toc-title">On this page</p>
+        <ul>${sections.map((m) => `
+          <li><a href="#${m[1]}">${m[2]}</a></li>`).join('')}
+        </ul>
+      </nav>` : '';
+  const draft = SITE.legalDraft !== 'false' ? `
+      <p class="legal-draft" role="note"><strong>Draft.</strong> This page is waiting for the clinic's details (highlighted) and a compliance review.</p>` : '';
+  return `<!DOCTYPE html>
+<!-- ${GENERATED} (from content/legal/${name}.html) -->
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(page.title)} | ${esc(SITE_NAME)}</title>
+  <meta name="description" content="${esc(page.description)}">
+  <meta name="theme-color" content="#F7F4EF">
+  <!-- Remove before launch, after the menu wording has had its compliance review -->
+  <meta name="robots" content="noindex, nofollow">
+  ${rebase(ICONS, '../')}
+
+  <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body class="drip-page legal-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  ${header}
+
+  <main id="main">
+    <article class="container legal">
+      <h1 class="drip-title">${esc(page.title)}</h1>
+      <p class="legal-updated">Last updated ${legalField('policiesUpdated')}</p>${draft}
+      <div class="legal-body">
+${page.body.replace(/^(<p class="legal-lead">[\s\S]*?<\/p>)/, `$1${toc}`)}
+      </div>
+    </article>
+  </main>
+
+  ${footer}
+
+  <script src="../site-config.js" defer></script>
+  <script src="../data/book-list.js" defer></script>
+  <script src="../site.js" defer></script>
+  <script src="../treatment.js" defer></script>
+  <script src="../booking.js" defer></script>
+  <script src="../chat.js" defer></script>
+</body>
+</html>
+`;
+}
+
 /* ---------- Write ---------- */
 
 // data/menu.js for the home page.
@@ -793,7 +934,10 @@ for (const drip of DRIPS) write(`treatments/${drip.slug}/index.html`, pageHTML(d
 // The ingredient glossary.
 if (GLOSSARY.length) write('ingredients/index.html', glossaryPageHTML());
 
-// index.html: only its Book and contact links and the logo change.
+// The policy pages.
+for (const name of LEGAL) write(`${name}/index.html`, legalPageHTML(name));
+
+// index.html: only its Book and contact links, the business details and the logo change.
 if (INDEX !== read('index.html')) write('index.html', INDEX);
 
 /* ---------- Check ---------- */
@@ -940,6 +1084,15 @@ if (GLOSSARY.length) {
   const { problems, count } = checkStrings(html, requiredForGlossary());
   problems.push(...checkPage(html, {}, `${GLOSSARY_TITLE} | ${SITE_NAME}`));
   report(!problems.length, 'ingredients/ (glossary)', `${count} strings`, problems);
+}
+
+for (const name of LEGAL) {
+  const html = read(`${name}/index.html`);
+  const problems = checkPage(html, {}, `${legalSource(name).title} | ${SITE_NAME}`);
+  if (/\{\{|\[\[/.test(html)) problems.push('a {{value}} or [[gap]] was left unfilled');
+  if (html !== legalPageHTML(name)) problems.push('out of date: run node scripts/build-menu.mjs');
+  const gaps = (html.match(/class="legal-gap"/g) || []).length;
+  report(!problems.length, `${name}/ (policy)`, gaps ? `${gaps} gaps for the clinic to fill in` : 'complete', problems);
 }
 
 /* The home page is built by script.js, so it is checked as script.js renders

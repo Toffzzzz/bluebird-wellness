@@ -10,12 +10,16 @@ Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be
 - `chat.js`: on every page: the chat assistant ("Speak to a doctor") and the WhatsApp button, together in the bottom right corner (same section below)
 - `site.js`: shared by every page: the phones' Menu button and full-screen menu, and the focus-trapping dialog the home page's treatment list uses too
 - `styles.css`: design tokens and styles for every page (see `DESIGN.md`)
-- `script.js`: the home page: the featured treatments (the `TREATMENTS` list at the top), rendering, the treatments' videos and their bar of names, in-page links and the gentle reveals
+- `script.js`: the home page: the featured treatments (the `TREATMENTS` list at the top), rendering, the treatments' line drawings (or videos) and their bar of names, in-page links and the gentle reveals
+- `data/line-art.js`: the treatments' line drawings, made by `scripts/line-art/make-line-art.py`
 - `data/drips.json`: the clinic's menu, the single source of every treatment name, price, description, ingredient, table and disclaimer
 - `scripts/render-videos/`: re-renders the featured treatments' videos from the scroll animations (see "The featured treatments" below)
 - `scripts/render-assets.mjs`: renders pictures from the old stage's 3D code (the NAD+ finished picture); it runs on the `stage-animations` commit (see below)
 - `scripts/build-menu.mjs`: the generator that turns the menu into `data/menu.js`, the treatment pages and the ingredient glossary, writes the Book and contact links and the logo into every page, and holds `MEDICINES` (the lines never shown as something a Pro version adds)
-- `data/menu.js`, `data/book-list.js`, `treatments/<slug>/index.html`, `ingredients/index.html`, `data/menu-check.txt`: generated, don't edit by hand
+- `content/legal/`: the text of the policy pages (privacy, terms, cancellations and refunds, cookies, accessibility); the generator turns them into `privacy/`, `terms/`, `cancellations/`, `cookies/` and `accessibility/`, filling in the business's details from `site-config.js`
+- `fonts/`: the Inter font, served from the site itself, with its licence (`LICENSE.txt`)
+- `COMPLIANCE.md`: the legal and compliance checklist (what's done, what the clinic must provide, and the review of treatment claims); `CREDITS.md`: where the font, pictures and icons come from
+- `data/menu.js`, `data/book-list.js`, `treatments/<slug>/index.html`, `ingredients/index.html`, the five policy pages, `data/menu-check.txt`: generated, don't edit by hand
 - `treatment.js`: the small script the treatment pages and the glossary share (header border, scroll reveal, "Expand all", the glossary's search and "Back to top", opening an entry linked to by its #anchor, the phones' Book bar on a treatment page)
 - `images/logo/`: the logo (`bluebird-mark.svg`, drawn in `currentColor`: the generator writes it inline into the header and footer, in Bluebird Blue) and the favicons
 - `images/treatment-videos/`: each featured treatment's videos (`<id>-scrub.mp4` for laptops, where the scroll drives it; `<id>-1080.mp4` and `<id>-720.mp4` for phones, where it plays by itself) and its first and last frames (`<id>-start.webp`, `<id>-end.webp`)
@@ -43,10 +47,27 @@ A drip with a `proVariantSlug` shows an "Upgrade to Pro" card: its Pro version's
 
 `TREATMENTS` in `script.js` sets the featured treatments' order, pictures and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field.
 
-They work like Apple's product pages: one section per treatment, scrolled natively (no snapping: the page never moves by itself), each with a short video of its animation.
+They can be shown two ways, chosen by `TX_STYLE` at the top of the treatments part of `script.js`:
 
-- Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling drives the animation while the page keeps moving (nothing is pinned): it starts once the treatment's section fills most of the screen, and the scroll sets how far it has got, but it never plays faster than its natural speed (scroll quickly and it catches up at its own pace). It only ever moves forwards: scrolling back up leaves it where it got to, and once finished (or once it has left the screen after starting) it stays finished. Arriving by a jump (the bar, Next, a link), it plays on by itself instead. Where it starts and ends, and the top speed, are `SCRUB` in `script.js`. These use `<id>-scrub.mp4`.
-- Phones and tablets: a video plays by itself once half of it is in view, then stays on its finished picture for good (coming back to it shows the finished picture). The round button in its corner pauses, plays or replays it. These use `<id>-1080.mp4` / `<id>-720.mp4`. A bar of the treatments' names sticks under the header while they're on screen: it shows where you are, jumps to any treatment, and its Next button goes to the next one (after the last, to All treatments). A link to somewhere far down the page jumps straight there rather than scrolling past everything.
+- `'lines'` (the live version): the line drawings, below;
+- `'videos'`: each treatment's pre-rendered animation, described after them.
+
+A bar of the treatments' names sticks under the header while they're on screen either way: it shows where you are, jumps to any treatment, and its Next button goes to the next one (after the last, to All treatments). A link to somewhere far down the page jumps straight there rather than scrolling past everything.
+
+### The line drawings
+
+One line in Bluebird Blue runs down the middle of the page, starting from the hero's "Scroll to explore" line, and draws as you scroll, on laptops and phones alike. The "pen" is the middle of the screen: everything above it is drawn. The line comes down to the top of each treatment's drawing, stops while the drawing is drawn from the top down, then carries on from the bottom of the drawing to the next one. It only ever draws forwards: once drawn, a drawing stays drawn when you scroll back up. Arriving by a jump (the bar, Next, a link), the drawing draws itself. With reduced motion everything is shown already drawn.
+
+- On laptops each treatment's name, price and buttons sit beside its drawing, left and right in turn; on phones they're a card under the drawing, with the line running into the card and out of the bottom.
+- The drawings are in `data/line-art.js`, made by `scripts/line-art/make-line-art.py` (run `python3 scripts/line-art/make-line-art.py` after changing it, and commit both). Each is clean, even line art in a 400 x 400 box; the Signature drawing reveals the logo itself. The comments at the top of both files explain the format.
+- How closely the drawing follows the scroll, the line's thickness and how long a drawing takes to draw itself after a jump are `LINE` in `script.js`.
+
+### The videos
+
+One section per treatment, scrolled natively (no snapping: the page never moves by itself), each with a short video of its animation.
+
+- Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling drives the animation while the page keeps moving (nothing is pinned): it starts once most of the treatment's section is on screen, and the scroll sets how far it has got. The video plays towards that point rather than jumping frame to frame (smoother), faster the further behind it is and gliding to a stop when it arrives, up to twice its natural speed: scroll quickly and it catches up quickly but smoothly; stop and it settles within a moment. It only ever moves forwards: scrolling back up leaves it where it got to, and once finished (or once it has left the screen after starting) it stays finished. Arriving by a jump (the bar, Next, a link), it plays on by itself instead. Where it starts and ends, the top speed and how closely it follows are `SCRUB` in `script.js`. These use `<id>-scrub.mp4`.
+- Phones and tablets: a video plays by itself once half of it is in view, then stays on its finished picture for good (coming back to it shows the finished picture). The round button in its corner pauses, plays or replays it. These use `<id>-1080.mp4` / `<id>-720.mp4`.
 
 The videos are recordings of the scroll animations the site used to run (the pinned stage). That code lives on in the commit tagged `stage-animations`. If a treatment's animation needs to change, change it there (in a branch made from that tag), move the tag to your new commit, and re-render that treatment's video:
 
@@ -66,6 +87,8 @@ They live in one place, `site-config.js` (used by the generator, which writes th
 | `whatsapp` | the WhatsApp number in international form, digits only, e.g. `447700900000` | "WhatsApp" (`https://wa.me/…`) and the WhatsApp button on every page |
 | `whatsappIcon` | optional: an icon for the WhatsApp button, e.g. `images/whatsapp-icon.svg` (the official one from WhatsApp's brand resources) | the WhatsApp button (empty: a chat bubble) |
 | `chatAssistant` | `true` or `false` | the chat assistant, "Speak to a doctor" (`false` hides it everywhere) |
+| `legalName`, `companyNumber`, `registeredIn`, `registeredOffice`, `clinicAddress`, `vatNumber`, `icoNumber`, `cqcNumber` | the business's details | every page's footer, and the policy pages |
+| `bookingProvider`, `callOutFee`, `cancellationNotice`, `cancellationFee`, `minimumAge`, `policiesUpdated`, `legalDraft` | the policies' details | the policy pages; `callOutFee` also shows in the booking calendar and the booking section; `minimumAge` in booking and the chat; `legalDraft: false` removes the "Draft" note |
 | `mapsUrl` | a Google Maps link to the clinic | "Get directions" |
 
 While a value is empty its links are hidden, so nothing ever links to nowhere. While `bookingUrl` is empty, every Book button opens the booking preview (below). After filling them in, run `node scripts/build-menu.mjs` and commit what it writes.
@@ -88,6 +111,8 @@ It is marked "Preview" and says that no appointment has been made and nothing ha
 **The corner buttons.** WhatsApp (green) above "Speak to a doctor" (blue), in the bottom right of every page: pills with their labels on laptops, round buttons on phones (on the home page, phones show them once you scroll past the top, which has its own buttons). WhatsApp: with `whatsapp` set, it opens a chat with that number with a first line already written; until then it says the number is coming soon. On a treatment page it moves up above the phones' Book bar, and on the glossary "Back to top" moves to the left. The icon is a chat bubble until `whatsappIcon` points at an image (e.g. WhatsApp's official icon, from its brand resources).
 
 ## Before going live
+
+The full checklist is in `COMPLIANCE.md`. In short:
 
 - Remove the `noindex` robots meta tag from every page once the menu wording has had its compliance review (it's in `index.html` and in the generator's page template).
 - Fill in `site-config.js` (booking link, phone, email, WhatsApp, maps link) and run the generator. Setting the booking link switches off the booking preview.

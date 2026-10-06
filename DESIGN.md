@@ -107,7 +107,12 @@ Bluebird Blue `#2458C6` fill, White text, Inter 500 15px, 9999px radius, padding
 
 Transparent fill, Ink Navy text, 1px Ink Navy border at 20% opacity, 9999px radius, same padding as primary. Hover: Sand fill.
 
-### Treatment Showcase Section
+### Treatment Line Drawings (the live version)
+**Role:** One section per featured treatment, joined by one line
+
+On Cream Canvas. A single Bluebird Blue `#2458C6` line, 2.5px, round ends and joins, runs straight down the middle of the page and draws as the page scrolls (the pen is the middle of the screen). It stops at the top of each treatment's drawing, the drawing is drawn from the top down, and the line carries on from its bottom. Drawings are clean, geometric line art (no hand-drawn wobble), all the same weight, about 440px on laptops and 340px on phones; the Signature drawing is the logo itself, revealed from the top down. On laptops the text (eyebrow, name at 36–60px, Book, Learn more, price) sits beside the drawing, alternately left (right-aligned towards the line) and right; on phones it's a Porcelain card with a Mist border under the drawing, the line running into its top and out of its bottom. The hero's "Scroll to explore" line is drawn in the same blue, as the start of the line.
+
+### Treatment Showcase Section (the video version)
 **Role:** One section per featured treatment, with a short video of its animation
 
 On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the scroll drives the video as the section moves up the screen (nothing is pinned); on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A slim bar of the treatments' names sticks under the header while the sections are on screen, with a dark Next pill on its right. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
@@ -147,17 +152,22 @@ Fixed bottom right, stacked 12px apart: WhatsApp, a green `#13803F` pill (darker
 
 A 400px Porcelain panel (28px radius) in the bottom right corner on laptops; the whole screen on phones. Header: a Bluebird Blue avatar with a speech bubble and medical cross, "Speak to a doctor", "Doctor-led care" and a Sand "PREVIEW" pill. Messages: the assistant's in White bubbles with a Mist border, theirs in Bluebird Blue; notes (emergencies, preview) in Sand. Suggestions are White pills with a Bluebird Blue border, right-aligned above a pill text box and a round Bluebird Blue send button. Three dots while it "types" (with reduced motion, no dots and no pause).
 
+### Policy Page
+**Role:** Privacy, terms, cancellations and refunds, cookies, accessibility
+
+A single 46rem column on Cream Canvas: the page title (as a treatment page's), "Last updated" in Slate, a Sand "Draft" note until the clinic's details are in, a Porcelain "On this page" box of links, then the text at 17px/1.6 with 24px semibold section headings. The business's details sit in a Porcelain list. Anything still to be filled in is highlighted in pale yellow `#FCEFC7`.
+
 ### Footer
 **Role:** Closing band
 
-Ink Navy `#152238` background — the only dark surface on the site — with Porcelain text, Slate-on-dark links at 70% opacity, and the line "All treatments are subject to a medical consultation."
+Ink Navy `#152238` background — the only dark surface on the site — with Porcelain text, Slate-on-dark links at 70% opacity, and the line "All treatments are subject to a medical consultation., then a row of links to the five policy pages and the business's legal details (name, company number, registered office, ICO and CQC numbers) in 14px.
 
 ## Motion
 
 Motion is **slow, smooth and purposeful** — it should feel like calm breathing, never flashy.
 
 - **Like Apple's product pages:** the page always scrolls natively (no smooth-scroll library, no snapping: it never moves by itself). Each treatment's animation is a short pre-rendered video.
-- **Laptops and desktops:** scrolling drives the animation while the page keeps scrolling continuously (nothing is pinned): it starts once the section fills most of the screen and never plays faster than its natural speed. Arriving by a jump, it plays on by itself.
+- **Laptops and desktops:** scrolling drives the animation while the page keeps scrolling continuously (nothing is pinned): it starts once most of the section is on screen, and the video plays towards where the scroll puts it, easing in and out, at up to twice its natural speed. Arriving by a jump, it plays on by itself.
 - **No edges:** each video is rendered on its section's tint, tagged with the sRGB colour curve so every browser draws it like the page's colours, and softly framed in the tint, so no box or border ever shows.
 - **Phones and tablets:** the video plays by itself once it's half in view.
 - **Animations never run backwards:** scrolling back up leaves an animation where it got to, and once it has finished it stays on its finished picture (on every screen size).

@@ -9,8 +9,11 @@
      - the doctor: Dr Nema or Dr Mahdi,
      - a day on the calendar and a time (some times show as taken, as they
        would in a real diary),
-     - your details, then a confirmation.
-   It is clearly marked as a preview, and nothing is sent or stored anywhere.
+     - your details, confirming you're 18 or over (site-config.js: minimumAge)
+       and agreeing to the privacy policy (neither box pre-ticked), then a
+       confirmation.
+   A call-out charge (site-config.js: callOutFee) shows on the call-out
+   choice. It is clearly marked as a preview, and nothing is sent or stored anywhere.
    Once bookingUrl is set (and the generator re-run), the Book buttons go to
    the real booking page and this preview switches itself off.
 
@@ -20,6 +23,10 @@
 
 (() => {
   const SITE = window.SITE || {};
+  // The site's root folder, from where this file is (for the privacy policy link on every page).
+  const ROOT = new URL('.', (document.currentScript && document.currentScript.src) || location.href);
+  const MIN_AGE = String(SITE.minimumAge || '18');
+  const CALL_OUT_FEE = String(SITE.callOutFee || '').trim();
   const LIST = window.BOOK_LIST || { drips: [], standalone: [] };
 
   const BOOKING = {
@@ -113,7 +120,7 @@
                 </button>
                 <button type="button" class="booking__choice" data-where="callout" aria-pressed="false">
                   <span class="booking__choice-icon">${ICON.callOut}</span>
-                  <span><span class="booking__choice-title">Mobile call-out</span><span class="booking__choice-note">Your home, hotel or office · any time, day or night</span></span>
+                  <span><span class="booking__choice-title">Mobile call-out</span><span class="booking__choice-note">Your home, hotel or office · any time, day or night${CALL_OUT_FEE ? ` · call-out charge ${esc(CALL_OUT_FEE)}` : ''}</span></span>
                 </button>
               </div>
             </fieldset>
@@ -160,7 +167,11 @@
                 <textarea class="booking__input booking__textarea" id="booking-notes" name="notes" rows="3"></textarea>
               </div>
             </div>
-            <p class="booking__note">All treatments are subject to a medical consultation.</p>
+            <div class="booking__checks">
+              <label class="booking__check"><input type="checkbox" name="age" required> <span>I'm ${esc(MIN_AGE)} or over.</span></label>
+              <label class="booking__check"><input type="checkbox" name="privacy" required> <span>I agree to ${esc(SITE.legalName || 'Bluebird Wellness')} using these details, including any health information I give, to arrange my appointment, as explained in the <a href="${esc(new URL('privacy/', ROOT).href)}" target="_blank" rel="noopener">privacy policy</a>.</span></label>
+            </div>
+            <p class="booking__note">All treatments are subject to a medical consultation with one of our doctors.</p>
             <p class="booking__error" data-error role="alert" hidden></p>
           </form>
 
@@ -216,9 +227,11 @@
       if (state.step === 1) { state.step = 2; update(); parts.body.scrollTop = 0; q('#booking-name').focus(); return; }
       if (state.step === 2) {
         const form = q('form[data-step="2"]');
-        const missing = [...form.querySelectorAll('[required]')].filter((i) => !i.value.trim() || (i.type === 'email' && !/^\S+@\S+\.\S+$/.test(i.value.trim())));
+        const missing = [...form.querySelectorAll('[required]')].filter((i) => (i.type === 'checkbox' ? !i.checked : !i.value.trim() || (i.type === 'email' && !/^\S+@\S+\.\S+$/.test(i.value.trim()))));
         if (missing.length) {
-          parts.error.textContent = 'Please fill in your name, phone and a valid email.';
+          parts.error.textContent = missing.some((i) => i.type !== 'checkbox')
+            ? `Please fill in your name, phone, a valid email${state.where === 'callout' ? ' and the address' : ''}.`
+            : `Please confirm you're ${MIN_AGE} or over and agree to how we'll use your details.`;
           parts.error.hidden = false;
           missing[0].focus();
           return;
@@ -296,7 +309,7 @@
       q('#booking-address').required = state.where === 'callout';
       const ready = state.treatment && state.where && state.doctor && state.day && state.hour !== null && state.hour !== undefined;
       const when = ready ? `${longDate(state.day)} at ${time(state.hour)}` : '';
-      const place = state.where === 'clinic' ? 'in clinic' : 'as a mobile call-out';
+      const place = state.where === 'clinic' ? 'in clinic' : `as a mobile call-out${CALL_OUT_FEE ? ` (call-out charge ${CALL_OUT_FEE})` : ''}`;
       if (ready) parts.summary.textContent = `${state.treatment} · ${when} · ${state.doctor} · ${place}`;
       if (state.step === 3) parts.doneSummary.textContent = `${state.treatment} with ${state.doctor}, ${place}, on ${when}.`;
       parts.back.hidden = state.step !== 2;
@@ -312,7 +325,8 @@
     if (!dialog) dialog = build();
     const known = [...LIST.drips, ...LIST.standalone].some((t) => t.name === item);
     Object.assign(state, { step: 1, treatment: known ? item : '', where: where || null, doctor: null, day: null, hour: null, month: 0 });
-    dialog.el.querySelectorAll('form input, form textarea').forEach((i) => { i.value = ''; });
+    dialog.el.querySelectorAll('form input, form textarea').forEach((i) => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; });
+    dialog.el.querySelector('[data-error]').hidden = true;
     dialog.update();
     window.SiteDialog.open(dialog.el, { returnFocus: opener, initialFocus: dialog.el.querySelector('.booking__close') });
     dialog.el.querySelector('.booking__body').scrollTop = 0;

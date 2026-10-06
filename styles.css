@@ -81,6 +81,31 @@
   :root { --gutter: 64px; }
 }
 
+/* ---------- Font ----------
+   Inter (SIL Open Font License, fonts/LICENSE.txt), served from the site
+   itself, so visitors' browsers never contact Google or anyone else. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/Inter-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/Inter-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/Inter-SemiBold.woff2') format('woff2');
+}
+
 /* ---------- Base ---------- */
 
 *,
@@ -150,7 +175,7 @@ a { color: inherit; }
 }
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   top: 8px;
   left: 8px;
   z-index: 200;
@@ -1312,6 +1337,84 @@ html.is-locked body { overflow: hidden; }
   color: rgba(251, 250, 247, 0.7);
 }
 .site-footer__legal p:first-child { color: var(--color-porcelain); }
+.site-footer__policies {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin-top: var(--space-16);
+  font-size: var(--text-caption);
+  color: rgba(251, 250, 247, 0.7);
+}
+.site-footer__policy-nav { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); }
+.site-footer .site-footer__policy-nav a { font-size: var(--text-caption); }
+.site-footer__policy-nav a[aria-current="page"] { color: var(--color-porcelain); }
+.site-footer__business { line-height: 1.5; }
+
+/* ---------- Policy pages (privacy/, terms/, …) ---------- */
+
+.legal {
+  max-width: calc(46rem + var(--gutter) * 2);
+  padding-top: calc(var(--header-h) + var(--space-48));
+  padding-bottom: var(--space-96);
+}
+.legal .drip-title { margin-bottom: var(--space-12); }
+.legal-updated { font-size: var(--text-caption); color: var(--color-slate); }
+.legal-draft {
+  margin-top: var(--space-24);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-tile);
+  background: var(--color-sand);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+.legal-gap {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #FCEFC7;
+  color: var(--color-ink);
+}
+.legal-toc {
+  margin-top: var(--space-24);
+  padding: var(--space-16) var(--space-24);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-tile);
+  background: var(--color-porcelain);
+}
+.legal-toc__title { font-size: var(--text-caption); font-weight: var(--font-weight-semibold); }
+.legal-toc ul { margin: var(--space-8) 0 0; padding-left: 1.2em; font-size: var(--text-caption); line-height: 1.9; }
+.legal-toc a { color: var(--color-bluebird-deep); }
+.legal-body { margin-top: var(--space-32); font-size: var(--text-body); line-height: 1.6; }
+.legal-body h2 {
+  margin: var(--space-48) 0 var(--space-12);
+  font-size: 24px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  scroll-margin-top: calc(var(--header-h) + var(--space-16));
+}
+.legal-body h3 { margin: var(--space-24) 0 var(--space-8); font-size: var(--text-body); font-weight: var(--font-weight-semibold); }
+.legal-body p + p,
+.legal-body p + ul,
+.legal-body ul + p { margin-top: var(--space-12); }
+.legal-body ul { margin: 0; padding-left: 1.2em; }
+.legal-body li + li { margin-top: var(--space-8); }
+.legal-body a { color: var(--color-bluebird-deep); }
+.legal-lead { font-size: var(--text-body-lg); color: var(--color-slate); }
+.legal-details {
+  display: grid;
+  gap: var(--space-8);
+  margin: var(--space-16) 0 0;
+  padding: var(--space-16) var(--space-24);
+  border-radius: var(--radius-tile);
+  background: var(--color-porcelain);
+  font-size: var(--text-caption);
+}
+.legal-details div { display: grid; grid-template-columns: 11rem 1fr; gap: var(--space-12); }
+.legal-details dt { color: var(--color-slate); }
+.legal-details dd { margin: 0; }
+@media (max-width: 559.98px) {
+  .legal-details div { grid-template-columns: 1fr; gap: 0; }
+}
 
 /* ---------- Menu: accordion and price table ----------
    Shared by the standalone section on the home page and the treatment
@@ -2563,6 +2666,24 @@ html.is-locked body { overflow: hidden; }
 }
 .booking__field--wide { grid-column: 1 / -1; }
 .booking__note { font-size: var(--text-caption); color: var(--color-slate); }
+.booking__checks { display: grid; gap: var(--space-12); }
+.booking__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  cursor: pointer;
+}
+.booking__check input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--color-bluebird);
+  cursor: pointer;
+}
+.booking__check a { color: var(--color-bluebird-deep); }
 .booking__error { font-size: var(--text-caption); font-weight: var(--font-weight-medium); color: #B42318; }
 
 .booking__done { justify-items: center; gap: var(--space-12); padding: var(--space-32) 0; text-align: center; }
@@ -2845,6 +2966,7 @@ html.is-locked body { overflow: hidden; }
   color: var(--color-slate);
   font-size: 13px;
 }
+.chat__msg--note a { color: var(--color-bluebird-deep); }
 .chat__summary { margin: var(--space-8) 0 0; font-size: 14px; }
 .chat__summary dt { font-size: 12px; color: var(--color-slate); }
 .chat__summary dd { margin: 0 0 var(--space-8); }
@@ -2948,3 +3070,93 @@ html.is-locked body { overflow: hidden; }
   .chat,
   .booking { display: none !important; }
 }
+
+/* ---------- Featured treatments as line drawings (script.js: TX_STYLE = 'lines') ----------
+   One Bluebird Blue line comes down the middle of the page, draws each
+   treatment's picture (data/line-art.js) and carries on to the next. On
+   laptops the text sits beside the drawing, left and right in turn; on
+   phones it's a card under the drawing, which the line runs into and out of.
+   Everything is the same even, round-ended line. */
+
+.tx--line {
+  --art: clamp(300px, 32vw, 440px);
+  display: block;
+  min-height: 0;
+  padding: 0;
+  background: var(--color-cream);
+}
+.tx-line {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24vh 0;
+}
+.tx-line__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.tx-line__svg path,
+.tx-art path {
+  fill: none;
+  stroke: var(--color-bluebird);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tx-line__svg path { stroke-width: 2.5px; }
+.tx-art { stroke-width: 2.8; }
+.tx-art .tx-art__fill { fill: var(--color-bluebird); stroke: none; }
+.tx-line__art {
+  position: relative;
+  width: var(--art);
+  aspect-ratio: 1;
+}
+.tx-line__art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Laptops: the text beside the drawing, alternately left and right of the line. */
+@media (min-width: 820px) {
+  .tx--line .tx__text {
+    position: absolute;
+    top: 50%;
+    width: min(24rem, calc(50% - var(--art) / 2 - 64px));
+    max-width: none;
+    transform: translateY(-50%);
+  }
+  .tx--text-left .tx__text {
+    right: calc(50% + var(--art) / 2 + 48px);
+    align-items: flex-end;
+    text-align: right;
+  }
+  .tx--text-left .tx__text .treatment-actions { justify-content: flex-end; }
+  .tx--text-right .tx__text { left: calc(50% + var(--art) / 2 + 48px); }
+  .tx--line .treatment-title { font-size: clamp(36px, 4vw, 60px); }
+  .tx--line .treatment-title--long { font-size: clamp(32px, 3.4vw, 52px); }
+}
+
+/* Phones: the drawing, then the text as a card on the line. */
+@media (max-width: 819.98px) {
+  .tx--line { --art: min(340px, 84vw); }
+  .tx-line { padding: 14vh 0; }
+  .tx--line .tx__text {
+    position: relative;
+    z-index: 1;
+    width: min(100% - 32px, 420px);
+    margin-top: var(--space-48);
+    padding: var(--space-24) var(--space-16);
+    border: 1px solid var(--color-mist);
+    border-radius: var(--radius-card);
+    background: var(--color-porcelain);
+  }
+}
+
+/* The hero's "Scroll to explore" line is the start of the line. */
+.tx-lines .hero__cue::after { background: var(--color-bluebird); width: 2.5px; }

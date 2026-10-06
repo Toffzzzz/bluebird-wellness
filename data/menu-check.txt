@@ -18,6 +18,11 @@ PASS  treatments/longevity-infusion/               21 strings
 PASS  treatments/signature-infusion/               15 strings
 PASS  treatments/iron-infusion/                    76 strings
 PASS  ingredients/ (glossary)                      194 strings
+PASS  privacy/ (policy)                            13 gaps for the clinic to fill in
+PASS  terms/ (policy)                              16 gaps for the clinic to fill in
+PASS  cancellations/ (policy)                      8 gaps for the clinic to fill in
+PASS  cookies/ (policy)                            complete
+PASS  accessibility/ (policy)                      2 gaps for the clinic to fill in
 PASS  index.html (home page, as script.js renders it) 80 strings
 
 Result: all passed

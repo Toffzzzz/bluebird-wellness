@@ -2,10 +2,14 @@
    Bluebird Wellness: the chat assistant and the WhatsApp button (every page)
 
    1. Chat assistant ("Speak to a doctor"). A short, friendly chat that asks:
+        - that they're 18 or over (site-config.js: minimumAge; if not, it stops
+          there and keeps nothing),
         - what they're looking for, and a little about what's been going on,
         - any medical conditions, allergies or medicines,
-        - their name, phone, email and a good time to call,
-      then confirms, and says one of the doctors will phone them for a
+        - their name, phone, email (optional: the doctor phones) and a good
+          time to call,
+      then sums up, asks for explicit consent to use the health details
+      (linking to the privacy policy), and says one of the doctors will phone them for a
       telephone consultation within the next 24 hours. It says at the start
       that it isn't for emergencies (999, or 111 for urgent advice).
       It is a preview: it is marked as one, and nothing is sent or stored
@@ -48,9 +52,20 @@
 
   const answers = {};
   const firstName = () => (answers.name || '').trim().split(/\s+/)[0] || '';
+  const MIN_AGE = String(SITE.minimumAge || '18');
+  const AGE_YES = `Yes, I'm ${MIN_AGE} or over`;
+  const AGE_NO = `No, I'm under ${MIN_AGE}`;
+  const CONSENT = 'Yes, I agree. Please call me';
+  const SKIP = 'Skip';
 
   // The questions, in order. quick: tap-to-answer suggestions (typing works too).
+  // The age comes first, so no health details are asked of anyone too young.
   const STEPS = [
+    {
+      key: 'age', label: 'Age', summary: false, choiceOnly: true,
+      say: () => [`First, are you ${MIN_AGE} or over? Our treatments are for adults only.`],
+      quick: [AGE_YES, AGE_NO],
+    },
     {
       key: 'need', label: "Looking for",
       say: () => ["What are you looking for today?"],
@@ -80,8 +95,9 @@
       check: (v) => (/^[+\d\s().-]+$/.test(v) && v.replace(/\D/g, '').length >= 7) || "That doesn't look like a phone number. Could you check it?",
     },
     {
-      key: 'email', label: 'Email',
-      say: () => ['And your email address?'],
+      key: 'email', label: 'Email', optional: true,
+      say: () => ["And your email address, if you'd like us to have it? You can skip this: the doctor will phone you."],
+      quick: [SKIP],
       placeholder: 'Email address', type: 'email', autocomplete: 'email',
       check: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || "That doesn't look like an email address. Could you check it?",
     },
@@ -222,7 +238,7 @@
   function ask() {
     const s = STEPS[step];
     say(s.say());
-    offer({ quick: s.quick, input: s });
+    offer({ quick: s.quick, input: s.choiceOnly ? null : s });
   }
 
   function start() {
@@ -236,11 +252,15 @@
   function confirmStep() {
     step = 'confirm';
     queue = queue.then(() => {
-      const rows = STEPS.map((s) => `<dt>${esc(s.label)}</dt><dd>${esc(answers[s.key])}</dd>`).join('');
+      const rows = STEPS.filter((s) => s.summary !== false).map((s) => `<dt>${esc(s.label)}</dt><dd>${esc(answers[s.key] || 'Not given')}</dd>`).join('');
       addMessage('bot', `<p>Here's what I'll pass on:</p><dl class="chat__summary">${rows}</dl>`);
     });
     say([`Shall one of our doctors call you on ${answers.phone}?`]);
-    offer({ quick: ['Yes, please call me', 'Start again'] });
+    // Explicit consent for the health details, in plain words, before anything would be passed on.
+    queue = queue.then(() => {
+      addMessage('note', `<p>By choosing "${esc(CONSENT)}", you agree to ${esc(SITE.legalName || 'Bluebird Wellness')} using these details, including the health information you've given, to arrange your consultation. You can withdraw this at any time. See our <a href="${esc(new URL('privacy/', ROOT).href)}" target="_blank" rel="noopener">privacy policy</a>.</p>`);
+    });
+    offer({ quick: [CONSENT, 'Start again'] });
   }
 
   function finish() {
@@ -258,7 +278,7 @@
     chat.quick.hidden = true;
     addMessage('user', `<p>${esc(text)}</p>`);
     if (step === 'confirm') {
-      if (text === 'Start again') { chat.log.innerHTML = ''; start(); } else finish();
+      if (text === CONSENT) finish(); else { chat.log.innerHTML = ''; start(); }
       return;
     }
     if (step === 'done') {
@@ -266,6 +286,26 @@
       return;
     }
     const s = STEPS[step];
+    // Under the minimum age: nothing more is asked, and nothing is kept.
+    if (s.key === 'age') {
+      if (text !== AGE_YES) {
+        Object.keys(answers).forEach((k) => delete answers[k]);
+        step = 'done';
+        say([`Sorry, our treatments are only for people aged ${MIN_AGE} and over, so we can't arrange a consultation through this chat.`, 'For health advice, please speak to your GP, a pharmacist, or call 111. In an emergency, call 999.']);
+        offer({ quick: ['Close', 'Start a new chat'] });
+        return;
+      }
+      answers.age = text;
+      step += 1;
+      ask();
+      return;
+    }
+    if (s.optional && text === SKIP) {
+      answers[s.key] = '';
+      step += 1;
+      if (step < STEPS.length) ask(); else confirmStep();
+      return;
+    }
     const ok = s.check ? s.check(text) : true;
     if (ok !== true) {
       say([ok]);
