@@ -6,6 +6,9 @@
      data/menu.js                  window.MENU (the JSON as it is) and the
                                    picture/tint/badge of every drip, for the
                                    home page (script.js)
+     data/book-list.js             window.BOOK_LIST: the treatments and
+                                   prices the booking preview (booking.js)
+                                   offers, on every page
      treatments/<slug>/index.html  one static page per drip, with all its
                                    text in the HTML
      ingredients/index.html        the ingredient glossary (the menu's
@@ -283,7 +286,7 @@ const setLink = (tag, href) => {
   return href ? withHref : withHref.replace(/>$/, ' hidden>');
 };
 const withSite = (html) => html
-  .replace(/<a\b[^>]*\sdata-book(?:="([^"]*)")?[^>]*>/g, (tag, where) =>
+  .replace(/<a\b[^>]*\sdata-book(?:="([^"]*)")?(?=[\s>])[^>]*>/g, (tag, where) =>
     setLink(tag, SITE.bookingUrl || (where === 'here' ? '' : '#book')))
   .replace(/<a\b[^>]*\sdata-contact="([a-z]+)"[^>]*>/g, (tag, kind) =>
     setLink(tag, SITE[kind === 'maps' ? 'mapsUrl' : kind] ? contactHref[kind](SITE[kind === 'maps' ? 'mapsUrl' : kind]) : ''));
@@ -572,7 +575,7 @@ function pageHTML(drip) {
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
   <link rel="stylesheet" href="../../styles.css">
 </head>
-<body class="drip-page">
+<body class="drip-page" data-book-item="${esc(drip.name)}">
   <a class="skip-link" href="#main">Skip to content</a>
 
   ${HEADER}
@@ -619,8 +622,12 @@ ${longFormHTML(drip, p)}${ingredientsHTML(drip, p)}${pricesHTML(drip, p)}${footn
 
   ${FOOTER}
 
+  <script src="../../site-config.js" defer></script>
+  <script src="../../data/book-list.js" defer></script>
   <script src="../../site.js" defer></script>
   <script src="../../treatment.js" defer></script>
+  <script src="../../booking.js" defer></script>
+  <script src="../../chat.js" defer></script>
 </body>
 </html>
 `;
@@ -743,8 +750,12 @@ ${paras(item.text, '                  ')}
 
   ${GLOSSARY_FOOTER}
 
+  <script src="../site-config.js" defer></script>
+  <script src="../data/book-list.js" defer></script>
   <script src="../site.js" defer></script>
   <script src="../treatment.js" defer></script>
+  <script src="../booking.js" defer></script>
+  <script src="../chat.js" defer></script>
 </body>
 </html>
 `;
@@ -759,6 +770,15 @@ window.MENU = ${JSON.stringify(MENU, null, 2)};
 // Picture, tint and badge of every drip (from TREATMENTS in script.js, or
 // NEW_PICTURES in the generator).
 window.MENU_VISUALS = ${JSON.stringify(VISUALS, null, 2)};
+`);
+
+// data/book-list.js: the treatments the booking preview (booking.js) offers,
+// on every page.
+write('data/book-list.js', `/* ${GENERATED} */
+window.BOOK_LIST = ${JSON.stringify({
+  drips: MENU.drips.map((d) => ({ name: d.name, price: d.priceLabel })),
+  standalone: (MENU.standalone?.priceTable?.rows || []).map(([name, price]) => ({ name, price })),
+}, null, 2)};
 `);
 
 // Treatment pages: generated folders are replaced; anything else is left alone.

@@ -87,6 +87,11 @@ Use `clamp()` so type scales smoothly from mobile to desktop.
 
 ## Components
 
+### Hero
+**Role:** The first screen, and the main selling point: doctor-led
+
+Centred on Cream Canvas: a Slate eyebrow ("IV drip clinic · London"), the headline "Doctor-led IV drips." (Inter 600, hero size, a non-breaking hyphen so it never splits), a Slate lead line, Book now (Primary) and Speak to a doctor (Secondary), three ticks in Pro Green with Ink Navy 14px labels, and the medical-consultation note.
+
 ### Site Header
 **Role:** Sitewide navigation, 64px tall
 
@@ -127,6 +132,21 @@ Pill shape, 6px 12px padding, Inter 500 13px. Default: Sky Tint background with 
 
 White fill, 1px Mist border, 9999px radius for single-line inputs (16px for text areas), 14px 20px padding, Ink Navy text, Slate placeholder. Focus: Bluebird Blue border plus a 3px Sky Tint ring.
 
+### Booking Sheet
+**Role:** The booking preview (`booking.js`)
+
+A Porcelain card (28px radius, max 720px wide) over a 42% Ink Navy backdrop on laptops; the whole screen on phones. A small Sand "PREVIEW" pill above the title, three numbered steps (current: Bluebird Blue; done: Sky Tint tick), then choice tiles (White, 16px radius, 1px border; chosen: Sky Tint with a Bluebird Blue border), a White month calendar (chosen day: a Bluebird Blue circle; today: a dot), pill time slots (taken: struck through and faded), Text Inputs, and a footer with Back (Secondary) and Continue (Primary, Mist while not ready). The confirmation has a Pro Green tick on Pro Tint and a Sand note that it is a preview.
+
+### Corner Buttons (WhatsApp and Speak to a doctor)
+**Role:** Contact, every page
+
+Fixed bottom right, stacked 12px apart: WhatsApp, a green `#13803F` pill (darker than WhatsApp's own green so the white label reads at 5:1), above "Speak to a doctor", a Bluebird Blue pill, each with a white icon and its label on laptops; 52px circles with the icon alone on phones (on the home page, they fade in once you scroll past the hero). They lift above a treatment page's Book bar; the glossary's "Back to top" moves to the left.
+
+### Chat Assistant
+**Role:** "Speak to a doctor" (`chat.js`)
+
+A 400px Porcelain panel (28px radius) in the bottom right corner on laptops; the whole screen on phones. Header: a Bluebird Blue avatar with a speech bubble and medical cross, "Speak to a doctor", "Doctor-led care" and a Sand "PREVIEW" pill. Messages: the assistant's in White bubbles with a Mist border, theirs in Bluebird Blue; notes (emergencies, preview) in Sand. Suggestions are White pills with a Bluebird Blue border, right-aligned above a pill text box and a round Bluebird Blue send button. Three dots while it "types" (with reduced motion, no dots and no pause).
+
 ### Footer
 **Role:** Closing band
 
@@ -137,7 +157,7 @@ Ink Navy `#152238` background — the only dark surface on the site — with Por
 Motion is **slow, smooth and purposeful** — it should feel like calm breathing, never flashy.
 
 - **Like Apple's product pages:** the page always scrolls natively (no smooth-scroll library, no snapping: it never moves by itself). Each treatment's animation is a short pre-rendered video.
-- **Laptops and desktops:** scrolling drives the animation while the page keeps scrolling continuously (nothing is pinned): the animation runs as the picture comes up the screen and finishes as it reaches the middle. Arriving by a jump, it plays on by itself.
+- **Laptops and desktops:** scrolling drives the animation while the page keeps scrolling continuously (nothing is pinned): it starts once the section fills most of the screen and never plays faster than its natural speed. Arriving by a jump, it plays on by itself.
 - **No edges:** each video is rendered on its section's tint, tagged with the sRGB colour curve so every browser draws it like the page's colours, and softly framed in the tint, so no box or border ever shows.
 - **Phones and tablets:** the video plays by itself once it's half in view.
 - **Animations never run backwards:** scrolling back up leaves an animation where it got to, and once it has finished it stays on its finished picture (on every screen size).
@@ -194,7 +214,7 @@ Imagery is object-first and bright: each treatment is represented by a single is
 
 ## Layout
 
-The page is a vertically sequenced treatment story on Cream Canvas. A solid 64px header sits above a calm, centred hero (eyebrow, very large headline, one supporting line, primary button). The Treatment Showcase Sections follow, one per featured treatment, each on its tint with a short video of its animation, under a sticky bar of their names. Next, an "All treatments" grid of White cards on a Porcelain or Sand band. Then "How it works" with two Information Tiles side by side (in clinic at Bluebird Dentists near Westfield; mobile call-out to home, hotel or office), a booking/contact section, and the Ink Navy footer. The page stays spacious and image-led throughout.
+The page is a vertically sequenced treatment story on Cream Canvas. A solid 64px header sits above a calm, centred hero that leads with the service being doctor-led (eyebrow, very large headline, one supporting line, Book now and Speak to a doctor, three ticks). The Treatment Showcase Sections follow, one per featured treatment, each on its tint with a short video of its animation, under a sticky bar of their names. Next, an "All treatments" grid of White cards on a Porcelain or Sand band. Then "How it works" with two Information Tiles side by side (in clinic at Bluebird Dentists near Westfield; mobile call-out to home, hotel or office), a booking/contact section, and the Ink Navy footer. The page stays spacious and image-led throughout.
 
 ## Agent Prompt Guide
 

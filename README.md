@@ -6,6 +6,8 @@ Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be
 
 - `index.html`: home page structure. Its header (with the phones' menu) and footer are copied onto every generated page by the generator
 - `site-config.js`: the booking link and contact details (see "Booking and contact details" below)
+- `booking.js`: on every page: the booking preview, a mock booking calendar that Book opens until there's a real booking page (see "The booking preview, the chat assistant and WhatsApp" below)
+- `chat.js`: on every page: the chat assistant ("Speak to a doctor") and the WhatsApp button, together in the bottom right corner (same section below)
 - `site.js`: shared by every page: the phones' Menu button and full-screen menu, and the focus-trapping dialog the home page's treatment list uses too
 - `styles.css`: design tokens and styles for every page (see `DESIGN.md`)
 - `script.js`: the home page: the featured treatments (the `TREATMENTS` list at the top), rendering, the treatments' videos and their bar of names, in-page links and the gentle reveals
@@ -13,7 +15,7 @@ Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be
 - `scripts/render-videos/`: re-renders the featured treatments' videos from the scroll animations (see "The featured treatments" below)
 - `scripts/render-assets.mjs`: renders pictures from the old stage's 3D code (the NAD+ finished picture); it runs on the `stage-animations` commit (see below)
 - `scripts/build-menu.mjs`: the generator that turns the menu into `data/menu.js`, the treatment pages and the ingredient glossary, writes the Book and contact links and the logo into every page, and holds `MEDICINES` (the lines never shown as something a Pro version adds)
-- `data/menu.js`, `treatments/<slug>/index.html`, `ingredients/index.html`, `data/menu-check.txt`: generated, don't edit by hand
+- `data/menu.js`, `data/book-list.js`, `treatments/<slug>/index.html`, `ingredients/index.html`, `data/menu-check.txt`: generated, don't edit by hand
 - `treatment.js`: the small script the treatment pages and the glossary share (header border, scroll reveal, "Expand all", the glossary's search and "Back to top", opening an entry linked to by its #anchor, the phones' Book bar on a treatment page)
 - `images/logo/`: the logo (`bluebird-mark.svg`, drawn in `currentColor`: the generator writes it inline into the header and footer, in Bluebird Blue) and the favicons
 - `images/treatment-videos/`: each featured treatment's videos (`<id>-scrub.mp4` for laptops, where the scroll drives it; `<id>-1080.mp4` and `<id>-720.mp4` for phones, where it plays by itself) and its first and last frames (`<id>-start.webp`, `<id>-end.webp`)
@@ -43,7 +45,7 @@ A drip with a `proVariantSlug` shows an "Upgrade to Pro" card: its Pro version's
 
 They work like Apple's product pages: one section per treatment, scrolled natively (no snapping: the page never moves by itself), each with a short video of its animation.
 
-- Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling drives the animation while the page keeps moving (nothing is pinned): as a treatment's picture comes up the screen, its animation runs from start to finish, finishing as the picture reaches the middle. It only ever moves forwards: scrolling back up leaves it where it got to, and once finished it stays finished. Arriving by a jump (the bar, Next, a link), it plays on by itself instead. Where it starts is `SCRUB` in `script.js`. These use `<id>-scrub.mp4`.
+- Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling drives the animation while the page keeps moving (nothing is pinned): it starts once the treatment's section fills most of the screen, and the scroll sets how far it has got, but it never plays faster than its natural speed (scroll quickly and it catches up at its own pace). It only ever moves forwards: scrolling back up leaves it where it got to, and once finished (or once it has left the screen after starting) it stays finished. Arriving by a jump (the bar, Next, a link), it plays on by itself instead. Where it starts and ends, and the top speed, are `SCRUB` in `script.js`. These use `<id>-scrub.mp4`.
 - Phones and tablets: a video plays by itself once half of it is in view, then stays on its finished picture for good (coming back to it shows the finished picture). The round button in its corner pauses, plays or replays it. These use `<id>-1080.mp4` / `<id>-720.mp4`. A bar of the treatments' names sticks under the header while they're on screen: it shows where you are, jumps to any treatment, and its Next button goes to the next one (after the last, to All treatments). A link to somewhere far down the page jumps straight there rather than scrolling past everything.
 
 The videos are recordings of the scroll animations the site used to run (the pinned stage). That code lives on in the commit tagged `stage-animations`. If a treatment's animation needs to change, change it there (in a branch made from that tag), move the tag to your new commit, and re-render that treatment's video:
@@ -61,12 +63,31 @@ They live in one place, `site-config.js` (used by the generator, which writes th
 | `bookingUrl` | the online booking page (`https://…`) | every "Book" and "Book now" button |
 | `phone` | the clinic's number as dialled, e.g. `+44 20 7946 0000` | "Call us" (`tel:`) |
 | `email` | the clinic's email address | "Email us" and "Ask a question" (`mailto:`) |
-| `whatsapp` | the WhatsApp number in international form, digits only, e.g. `447700900000` | "WhatsApp" (`https://wa.me/…`) |
+| `whatsapp` | the WhatsApp number in international form, digits only, e.g. `447700900000` | "WhatsApp" (`https://wa.me/…`) and the WhatsApp button on every page |
+| `whatsappIcon` | optional: an icon for the WhatsApp button, e.g. `images/whatsapp-icon.svg` (the official one from WhatsApp's brand resources) | the WhatsApp button (empty: a chat bubble) |
+| `chatAssistant` | `true` or `false` | the chat assistant, "Speak to a doctor" (`false` hides it everywhere) |
 | `mapsUrl` | a Google Maps link to the clinic | "Get directions" |
 
-While a value is empty its links are hidden, so nothing ever links to nowhere. While `bookingUrl` is empty, every Book button goes to the booking and contact section at the bottom of the home page, and the ones inside that section are hidden. After filling them in, run `node scripts/build-menu.mjs` and commit what it writes.
+While a value is empty its links are hidden, so nothing ever links to nowhere. While `bookingUrl` is empty, every Book button opens the booking preview (below). After filling them in, run `node scripts/build-menu.mjs` and commit what it writes.
+
+## The booking preview, the chat assistant and WhatsApp
+
+**Doctor-led, up front.** The service being doctor-led is the main selling point, so it's the home page's headline ("Doctor-led IV drips."), with "Every drip starts with a consultation with one of our doctors" under it, a "Speak to a doctor" button beside Book now, and three ticks: led by our doctors (Dr Nema and Dr Mahdi), calm, clinical care, and in clinic or a call-out day or night.
+
+**The booking preview** (`booking.js`). Until `bookingUrl` is set, every Book and Book now button opens a mock booking calendar, to show how online booking will work:
+1. the treatment, already chosen when Book is on a treatment (its section on the home page, or its own page), with every drip and booster on the menu to choose from (`data/book-list.js`, written by the generator from `data/drips.json`);
+2. in clinic (9am to 5pm) or a mobile call-out (any time, day or night);
+3. the doctor: Dr Nema or Dr Mahdi;
+4. a day (up to 90 days ahead) and a time. Appointments are on the hour: in clinic 09:00 to 16:00, call-outs 00:00 to 23:00. About a third of the times show as taken, made up but the same each time;
+5. name, phone, email (and the address, for a call-out), then "Appointment requested".
+
+It is marked "Preview" and says that no appointment has been made and nothing has been sent; it sends and stores nothing. The doctors, hours and how far ahead it goes are `BOOKING` at the top of `booking.js`. "Book a call-out" opens it with a call-out already chosen. Once `bookingUrl` is set (and the generator re-run), every Book button goes to the real booking page and the preview switches itself off.
+
+**The chat assistant** (`chat.js`), "Speak to a doctor": a short scripted chat (no AI, nothing leaves the page). It says the service is doctor-led and that the chat isn't for emergencies (999, or 111 for urgent advice), then asks, one at a time: what they're looking for (with suggestions to tap), a little about what's been going on and for how long, any medical conditions, allergies or medicines, then their name, phone (checked), email (checked) and a good time to call. It sums up their answers, asks "Shall one of our doctors call you on …?", and ends: "One of our doctors will call you on … for a telephone consultation within the next 24 hours." Like the booking preview it's marked "Preview" and says nothing has been sent. The questions are `STEPS` at the top of `chat.js`. Making it live needs a secure way for the answers (health details) to reach the clinic; until then `chatAssistant: false` in `site-config.js` hides it.
+
+**The corner buttons.** WhatsApp (green) above "Speak to a doctor" (blue), in the bottom right of every page: pills with their labels on laptops, round buttons on phones (on the home page, phones show them once you scroll past the top, which has its own buttons). WhatsApp: with `whatsapp` set, it opens a chat with that number with a first line already written; until then it says the number is coming soon. On a treatment page it moves up above the phones' Book bar, and on the glossary "Back to top" moves to the left. The icon is a chat bubble until `whatsappIcon` points at an image (e.g. WhatsApp's official icon, from its brand resources).
 
 ## Before going live
 
 - Remove the `noindex` robots meta tag from every page once the menu wording has had its compliance review (it's in `index.html` and in the generator's page template).
-- Fill in `site-config.js` (booking link, phone, email, WhatsApp, maps link) and run the generator.
+- Fill in `site-config.js` (booking link, phone, email, WhatsApp, maps link) and run the generator. Setting the booking link switches off the booking preview.

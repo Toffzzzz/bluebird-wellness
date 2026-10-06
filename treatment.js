@@ -119,7 +119,9 @@
       if (barLink) barLink.tabIndex = show ? 0 : -1;
     };
     new IntersectionObserver(([entry]) => {
-      priceAbove = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+      // Out of view and in the top half: above (under the header). A quick
+      // scroll can report it part-way under the header, so not "top < 0".
+      priceAbove = !entry.isIntersecting && entry.boundingClientRect.top < window.innerHeight / 2;
       sync();
     }, { rootMargin: '-64px 0px 0px 0px' }).observe(price);
     new IntersectionObserver(([entry]) => {

@@ -381,7 +381,7 @@ function badgeHTML(badge) {
 const priceHTML = (label, path) => `<p class="price" data-verbatim="${esc(path)}">${esc(label)}</p>`;
 
 const bookHTML = (name) =>
-  `<a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book>Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
+  `<a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book data-book-item="${esc(name)}">Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
 
 const learnMoreHTML = (m) =>
   `<a class="btn btn--secondary" href="${esc(m.href)}">Learn more<span class="visually-hidden"> about ${esc(m.name)}</span></a>`;
@@ -535,15 +535,17 @@ function render() {
 
    Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling
    drives the animation, while the page keeps scrolling continuously (nothing
-   is pinned). As a treatment's picture comes up the screen, its animation
-   runs from its first frame (the picture's top at SCRUB.start of the screen's
-   height) to its last (the picture centred in the space below the bar). It
-   only ever moves forwards: scrolling back up leaves it where it got to, and
-   once finished it stays finished. Arriving by a jump (the bar, Next, a
-   link), it plays on by itself from where it is instead. The video
-   (<id>-scrub.mp4: 30 fps, a keyframe every 4 frames) is moved to the
-   scroll position with a light smoothing (SCRUB.ease), and only while its
-   section is on screen.
+   is pinned). It starts once the treatment's section fills most of the
+   screen (its top within SCRUB.start of the space below the bar) and is at
+   its end by the time the section's top has gone SCRUB.end above the bar;
+   in between, the scroll sets how far it has got. It never runs faster than
+   its natural speed (SCRUB.rate): scroll quickly and it catches up at its
+   own pace; stop part-way and it stops where the scroll put it. It only
+   ever moves forwards: scrolling back up leaves it where it got to; once
+   finished, or once its section has left the screen after it started, it
+   stays finished. Arriving by a jump (the bar, Next, a link), it plays on
+   by itself from where it is instead. The video (<id>-scrub.mp4: 30 fps, a
+   keyframe every 4 frames) is only moved while its section is on screen.
 
    Phones and tablets (touch): each video plays by itself, from the start,
    once half of it is in view, and then stays on its last frame for good
@@ -576,8 +578,9 @@ const TREATMENT_VIDEO = {
 // Laptops and desktops: the animation follows the scroll.
 const SCRUB = {
   query: '(min-width: 820px) and (hover: hover) and (pointer: fine)',
-  start: 0.92,  // the animation starts when the picture's top is this far down the screen
-  ease: 0.3,    // share of the remaining distance the video catches up each frame (1 = no smoothing)
+  start: 0.2,   // it starts when the section's top is this share of the visible space below the bar
+  end: 0.15,    // and is at its end when the section's top has gone this share above the bar
+  rate: 1,      // the fastest it ever plays: 1 = its natural speed
 };
 
 const TX_ICON = {
@@ -760,14 +763,13 @@ function initTreatments(animated) {
   let below = 0; // the bottom of the header and the bar: the screen's visible space starts here
   const header = document.getElementById('site-header');
   const measure = () => { below = (header ? header.offsetHeight : 0) + nav.offsetHeight; };
-  // 0 as the picture comes into view, 1 once it is centred in the space below the bar.
+  // 0 until the section fills most of the screen, 1 once it has moved on a little past the bar.
   const progress = (it) => {
-    const r = it.media.getBoundingClientRect();
-    const vh = window.innerHeight;
-    const from = vh * SCRUB.start;
-    const to = below + (vh - below) / 2 - r.height / 2;
-    if (from - to < 1) return r.top <= to ? 1 : 0;
-    return Math.min(1, Math.max(0, (from - r.top) / (from - to)));
+    const top = it.section.getBoundingClientRect().top;
+    const space = window.innerHeight - below;
+    const from = below + space * SCRUB.start;
+    const to = below - space * SCRUB.end;
+    return Math.min(1, Math.max(0, (from - top) / (from - to)));
   };
   // A jump (the bar, Next, a link) to a treatment that hasn't finished: it
   // plays on by itself from where it is, rather than leaping to where the
@@ -777,9 +779,14 @@ function initTreatments(animated) {
     if (it && scrub && !it.done) it.jumped = true;
   });
   let ticking = false;
-  const tick = () => {
+  let lastTick = 0;
+  const tick = (now) => {
     ticking = false;
     if (!scrub) return;
+    // How far a video may move this frame: its natural speed (a long gap, e.g. a hidden tab, counts as one frame).
+    const elapsed = lastTick ? Math.min(now - lastTick, 50) : 16.7;
+    lastTick = now;
+    const maxStep = (elapsed / 1000) * SCRUB.rate;
     let moving = false;
     for (const it of items) {
       if (!it.inView || it.failed) continue;
@@ -798,13 +805,13 @@ function initTreatments(animated) {
       if (it.autoplaying) continue;
       // Only forwards: scrolling back up leaves it where it got to.
       it.reached = Math.max(it.reached, progress(it));
-      if (it.reached >= 1) it.done = true;
       const target = it.reached * end;
-      // Just come into view (e.g. after a jump): straight to where the scroll is.
-      if (it.snap) { it.shown = target; it.snap = false; }
-      const gap = target - it.shown;
-      it.shown = Math.abs(gap) < 0.004 ? target : it.shown + gap * SCRUB.ease;
-      if (it.shown !== target) moving = true;
+      // Come into view already past its end (e.g. scrolling up into it): its finished picture.
+      if (it.snap) { if (it.reached >= 1) it.shown = target; it.snap = false; }
+      // Towards where the scroll puts it, never faster than its natural speed.
+      it.shown = Math.min(target, it.shown + maxStep);
+      if (it.shown >= end) it.done = true;
+      if (it.shown < target) moving = true;
       // One seek at a time; the next frame asks for wherever the scroll is by then.
       if (v.seeking) { moving = true; continue; }
       if (Math.abs(v.currentTime - it.shown) > 0.012) { v.currentTime = it.shown; moving = true; }
@@ -837,7 +844,16 @@ function initTreatments(animated) {
         // Phones: one that leaves the screen while it's still playing stops,
         // and its finished picture (the -end image) takes its place, so
         // nothing is decoded off screen and it's finished when you come back.
+        // Laptops: likewise one that had started (by the scroll or a jump).
         const v = it.video;
+        if (scrub && !it.done && (it.shown > 0 || it.autoplaying)) {
+          if (!v.paused) v.pause();
+          it.autoplaying = false;
+          it.done = true;
+          it.reached = 1;
+          showStill(it, true);
+          continue;
+        }
         if (!scrub && !v.paused && !it.held) {
           v.pause();
           it.done = true;
@@ -879,7 +895,7 @@ function initTreatments(animated) {
       it.armed = !it.done;
       it.reached = it.done ? 1 : 0;
       it.shown = 0;
-      showStill(it, it.done && !scrub);
+      showStill(it, it.done);
       setButton(it, scrub ? null : (it.done ? 'replay' : (it.src ? 'play' : null)));
       if (it.src) { it.src = ''; if (it.near) load(it); }
     }
