@@ -932,7 +932,7 @@ function renderedHome() {
   const ROOTS = ['stage-root', 'treatment-grid', 'standalone-root'];
   const classList = { add: noop, remove: noop, toggle: noop };
   const document = {
-    getElementById: (id) => (ROOTS.includes(id) ? (roots[id] ||= { innerHTML: '' }) : null),
+    getElementById: (id) => (ROOTS.includes(id) ? (roots[id] ||= { innerHTML: '', querySelectorAll: () => [] }) : null),
     querySelectorAll: () => [],
     addEventListener: noop,
     documentElement: { classList },
@@ -941,10 +941,9 @@ function renderedHome() {
   const context = vm.createContext({ window, document, location: { hash: '' }, history: { pushState: noop }, console });
   vm.runInContext(read('data/menu.js'), context, { filename: 'data/menu.js', timeout: 5000 });
   vm.runInContext(read('script.js'), context, { filename: 'script.js', timeout: 5000 });
-  // The pinned stage and the phones' sections (animated and still) and sheet are added
-  // once motion starts, so they are rendered here too.
-  const featured = vm.runInContext('stageHTML(FEATURED) + reelsHTML(FEATURED, true) + reelsHTML(FEATURED, false) + reelsSheetHTML(FEATURED)', context, { timeout: 5000 });
-  return ROOTS.map((id) => roots[id]?.innerHTML || '').join('\n') + featured;
+  // render() writes the featured treatments' sections, the cards and the
+  // standalone section; everything that follows only adds behaviour.
+  return ROOTS.map((id) => roots[id]?.innerHTML || '').join('\n');
 }
 
 {

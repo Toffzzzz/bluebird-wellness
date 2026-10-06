@@ -18,7 +18,7 @@ PASS  treatments/longevity-infusion/               21 strings
 PASS  treatments/signature-infusion/               15 strings
 PASS  treatments/iron-infusion/                    76 strings
 PASS  ingredients/ (glossary)                      194 strings
-PASS  index.html (home page, as script.js renders it) 178 strings
+PASS  index.html (home page, as script.js renders it) 80 strings
 
 Result: all passed
 

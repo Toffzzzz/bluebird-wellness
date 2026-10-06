@@ -8,16 +8,18 @@ Plain HTML, CSS and JavaScript. Nothing needs building to serve it, so it can be
 - `site-config.js`: the booking link and contact details (see "Booking and contact details" below)
 - `site.js`: shared by every page: the phones' Menu button and full-screen menu, and the focus-trapping dialog the home page's treatment list uses too
 - `styles.css`: design tokens and styles for every page (see `DESIGN.md`)
-- `script.js`: the home page: the stage's visuals (the `TREATMENTS` list at the top), stage timing (`STAGE`), the phones' full-screen treatments (`REELS`), rendering, scenes and scroll motion
+- `script.js`: the home page: the featured treatments (the `TREATMENTS` list at the top), rendering, the treatments' videos and their bar of names, in-page links and the gentle reveals
 - `data/drips.json`: the clinic's menu, the single source of every treatment name, price, description, ingredient, table and disclaimer
-- `scripts/render-assets.mjs`: renders pictures from the site's own 3D code (the NAD+ finished picture, the phones' NAD+ turn and hair sway) and the 800px copies (see "The stage" below)
+- `scripts/render-videos/`: re-renders the featured treatments' videos from the scroll animations (see "The featured treatments" below)
+- `scripts/render-assets.mjs`: renders pictures from the old stage's 3D code (the NAD+ finished picture); it runs on the `stage-animations` commit (see below)
 - `scripts/build-menu.mjs`: the generator that turns the menu into `data/menu.js`, the treatment pages and the ingredient glossary, writes the Book and contact links and the logo into every page, and holds `MEDICINES` (the lines never shown as something a Pro version adds)
 - `data/menu.js`, `treatments/<slug>/index.html`, `ingredients/index.html`, `data/menu-check.txt`: generated, don't edit by hand
 - `treatment.js`: the small script the treatment pages and the glossary share (header border, scroll reveal, "Expand all", the glossary's search and "Back to top", opening an entry linked to by its #anchor, the phones' Book bar on a treatment page)
 - `images/logo/`: the logo (`bluebird-mark.svg`, drawn in `currentColor`: the generator writes it inline into the header and footer, in Bluebird Blue) and the favicons
-- `images/`: treatment images, the layer images for the stage scenes, the hair mask, the deadlift frame sequence in `images/deadlift/` (each frame also as `-half.webp`, used on phones), the Myers Cocktail bottles and flask in `images/myers/`, the Skin & Beauty shell, pearl and glint in `images/skin/`, the Recovery mirror ball, sun and glints in `images/recovery/`, the Signature card, pen, pen path and ink frames in `images/signature/` (frames also as `-half.webp`), the phones' pre-rendered NAD+ turn in `images/nad-spin/` and hair sway in `images/hair-sway/` (each frame also as `-half.webp`), 800px copies of the largest stage pictures (`<name>-sm.webp`, used on phones), and finished pictures in `images/treatments/` (`<slug>.webp`, used for that drip's page and card whenever it exists)
+- `images/treatment-videos/`: each featured treatment's videos (`<id>-scrub.mp4` for laptops, where the scroll drives it; `<id>-1080.mp4` and `<id>-720.mp4` for phones, where it plays by itself) and its first and last frames (`<id>-start.webp`, `<id>-end.webp`)
+- `images/`: treatment images, the layer images the old stage's scenes used (the videos were rendered from them), the hair mask, the deadlift frame sequence in `images/deadlift/` (each frame also as `-half.webp`, used on phones), the Myers Cocktail bottles and flask in `images/myers/`, the Skin & Beauty shell, pearl and glint in `images/skin/`, the Recovery mirror ball, sun and glints in `images/recovery/`, the Signature card, pen, pen path and ink frames in `images/signature/` (frames also as `-half.webp`), the phones' pre-rendered NAD+ turn in `images/nad-spin/` and hair sway in `images/hair-sway/` (each frame also as `-half.webp`), 800px copies of the largest stage pictures (`<name>-sm.webp`, used on phones), and finished pictures in `images/treatments/` (`<slug>.webp`, used for that drip's page and card whenever it exists)
 
-GSAP, ScrollTrigger, Lenis and Three.js (for the hair sway and the NAD+ molecule) load from jsDelivr. If they fail to load, or the visitor prefers reduced motion, the featured treatments show as calm stacked blocks with the finished images.
+The home page loads no libraries: scrolling is always the browser's own, the treatments' animations are videos (moved by the scroll on laptops, playing by themselves on phones), and the reveals are CSS transitions. With reduced motion, the featured treatments show their finished pictures (each one's button plays its video on request).
 
 ## Updating the menu
 
@@ -35,13 +37,20 @@ On each drip's page, its `ingredients` are one list, in the menu's order. A line
 
 A drip with a `proVariantSlug` shows an "Upgrade to Pro" card: its Pro version's name, price and the lines the Pro version has that it doesn't, leaving out any line that starts with one of `MEDICINES` in the generator.
 
-## The stage
+## The featured treatments
 
-`TREATMENTS` in `script.js` sets the stage's order, scenes, images and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field. To fine-tune the scroll film (pin length, how long each treatment takes, when text hands over, how much the scrub smooths), edit the `STAGE` object just below it.
+`TREATMENTS` in `script.js` sets the featured treatments' order, pictures and tints; each entry's `menuSlug` links it to its drip, whose name and price it shows. The comment above the list explains every field.
 
-On phones (narrower than 820px, or a phone held sideways) there is no pinned stage: each treatment is a full-screen section, one after another in the page, like reels. The page snaps so that one flick brings the next treatment to fill the screen; its scene (the same scene code) follows the scroll as it slides up, then plays on to its rest by itself (`REELS.seconds`, or the treatment's `mobileSeconds`). A pill at the bottom shows the current treatment and opens a list of all of them; "Skip to the full menu" above the first one goes to the treatments list. Above and below the treatments the page scrolls freely. Phones scroll natively (no Lenis). No WebGL runs on phones: NAD+ and Hair & Scalp play pre-rendered frames instead.
+They work like Apple's product pages: one section per treatment, scrolled natively (no snapping: the page never moves by itself), each with a short video of its animation.
 
-After changing the NAD+ molecule, the hair shader or mask, or one of the pictures in `PHONE_COPIES`, run `node scripts/render-assets.mjs` (it needs Playwright, see the top of the script) and commit what it writes. It also renders the NAD+ finished picture (`images/treatments/nad-plus-infusion.webp`) from the stage's own 3D scene.
+- Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling drives the animation. Each section is taller than the screen; its picture and text stay put while the first part of the scrolling moves the video from start to finish, then the finished picture holds for a moment before the next treatment slides up. It only ever moves forwards: scrolling back up leaves it where it got to, and once finished it stays finished. How much scrolling each part takes is `SCRUB` in `script.js`. These use `<id>-scrub.mp4`.
+- Phones and tablets: a video plays by itself once half of it is in view, then stays on its finished picture for good (coming back to it shows the finished picture). The round button in its corner pauses, plays or replays it. These use `<id>-1080.mp4` / `<id>-720.mp4`. A bar of the treatments' names sticks under the header while they're on screen: it shows where you are, jumps to any treatment, and its Next button goes to the next one (after the last, to All treatments). A link to somewhere far down the page jumps straight there rather than scrolling past everything.
+
+The videos are recordings of the scroll animations the site used to run (the pinned stage). That code lives on in the commit tagged `stage-animations`. If a treatment's animation needs to change, change it there (in a branch made from that tag), move the tag to your new commit, and re-render that treatment's video:
+
+    node scripts/render-videos/render-videos.mjs myers
+
+(it needs Playwright, ffmpeg and Python with numpy and Pillow; see the top of the script). Without a video, a treatment shows its picture instead, so a new treatment works straight away. `scripts/render-assets.mjs` also uses the old stage code: to re-render the NAD+ finished picture, run it in a checkout of the `stage-animations` commit (`git worktree add ../bluebird-stage stage-animations`) and copy `images/treatments/nad-plus-infusion.webp` back.
 
 ## Booking and contact details
 

@@ -1,14 +1,14 @@
 /* ==========================================================================
    Bluebird Wellness: page script
 
-   1. TREATMENT VISUALS   ← the stage order, images, scenes and tints
-   2. STAGE TIMING        ← fine-tune the scroll film here
-   3. Rendering (the stage, the "All treatments" cards, the standalone section)
-   4. Scenes (one per kind of featured visual)
-   5. Live effects: frame sequences, hair sway (Three.js shader) and the
-      NAD+ glass molecule (Three.js)
-   6. Motion (Lenis smooth scroll + GSAP ScrollTrigger): the pinned stage on
-      wider screens; on phones a full-screen section per treatment
+   1. TREATMENT VISUALS   ← the featured treatments' order, pictures and tints
+   2. Rendering (the featured treatments, the "All treatments" cards, the
+      standalone section)
+   3. The featured treatments: Apple-style sections, each with a short video
+      that follows the scroll on laptops and plays by itself on phones
+   4. In-page links, the header and the gentle reveals
+   The page scrolls natively everywhere: no scroll library, no snapping, and
+   no animation libraries.
    ========================================================================== */
 
 /* ==========================================================================
@@ -20,15 +20,19 @@
    (treatments/<slug>/). Edit the menu there and run the script; nothing
    here repeats it. The booking link comes from site-config.js.
 
-   TREATMENTS only holds the pinned stage's visuals, scenes and tints, and
-   the menuSlug that links each one to its drip in the menu. Its order is the
-   order of the stage, its side list and the reduced-motion list. The
-   generator reads the image, alt, tint and badge of each entry for the
-   treatment pages and the "All treatments" cards, so run it after changing
-   them.
+   TREATMENTS holds the featured treatments' pictures and tints, and the
+   menuSlug that links each one to its drip in the menu. Its order is the
+   order of the featured sections and their bar of names. Each one's video
+   is images/treatment-videos/<id>-*.mp4 (see section 3). The generator reads
+   the image, alt, tint and badge of each entry for the treatment pages and
+   the "All treatments" cards, so run it after changing them.
+   The scene fields (showcase.scene, layers, frames, …, length,
+   mobileSeconds) describe the scroll animations the videos were rendered
+   from: scripts/render-videos/ re-renders them from the commit tagged
+   stage-animations. The site itself only reads showcase.tint.
    Fields:
-     id           Unique, lowercase, no spaces. Also the stage's page anchor
-                  (e.g. #iron).
+     id           Unique, lowercase, no spaces. Also its section's page anchor
+                  (e.g. #iron) and its videos' file names.
      menuSlug     The drip's slug in data/drips.json: its name and price are
                   shown here, and "Learn more" opens treatments/<slug>/.
      standalone   Instead of a menuSlug, for an item in the menu's
@@ -36,7 +40,7 @@
                   from that row of its price table; "Learn more" goes to its
                   entry in the standalone section, which takes this id as
                   its anchor.
-     short        Short label for the stage's side list.
+     short        Short label for the bar of names above the featured sections.
      image        Path to the image, e.g. "images/iron.webp". Leave as null to
                   show the soft placeholder shape instead.
      imageSize    [width, height] of the image in pixels (keeps the layout steady).
@@ -59,7 +63,8 @@
                                  "pearl" | "sunrise" | "frames" | "bone" |
                                  "blend" | "signature"
                                  (anything else fades in/out)
-                    tint:        the stage's background colour for this treatment
+                    tint:        its section's background colour (the video's
+                                 own background is matched to it exactly)
                                  (also the soft background of its page)
                     layers:      ("orange", "plant", "cucumber", "pearl",
                                  "sunrise", "bone", "blend") layer images on the
@@ -324,74 +329,7 @@ const TREATMENTS = [
 ];
 
 /* ==========================================================================
-   2. STAGE TIMING
-
-   The stage is one master timeline. Each treatment owns a segment of it:
-     0    – 0.2   entrance (overlapping the previous treatment's exit)
-     0.2  – 0.82  rest: text fully visible; signature animations play mostly
-                  in the first half, then the finished picture holds
-     0.82 – 1     exit (overlapping the next treatment's entrance)
-   The next segment therefore starts at 0.82 of the current one. Each
-   treatment's label (where scrolling gently settles) sits in its rest.
-   A treatment with a `length` (see TREATMENTS) has a longer rest: its
-   entrance and exit take the normal time, and every scroll distance is in
-   proportion to the timeline, so the other treatments are unaffected.
-   The first treatment's entrance plays while the stage scrolls into view
-   (its top moving from `approach` of the viewport height to the top), so
-   the pinned stage opens on its entered picture, text and tint.
-   ========================================================================== */
-
-const STAGE = {
-  pinPerTreatment: { desktop: 120, mobile: 100 }, // % of the viewport height
-  segment: 1,           // timeline length of one treatment's segment
-  enterEnd: 0.2,        // end of the entrance
-  exitStart: 0.82,      // start of the exit (= start of the next segment)
-  label: 0.6,           // default rest label (scenes may override)
-  textIn: [0.08, 0.2],  // text fades up during the entrance…
-  textOut: [0.82, 0.9], // …and away at the start of the exit (gone before the next arrives)
-  approach: 0.6,        // share of the viewport height the first entrance plays over
-  finalTint: '#FBFAF7', // Porcelain, to match the "All treatments" band below
-  scrub: 0.7,           // seconds the animation takes to catch up with the scroll
-  snap: {
-    idle: 300,          // ms of stillness before gliding to the nearest rest point
-    duration: [0.6, 0.9],
-  },
-};
-
-/* Phones (narrower than 820px, or held sideways): no pinned stage. Each
-   treatment is a full-screen section in the page, like a reel: the page
-   snaps so one flick brings the next one to fill the screen. Its scene (the
-   same SCENES code, on its own timeline, without the stage's entrance and
-   exit fades) follows the scroll as it slides up, to `scrub` of the way to
-   its rest label, and once the page is still plays on by itself to the
-   rest (the treatment's mobileSeconds, or `seconds`). */
-const REELS = {
-  query: '(max-width: 819.98px), (pointer: coarse) and (max-height: 500px)',
-  seconds: 1.6,        // default time to play on to the rest, once still
-  scrub: 0.4,          // share of the way to the rest label that follows the scroll
-  ease: 'power1.inOut',
-  near: 2,             // sections built (pictures, timeline, frames) either side of the current one
-  keep: 3,             // frame sequences are let go beyond this many sections away
-  still: 140,          // ms without scrolling before the page counts as still
-};
-
-// Phones: 800px-wide copies (<name>-sm.webp, made by
-// scripts/render-assets.mjs) of the stage's pictures far wider than
-// that, chosen by srcset where the screen doesn't need the full size.
-const PHONE_COPIES = new Set([
-  'images/bone-left.webp', 'images/bone-right.webp', 'images/bone-left-clean.webp',
-  'images/bone-right-clean.webp', 'images/bone-whole.webp',
-  'images/myers/myers-flask-a.webp', 'images/myers/myers-flask-b.webp',
-  'images/myers/myers-left-a.webp', 'images/myers/myers-left-b.webp',
-  'images/myers/myers-right-a.webp', 'images/myers/myers-right-b.webp',
-  'images/signature/signature-card.webp',
-  'images/treatments/myers-cocktail-infusion.webp', 'images/treatments/signature-infusion.webp',
-  'images/treatments/nad-plus-infusion.webp',
-]);
-const phoneCopy = (src) => src.replace(/\.webp$/, '-sm.webp');
-
-/* ==========================================================================
-   3. Rendering
+   2. Rendering
 
    Every name, price and line of treatment copy comes from window.MENU
    (data/menu.js) and is escaped as text. Elements that show a menu string
@@ -409,14 +347,12 @@ const BOOK_URL = (window.SITE && window.SITE.bookingUrl) || '#book';
 const esc = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-const pad = (n) => String(n).padStart(2, '0');
-
 // "\n\n" in a menu string is a paragraph break.
 const parasHTML = (text) => String(text).split('\n\n').map((p) => `<p>${esc(p)}</p>`).join('\n');
 
 const dripBySlug = (slug) => (MENU ? MENU.drips.find((d) => d.slug === slug) : null) || null;
 
-// What a stage treatment shows: its drip on the menu, or its row of the
+// What a featured treatment shows: its drip on the menu, or its row of the
 // standalone price table. Null if the menu doesn't have it.
 function menuItem(t) {
   if (t.menuSlug) {
@@ -456,32 +392,22 @@ const proOf = (drip) => (drip && drip.proVariantSlug ? dripBySlug(drip.proVarian
 // "PRO" beside a Pro drip's name. The name already says Pro, so screen readers skip it.
 const PRO_BADGE = '<span class="pro-badge" aria-hidden="true">Pro</span>';
 
-// "+ Pro" beside a standard drip's price, linking to its Pro version.
-const proChipHTML = (pro) => (pro
-  ? `<a class="pro-chip" href="treatments/${esc(pro.slug)}/" aria-label="${esc(pro.name)}, ${esc(pro.priceLabel)}">+ Pro</a>`
+// "Upgrade to Pro" beside a standard drip's price, linking to its Pro version.
+const UPGRADE_ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg>';
+const proChipHTML = (pro, extra = '') => (pro
+  ? `<a class="pro-chip${extra}" href="treatments/${esc(pro.slug)}/" aria-label="Upgrade to Pro: ${esc(pro.name)}, ${esc(pro.priceLabel)}">Upgrade to Pro${UPGRADE_ARROW}</a>`
   : '');
 
-// The price, with the "+ Pro" chip beside it when the drip has a Pro version.
+// The price, with "Upgrade to Pro" beside it when the drip has a Pro version.
 function priceRowHTML(drip, label, path) {
   const chip = proChipHTML(proOf(drip));
   return chip ? `<div class="price-row">${priceHTML(label, path)}${chip}</div>` : priceHTML(label, path);
 }
 
-const layerImg = (src, [w, h], attrs = '') =>
-  `<img class="layer" src="${esc(src)}" alt="" width="${w}" height="${h}" decoding="async" draggable="false"${attrs}>`;
-
 const placeholderHTML = (t, extra = '') =>
   `<span class="placeholder placeholder--${esc(t.placeholder?.shape || 'circle')}${extra}" style="--ph: ${esc(t.placeholder?.colour || '#E8EFFB')}" aria-hidden="true"></span>`;
 
-function objHTML(t, type, inner, ratio = t.imageSize) {
-  return `
-    <div class="obj obj--${type}" style="--ratio: ${ratio[0]} / ${ratio[1]}" role="img" aria-label="${esc(t.alt || '')}">
-      <span class="obj__shadow" aria-hidden="true"></span>
-      ${inner}
-    </div>`;
-}
-
-// Names this long get a slightly smaller stage title, so they wrap onto two
+// Names this long get a slightly smaller title, so they wrap onto two
 // lines rather than three.
 const LONG_TITLE = 20;
 
@@ -495,129 +421,20 @@ function textHTML(t, titleId) {
     <div class="treatment-actions">${bookHTML(m.name)}${learnMoreHTML(m)}${priceRowHTML(m.drip, m.price, m.pricePath)}</div>`;
 }
 
-function stageHTML(featured) {
-  // Earlier scenes stack above later ones, so an outgoing object passes in
-  // front of the one arriving behind it.
-  const scenes = featured.map((t, i) => {
-    const def = SCENES[t.showcase.scene] || SCENES.fade;
-    return `<div class="scene scene--${esc(t.showcase.scene)}" data-scene="${esc(t.id)}" style="z-index: ${featured.length - i}">${def.html(t)}</div>`;
-  }).join('');
-
-  const copies = featured.map((t) =>
-    `<article class="stage__copy" data-copy="${esc(t.id)}">${textHTML(t, `stage-${esc(t.id)}-title`)}</article>`).join('');
-
-  const steps = featured.map((t) => `
-    <li><button type="button" class="stage__step" data-goto="${esc(t.id)}" aria-label="Go to ${esc(menuItem(t).name)}"><span>${esc(t.short)}</span></button></li>`).join('');
-
-  return `
-    <section class="stage" id="stage" aria-label="Featured treatments">
-      <div class="stage__bg" aria-hidden="true"></div>
-      <div class="container stage__inner">
-        <div class="stage__visual">${scenes}</div>
-        <div class="stage__text">${copies}</div>
-      </div>
-      <nav class="stage__progress" aria-label="Featured treatments">
-        <ol class="stage__steps">${steps}</ol>
-      </nav>
-    </section>`;
-}
-
-// Calm stacked blocks with the finished images: used for reduced motion,
-// and whenever the scroll animation can't run. A standalone item's anchor
-// belongs to its entry in the standalone section.
-function staticListHTML(featured) {
-  const blocks = featured.map((t, i) => {
-    const [w, h] = t.imageSize;
-    let media;
-    if (!t.image) media = `<div class="treatment-block__shape">${placeholderHTML(t)}</div>`;
-    else if (t.imageFit === 'cover') media = `<img class="treatment-block__photo" src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
-    else media = `<img src="${esc(t.image)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
-    const anchor = t.standalone ? '' : ` id="${esc(t.id)}"`;
-    return `
-      <section class="treatment-block treatment-block--image-${i % 2 ? 'left' : 'right'}"${anchor} aria-labelledby="${esc(t.id)}-title">
-        <div class="container treatment-block__inner">
-          <div class="treatment-block__media">${media}</div>
-          <div class="treatment-block__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
-        </div>
-      </section>`;
-  }).join('');
-  return `<div class="treatment-list">${blocks}</div>`;
-}
-
-// Images that only load once script.js asks for them (on phones, the stage
-// loads each treatment's pictures in turn, in idle time).
-const deferImages = (html) => html.replace(/<img\b[^>]*>/g, (tag) => tag.replace(/\s(src|srcset)="/g, ' data-$1="'));
-
-const CHEVRON = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-
-// Phones: one full-screen section per treatment, in stage order, on its
-// tint: the picture (its finished picture until its scene is built, or
-// always with animated false), then the text. The first one has the way
-// past them all ("Skip to the full menu") and a "Scroll" cue. A standalone
-// item's anchor belongs to its entry in the standalone section.
-function reelsHTML(featured, animated) {
-  const sections = featured.map((t, i) => {
-    const [w, h] = t.imageSize;
-    // The finished deadlift pose is a frame: its half-size copy is plenty.
-    const src = t.showcase.scene === 'frames' ? t.image.replace(/\.webp$/, '-half.webp') : t.image;
-    const still = t.image
-      ? `<img class="reel__still${t.imageFit === 'cover' ? ' reel__still--photo' : ''}" data-src="${esc(src)}" alt="${esc(t.alt || '')}" width="${w}" height="${h}" decoding="async" draggable="false">`
-      : `<div class="reel__still">${placeholderHTML(t)}</div>`;
-    const first = i === 0 ? `
-        <a class="reel__skip" href="#treatments">Skip to the full menu</a>` : '';
-    const cue = i === 0 && animated ? `
-          <p class="reel__cue" aria-hidden="true"><span>Scroll</span>${CHEVRON('M4 6l4 4 4-4')}</p>` : '';
-    return `
-      <section class="reel${animated ? '' : ' is-still'}" id="${esc(t.standalone ? `reel-${t.id}` : t.id)}" data-reel="${i}" style="--tint: ${esc(t.showcase.tint || '#F7F4EF')}" aria-labelledby="reel-${esc(t.id)}-title">${first}
-        <div class="reel__visual">
-          ${still}${cue}
-        </div>
-        <div class="reel__text">${textHTML(t, `reel-${esc(t.id)}-title`)}</div>
-      </section>`;
-  }).join('');
-  return `<div class="reels" id="stage" aria-label="Featured treatments">${sections}
-    </div>`;
-}
-
-// Phones: the floating pill (the current treatment and its place) and the
-// sheet it opens, listing every treatment to jump straight to.
-function reelsSheetHTML(featured) {
-  const rows = featured.map((t, i) => {
-    const m = menuItem(t);
-    const pro = m.drip && m.drip.baseVariantSlug ? ` ${PRO_BADGE}` : '';
-    const plus = proOf(m.drip) ? '<span class="reels-sheet__plus">+ Pro</span>' : '';
-    return `
-        <li><a class="reels-sheet__item" href="#${esc(t.standalone ? `reel-${t.id}` : t.id)}" data-reel-go="${i}"><span class="reels-sheet__name">${esc(t.short)}${pro}</span><span class="reels-sheet__price"><span data-verbatim="${esc(m.pricePath)}">${esc(m.price)}</span>${plus}</span></a></li>`;
-  }).join('');
-  return `
-  <button type="button" class="reels-pill" aria-haspopup="dialog" aria-controls="reels-sheet" hidden>
-    <span class="reels-pill__label"></span>${CHEVRON('M4 10l4-4 4 4')}
-  </button>
-  <div class="reels-sheet" id="reels-sheet" role="dialog" aria-modal="true" aria-labelledby="reels-sheet-title" hidden>
-    <div class="reels-sheet__panel">
-      <div class="reels-sheet__head">
-        <span class="reels-sheet__grip" aria-hidden="true"></span>
-        <h2 class="reels-sheet__title" id="reels-sheet-title">All treatments</h2>
-        <button type="button" class="menu-button reels-sheet__close" data-close>${CHEVRON('M4 4l8 8M12 4l-8 8')}<span>Close</span></button>
-      </div>
-      <ol class="reels-sheet__list">${rows}
-      </ol>
-      <p class="reels-sheet__more"><a class="btn btn--secondary" href="#treatments">Full menu</a><a class="btn btn--secondary" href="ingredients/">Ingredient glossary</a></p>
-    </div>
-  </div>`;
-}
-
 // Share of the card's image well that a cut-out may fill (12% padding on each side).
 const CARD_FILL = 0.76;
 
-// The card is one link that already carries the drip's name, so its picture is decorative.
-function cardMediaHTML(v) {
-  if (!v.image) return `<div class="card__media" aria-hidden="true">${placeholderHTML(v)}</div>`;
+// The card is one link that already carries the drip's name, so its picture
+// is decorative. A Pro drip's picture says "PRO" in its corner.
+function cardMediaHTML(v, isPro) {
+  const pro = isPro ? '<span class="card__pro" aria-hidden="true">Pro</span>' : '';
+  const cls = isPro ? ' card__media--pro' : '';
+  if (!v.image) return `<div class="card__media${cls}" aria-hidden="true">${placeholderHTML(v)}${pro}</div>`;
   const [w, h] = v.imageSize;
   const img = `<img src="${esc(v.image)}" alt="" width="${w}" height="${h}" loading="lazy" decoding="async">`;
 
   // A full photo fills the well; it scales inside its rounded frame on hover.
-  if (v.imageFit === 'cover') return `<div class="card__media card__media--photo">${img}</div>`;
+  if (v.imageFit === 'cover') return `<div class="card__media card__media--photo${cls}">${img}${pro}</div>`;
 
   // A cut-out is contained in the padded area, with a soft ellipse shadow just
   // below where the image actually ends (tall, wide and square images differ).
@@ -625,30 +442,33 @@ function cardMediaHTML(v) {
   const shownH = CARD_FILL * Math.min(1, h / w);
   const bottom = ((1 - shownH) / 2) * 100;
   const shadow = `--shadow-w: ${(shownW * 70).toFixed(1)}%; --shadow-bottom: ${(bottom - 3).toFixed(1)}%`;
-  return `<div class="card__media"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}</div>`;
+  return `<div class="card__media${cls}"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}${pro}</div>`;
 }
 
 // One card per drip, in menu order (each Pro card straight after its
 // standard version). The whole card links to the drip's page: its title's
-// link covers the card, and the "+ Pro" chip sits above that.
+// link covers the card, and the "Upgrade to Pro" link sits above that. A
+// Pro card also says "PRO" on its picture, so it never looks like its
+// standard version.
 function cardHTML(drip) {
   const v = MENU_VISUALS[drip.slug] || {};
   const at = `drips.${drip.slug}`;
   const isPro = !!drip.baseVariantSlug;
   return `
     <article class="card${isPro ? ' card--pro' : ''}" data-card>
-      ${cardMediaHTML(v)}
+      ${cardMediaHTML(v, isPro)}
       <h3 class="card__title"><a class="card__link" href="treatments/${esc(drip.slug)}/"><span data-verbatim="${esc(at)}.name">${esc(drip.name)}</span></a>${isPro ? ` ${PRO_BADGE}` : ''}</h3>
       ${badgeHTML(v.badge)}
+      ${proChipHTML(proOf(drip), ' card__upgrade')}
       <div class="card__action">
-        ${priceRowHTML(drip, drip.priceLabel, `${at}.priceLabel`)}
+        ${priceHTML(drip.priceLabel, `${at}.priceLabel`)}
         <span class="btn btn--secondary btn--compact card__more" aria-hidden="true">Learn more</span>
       </div>
     </article>`;
 }
 
 // The menu's standalone infusions and injections: heading, intro, price table
-// and one accordion entry per ingredient. An entry a stage treatment points
+// and one accordion entry per ingredient. An entry a featured treatment points
 // to (e.g. Vitamin D) takes that treatment's id as its anchor.
 function standaloneHTML(s) {
   const anchors = Object.fromEntries(TREATMENTS.filter((t) => t.standalone).map((t) => [t.standalone.entry, t.id]));
@@ -691,7 +511,7 @@ function standaloneHTML(s) {
     </section>`;
 }
 
-// Stage treatments the menu has (all of them, unless data/menu.js is missing).
+// Featured treatments the menu has (all of them, unless data/menu.js is missing).
 const FEATURED = TREATMENTS.filter((t) => t.showcase && menuItem(t));
 
 function render() {
@@ -699,58 +519,437 @@ function render() {
   const stageRoot = document.getElementById('stage-root');
   const gridRoot = document.getElementById('treatment-grid');
   const standaloneRoot = document.getElementById('standalone-root');
-  // The static list is the page's own content; the pinned stage (wider
-  // screens) or the swipeable stage (phones) is added above it once motion starts.
-  if (stageRoot && FEATURED.length) stageRoot.innerHTML = staticListHTML(FEATURED);
+  // The featured treatments: the bar of names and a section each.
+  if (stageRoot && FEATURED.length) stageRoot.innerHTML = treatmentsHTML(FEATURED);
   if (gridRoot) gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
   if (standaloneRoot && MENU.standalone) standaloneRoot.innerHTML = standaloneHTML(MENU.standalone);
 }
 
 /* ==========================================================================
-   4. Scenes: the markup and the animation for each kind of featured visual.
+   3. The featured treatments: Apple-style sections, each with a short video
 
-   coconut  Hydration: the coconut cracks, the lid lifts, water splashes
-   runner   Energy: the runner moves in beside the text, then runs off
-   float    Iron: the photo floats in and turns gently in-plane
-   frames   Muscle Recovery: the deadlift image sequence
-   molecule NAD+: the 3D glass molecule turns like a turntable
-            (falls back to the photo turning in-plane)
-   cucumber Detox: a slice drops into a glass of water and splashes
-   orange   Immunity: the orange splits into halves and juice
-   sunrise  Recovery: a mirror ball turns gold, then into the sun
-   bone     Vitamin D: two halves of a bone come together as one
-   plant    Longevity: the stem grows, the bud and leaves unfold
-   pearl    Skin & Beauty: a shell opens on a glowing pearl
-   wipe     Hair & Scalp: soft wipe, then the hair sways
-   blend    Myers Cocktail: two bottles pour together into a round flask
-   signature Signature: a fountain pen writes "Bluebird" on a card
-   fade     fallback for anything else
+   The treatments are ordinary sections in the page, one after another,
+   scrolled natively (no smooth-scroll library, no snapping: the page never
+   moves by itself). Each section's picture is a short pre-rendered video of
+   its animation (images/treatment-videos/, made by scripts/render-videos/).
 
-   animate(c) receives:
-     c.t, c.scene, c.obj, c.shadow
-     c.ft(target, from, to, f0, f1, ease)
-                adds a scrubbed tween between two fractions of this
-                treatment's segment (0 = entrance begins, 1 = exit completes)
-     c.idle(target, vars)
-                a gentle time-based loop that only runs while on screen
-     c.live(effect)
-                a canvas/WebGL effect that only runs while on screen
-     c.tl, c.start, c.L, c.label, c.isLast, c.isDesktop
-     c.phone    true on phones: no live WebGL; NAD+ and Hair & Scalp use
-                their pre-rendered frames instead (html(t, { phone }) too)
-     c.reel     true on phones: the scene is its section's own timeline
-                (start 0, L 1, isLast true) with no entrance or exit fades,
-                as the section itself slides in (fadeIn, gateIn, fadeOut
-                and the whole coconut's and orange's rise skip them)
-   The first treatment's entrance plays while the stage scrolls into view,
-   so the stage opens on its entered picture; the last one has no exit
-   (fadeOut skips it) and stays until the stage scrolls away.
-   A scene may also have preload(t, scene, { cap, half, phone }), awaited
-   before its pictures show (on phones, when its section is built), and its
-   own rest label.
-   Every scene shows its natural, finished picture during its rest.
-   Only transform, opacity, clip-path, masks and custom properties are animated.
+   Laptops and desktops (a mouse or trackpad, 820px and wider): like Apple's
+   product pages, scrolling drives the animation. Each section is taller than
+   the screen and its picture and text stay put (position: sticky) while you
+   scroll through it: the first SCRUB.anim of a screen of scrolling moves the
+   video from its first frame to its last, then SCRUB.hold more keeps the
+   finished picture before the next treatment slides up. It only ever moves
+   forwards: scrolling back up leaves it where it got to (once finished, it
+   stays finished). The video (<id>-scrub.mp4: 30 fps, a keyframe every 4
+   frames) is moved to the scroll position with a light smoothing
+   (SCRUB.ease), and only while a section is on screen.
+
+   Phones and tablets (touch): each video plays by itself, from the start,
+   once half of it is in view, and then stays on its last frame for good
+   (coming back to it shows the finished picture). The round button in its
+   corner pauses, plays or replays it (<id>-1080.mp4, or <id>-720.mp4 where
+   that's already sharp).
+
+   Everywhere:
+   - videos load as their section comes within a screen of the viewport;
+   - the section's background takes the exact colour the browser draws the
+     video's background in (read once from its corner), so the video's edge
+     never shows;
+   - if a video can't play by itself (e.g. an iPhone in Low Power Mode), the
+     section shows the finished picture and the button plays it; with
+     reduced motion every section shows its finished picture (nothing moves
+     with the scroll) and the button plays it on request;
+   - a slim bar of the treatments' short names sticks under the header (like
+     Apple's local nav): it shows where you are, jumps to any treatment, and
+     its Next button goes on to the next one (after the last, to All
+     treatments).
    ========================================================================== */
+
+const TREATMENT_VIDEO = {
+  dir: 'images/treatment-videos/',
+  play: 0.5,      // phones: share of a video in view before it plays by itself
+  sharp720: 760,  // phones: the 720 video where the picture needs at most this many device pixels
+};
+
+// Laptops and desktops: the animation follows the scroll.
+const SCRUB = {
+  query: '(min-width: 820px) and (hover: hover) and (pointer: fine)',
+  anim: 0.55,   // screens of scrolling that move the animation from start to finish
+  hold: 0.2,    // screens of scrolling that then keep the finished picture
+  ease: 0.3,    // share of the remaining distance the video catches up each frame (1 = no smoothing)
+};
+
+const TX_ICON = {
+  pause: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="2.6" height="10" rx="1"/><rect x="9.4" y="3" width="2.6" height="10" rx="1"/></svg>',
+  play: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5z"/></svg>',
+  replay: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.5-3.5"/><path d="M3 2.6v2.6h2.6"/></svg>',
+  next: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>',
+};
+
+// A featured treatment's anchor: its id (e.g. #iron), except for a
+// standalone item, whose id belongs to its entry in the standalone section.
+const txAnchor = (t) => (t.standalone ? `tx-${t.id}` : t.id);
+
+// The bar of names, then one section per treatment: the video (or, without
+// a video, the treatment's own picture) and the text, inside the part that
+// stays put while scrolling drives the animation (laptops).
+function treatmentsHTML(featured) {
+  const items = featured.map((t, i) => `
+        <li><a class="tx-nav__item" href="#${esc(txAnchor(t))}" data-tx-go="${i}">${esc(t.short)}</a></li>`).join('');
+  const nav = `
+    <nav class="tx-nav" aria-label="Featured treatments">
+      <div class="tx-nav__inner">
+        <ol class="tx-nav__list">${items}
+          <li><a class="tx-nav__item tx-nav__item--all" href="#treatments">All treatments</a></li>
+        </ol>
+        <a class="tx-nav__next" href="#${esc(txAnchor(featured[0]))}" data-tx-next aria-label="Next treatment">${TX_ICON.next}<span>Next</span></a>
+      </div>
+    </nav>`;
+
+  const sections = featured.map((t, i) => {
+    const base = `${TREATMENT_VIDEO.dir}${esc(t.id)}`;
+    const name = esc(menuItem(t).name);
+    return `
+      <section class="tx" id="${esc(txAnchor(t))}" data-tx="${i}" style="--tint: ${esc(t.showcase.tint || '#F7F4EF')}" aria-labelledby="${esc(t.id)}-title">
+        <div class="tx__stage">
+          <div class="container tx__inner">
+            <div class="tx__media">
+              <div class="tx-media">
+                <img class="tx-still" src="${base}-end.webp" alt="${esc(t.alt || '')}" width="1080" height="1080" loading="lazy" decoding="async">
+                <video class="tx-video" data-base="${base}" muted playsinline webkit-playsinline preload="none" disablepictureinpicture disableremoteplayback role="img" aria-label="${esc(t.alt || '')}" tabindex="-1"></video>
+                <button type="button" class="tx-control" data-name="${name}" hidden></button>
+              </div>
+            </div>
+            <div class="tx__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
+          </div>
+        </div>
+      </section>`;
+  }).join('');
+
+  return `${nav}
+    <div class="tx-list">${sections}
+    </div>`;
+}
+
+function initTreatments(animated) {
+  const root = document.getElementById('stage-root');
+  const sections = root ? [...root.querySelectorAll('.tx')] : [];
+  if (!sections.length) return;
+  const html = document.documentElement;
+  const nav = root.querySelector('.tx-nav');
+  const navItems = [...nav.querySelectorAll('[data-tx-go]')];
+  const next = nav.querySelector('[data-tx-next]');
+  const row = nav.querySelector('.tx-nav__list');
+  const scrubQuery = window.matchMedia(SCRUB.query);
+  // The section's height comes from SCRUB (styles.css reads it).
+  html.style.setProperty('--tx-dwell', `${(SCRUB.anim + SCRUB.hold) * 100}vh`);
+
+  const items = sections.map((section, i) => ({
+    i,
+    t: FEATURED[i],
+    section,
+    stage: section.querySelector('.tx__stage'),
+    media: section.querySelector('.tx-media'),
+    video: section.querySelector('.tx-video'),
+    still: section.querySelector('.tx-still'),
+    button: section.querySelector('.tx-control'),
+    src: '',         // the video file it has been given
+    matched: false,  // its background has been matched to the video's
+    armed: true,     // phones: it plays by itself when it is first half in view (once)
+    done: false,     // it has reached its finished picture, and stays there
+    reached: 0,      // laptops: how far through the animation the scroll has taken it (it never goes back)
+    inView: false,
+    held: false,     // phones: paused with the button, so no playing by itself until it has left the screen
+    failed: false,   // the video can't be shown at all: the finished picture stays
+    shown: 0,        // laptops: the time the video is being moved to (smoothed)
+  }));
+
+  // Laptops with motion: the animation follows the scroll. Decided afresh if
+  // the window crosses the breakpoint (e.g. a laptop window made narrow).
+  let scrub = false;
+
+  // Showing the finished picture instead of the video (reduced motion, a
+  // video that can't play by itself, or one that can't load).
+  const showStill = (it, still) => it.section.classList.toggle('is-still', still);
+
+  const setButton = (it, state) => {
+    if (!state) { it.button.hidden = true; it.button.removeAttribute('data-state'); return; }
+    const verb = { pause: 'Pause', play: 'Play', replay: 'Replay' }[state];
+    it.button.hidden = false;
+    it.button.dataset.state = state;
+    it.button.innerHTML = TX_ICON[state];
+    it.button.setAttribute('aria-label', `${verb} the ${it.button.dataset.name} animation`);
+  };
+
+  /* The background colour, matched to the video's own (see above). */
+  const probe = document.createElement('canvas');
+  probe.width = probe.height = 4;
+  const probeCtx = probe.getContext('2d', { willReadFrequently: true });
+  const matchTint = (it) => {
+    if (it.matched || !it.video.videoWidth || it.video.readyState < 2) return;
+    it.matched = true;
+    try {
+      probeCtx.drawImage(it.video, 6, 6, 4, 4, 0, 0, 4, 4);
+      const d = probeCtx.getImageData(0, 0, 4, 4).data;
+      let r = 0, g = 0, b = 0;
+      for (let k = 0; k < d.length; k += 4) { r += d[k]; g += d[k + 1]; b += d[k + 2]; }
+      const n = d.length / 4;
+      it.section.style.setProperty('--tint', `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`);
+    } catch (e) { /* keep the treatment's tint */ }
+  };
+
+  // The file for the current behaviour: laptops scrub <id>-scrub.mp4;
+  // phones play the 720 video where that's already sharp, else the 1080 one.
+  const sourceFor = (it) => {
+    const base = it.video.dataset.base;
+    if (scrub) return `${base}-scrub.mp4`;
+    const needed = it.media.getBoundingClientRect().width * (window.devicePixelRatio || 1);
+    return `${base}-${needed > 0 && needed <= TREATMENT_VIDEO.sharp720 ? 720 : 1080}.mp4`;
+  };
+
+  items.forEach((it) => {
+    const v = it.video;
+    v.muted = true;
+    v.defaultMuted = true;
+    v.playsInline = true;
+    if (v.requestVideoFrameCallback) {
+      const frame = () => { matchTint(it); if (!it.matched) v.requestVideoFrameCallback(frame); };
+      v.requestVideoFrameCallback(frame);
+    }
+    v.addEventListener('loadeddata', () => { matchTint(it); if (scrub) wake(); });
+    v.addEventListener('seeked', () => matchTint(it));
+    v.addEventListener('playing', () => { matchTint(it); showStill(it, false); setButton(it, 'pause'); });
+    // Paused part-way: the button plays it on; stopped as it left the screen
+    // (showing its finished picture): the button replays it.
+    v.addEventListener('pause', () => {
+      if (scrub || v.ended) return;
+      setButton(it, it.done && it.section.classList.contains('is-still') ? 'replay' : 'play');
+    });
+    v.addEventListener('ended', () => { it.done = true; if (!scrub) setButton(it, 'replay'); });
+    // No video (e.g. a new treatment that hasn't been rendered yet): its
+    // finished picture, or failing that the treatment's own picture.
+    v.addEventListener('error', () => {
+      if (!v.getAttribute('src')) return;
+      it.failed = true;
+      showStill(it, true);
+      setButton(it, null);
+      it.still.addEventListener('error', () => {
+        if (it.t.image && !it.still.src.endsWith(it.t.image)) it.still.src = it.t.image;
+      }, { once: true });
+    });
+  });
+
+  const load = (it) => {
+    if (it.failed) return;
+    const src = sourceFor(it);
+    if (it.src === src) return;
+    it.src = src;
+    const v = it.video;
+    v.poster = `${v.dataset.base}-start.webp`;
+    v.preload = 'auto';
+    v.src = src;
+    v.load();
+  };
+
+  const play = (it, fromStart) => {
+    if (it.failed) return;
+    load(it);
+    const v = it.video;
+    if (fromStart) {
+      try { v.currentTime = 0; } catch (e) { /* not loaded yet: it starts at 0 anyway */ }
+    }
+    const attempt = v.play();
+    if (attempt && attempt.catch) {
+      attempt.catch(() => {
+        // Not allowed to play by itself: the finished picture, with the button to play it.
+        if (v.paused) { showStill(it, true); setButton(it, 'play'); }
+      });
+    }
+  };
+
+  items.forEach((it) => it.button.addEventListener('click', () => {
+    const v = it.video;
+    if (it.button.dataset.state === 'pause') {
+      it.held = true;
+      v.pause();
+      return;
+    }
+    it.held = false;
+    it.armed = false;
+    showStill(it, false);
+    play(it, v.ended || it.button.dataset.state === 'replay' || v.currentTime === 0);
+  }));
+
+  /* Laptops: the video follows the scroll. */
+  let stuck = 0; // where a section's picture and text stay put (just below the bar)
+  const measure = () => { stuck = parseFloat(getComputedStyle(items[0].stage).top) || 0; };
+  const progress = (it) => {
+    const scrolled = stuck - it.section.getBoundingClientRect().top;
+    return Math.min(1, Math.max(0, scrolled / (SCRUB.anim * window.innerHeight)));
+  };
+  let ticking = false;
+  const tick = () => {
+    ticking = false;
+    if (!scrub) return;
+    let moving = false;
+    for (const it of items) {
+      if (!it.inView || it.failed) continue;
+      const v = it.video;
+      if (v.readyState < 1 || !v.duration) continue;
+      const end = Math.max(0, v.duration - 0.001);
+      // Only forwards: scrolling back up leaves it where it got to.
+      it.reached = Math.max(it.reached, progress(it));
+      if (it.reached >= 1) it.done = true;
+      const target = it.reached * end;
+      // Just come into view (e.g. after a jump): straight to where the scroll is.
+      if (it.snap) { it.shown = target; it.snap = false; }
+      const gap = target - it.shown;
+      it.shown = Math.abs(gap) < 0.004 ? target : it.shown + gap * SCRUB.ease;
+      if (it.shown !== target) moving = true;
+      // One seek at a time; the next frame asks for wherever the scroll is by then.
+      if (v.seeking) { moving = true; continue; }
+      if (Math.abs(v.currentTime - it.shown) > 0.012) { v.currentTime = it.shown; moving = true; }
+    }
+    if (moving) wake();
+  };
+  function wake() {
+    if (ticking || !scrub) return;
+    ticking = true;
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('scroll', () => { if (scrub) wake(); }, { passive: true });
+  window.addEventListener('resize', () => { if (scrub) { measure(); wake(); } }, { passive: true });
+
+  /* Loading ahead (a screen below the viewport). */
+  const near = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const it = items[Number(e.target.dataset.txIndex)];
+      it.near = e.isIntersecting;
+      if (e.isIntersecting && animated) load(it);
+    }
+  }, { rootMargin: '100% 0px 100% 0px' });
+
+  /* On screen: laptops follow the scroll; phones play once half in view. */
+  const seen = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      const it = items[Number(e.target.dataset.txIndex)];
+      if (!e.isIntersecting) {
+        it.inView = false;
+        // Phones: one that leaves the screen while it's still playing stops,
+        // and its finished picture (the -end image) takes its place, so
+        // nothing is decoded off screen and it's finished when you come back.
+        const v = it.video;
+        if (!scrub && !v.paused && !it.held) {
+          v.pause();
+          it.done = true;
+          showStill(it, true);
+          setButton(it, 'replay');
+        }
+        continue;
+      }
+      if (!it.inView) it.snap = true;
+      it.inView = true;
+      if (scrub) { wake(); continue; }
+      if (animated && it.armed && !it.held && e.intersectionRatio >= TREATMENT_VIDEO.play) {
+        it.armed = false;
+        play(it, true);
+      }
+    }
+  }, { threshold: [0, TREATMENT_VIDEO.play, 1] });
+
+  items.forEach((it) => {
+    it.media.dataset.txIndex = it.i;
+    seen.observe(it.media);
+    near.observe(it.media);
+  });
+
+  // Choosing the behaviour (and again if the window crosses the breakpoint).
+  const setMode = () => {
+    scrub = animated && scrubQuery.matches;
+    html.classList.toggle('tx-scrub', scrub);
+    for (const it of items) {
+      const v = it.video;
+      it.held = false;
+      if (!v.paused) v.pause();
+      if (!animated) { showStill(it, true); setButton(it, 'play'); continue; }
+      if (it.failed) continue;
+      // A finished one stays finished: on a laptop the scroll can't take it
+      // back; on a phone its finished picture shows, with the replay button.
+      it.armed = !it.done;
+      it.reached = it.done ? 1 : 0;
+      it.shown = 0;
+      showStill(it, it.done && !scrub);
+      setButton(it, scrub ? null : (it.done ? 'replay' : (it.src ? 'play' : null)));
+      if (it.src) { it.src = ''; if (it.near) load(it); }
+    }
+    if (scrub) { measure(); wake(); }
+  };
+  setMode();
+  if (scrubQuery.addEventListener) scrubQuery.addEventListener('change', setMode);
+
+  /* Which treatment is current: the one across the middle of the screen. */
+  let current = -1;
+  const showCurrent = (i) => {
+    if (i === current) return;
+    current = i;
+    navItems.forEach((a, k) => {
+      a.classList.toggle('is-active', k === i);
+      if (k === i) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+    });
+    // Next: the treatment after this one; after the last, All treatments.
+    const after = items[i + 1];
+    next.setAttribute('href', after ? `#${txAnchor(after.t)}` : '#treatments');
+    next.setAttribute('aria-label', after ? `Next treatment: ${menuItem(after.t).name}` : 'All treatments');
+    // Keep the current name in view in the bar (only the bar scrolls).
+    const a = navItems[i];
+    if (a && row.scrollWidth > row.clientWidth) {
+      const left = a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2;
+      row.scrollTo({ left, behavior: animated ? 'smooth' : 'auto' });
+    }
+  };
+  const middle = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) showCurrent(Number(e.target.dataset.tx));
+  }, { rootMargin: '-50% 0px -50% 0px' });
+  items.forEach((it) => middle.observe(it.section));
+  showCurrent(0);
+
+  /* The text rises gently into place as each section arrives. */
+  if (animated) {
+    const rise = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add('is-in');
+        rise.unobserve(e.target);
+      }
+    }, { rootMargin: '0px 0px -12% 0px' });
+    items.forEach((it) => {
+      const text = it.section.querySelector('.tx__text');
+      text.classList.add('tx-rise');
+      rise.observe(text);
+    });
+  }
+
+  html.classList.add('has-tx');
+}
+
+/* ==========================================================================
+   4. In-page links, the header and the gentle reveals
+   ========================================================================== */
+
+// Header gains its divider once the page has scrolled.
+function initHeader() {
+  const header = document.getElementById('site-header');
+  if (!header) return;
+  let scrolled = null;
+  const update = () => {
+    const now = window.scrollY > 8;
+    if (now === scrolled) return;
+    scrolled = now;
+    header.classList.toggle('is-scrolled', now);
+  };
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+}
 
 // Offset of an element inside an ancestor, ignoring transforms.
 function offsetWithin(el, ancestor) {
@@ -762,1691 +961,6 @@ function offsetWithin(el, ancestor) {
   return { left, top };
 }
 
-// Default entrance and exit. The fades are sequential (the outgoing object
-// has fully faded at 0.90 of its segment, exactly when the incoming one starts
-// to appear at 0.08 of its own) while their movements overlap, so a handover
-// never shows two pictures at once. On phones (c.reel) there are none: the
-// section itself slides in and out.
-const FADE_IN = [0.08, 0.2];
-const FADE_OUT = [0.82, 0.9];
-const fadeIn = ({ obj, ft, reel }, from = { y: 40 }) => {
-  if (reel) return;
-  gsap.set(obj, { autoAlpha: 0, ...from });
-  ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-  const to = Object.fromEntries(Object.keys(from).map((k) => [k, k === 'scale' ? 1 : 0]));
-  ft(obj, from, to, 0, 0.22, 'power2.out');
-};
-const fadeOut = ({ obj, ft, isLast, reel }, to = { y: -30 }) => {
-  if (isLast || reel) return;
-  const from = Object.fromEntries(Object.keys(to).map((k) => [k, k === 'scale' ? 1 : 0]));
-  ft(obj, from, to, 0.82, 1, 'power1.inOut');
-  ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
-};
-// Visibility only, for scenes whose entrance is a reveal (a growing stem, a wipe).
-const gateIn = ({ obj, ft, reel }) => {
-  if (reel) return;
-  gsap.set(obj, { autoAlpha: 0 });
-  ft(obj, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-};
-
-// The 3D scenes draw into .three-host; until their first frame (or if 3D
-// can't run) the photo in .three-fallback shows, with its own animation.
-const threeHTML = (fallback) => `
-  <div class="layer three-fallback">${fallback}</div>
-  <div class="layer three-host" aria-hidden="true"></div>`;
-
-// The NAD+ fallback: the photo turns in-plane across the segment (upright at
-// rest), with a very slow idle turn. `tilt` receives a subtle 3D wobble.
-const spinHTML = (t) => `<div class="layer turn"><div class="layer idle-turn">${layerImg(t.image, t.imageSize)}</div></div>`;
-function spinImage({ scene, ft, idle, label }, tilt) {
-  const turn = scene.querySelector('.turn');
-  gsap.set(tilt, { transformPerspective: 1200 });
-  ft(turn, { rotation: -360 * label }, { rotation: 360 * (1 - label) }, 0, 1);
-  ft(tilt, { rotationX: 8, rotationY: -8 }, { rotationX: -8, rotationY: 8 }, 0, 0.35, 'sine.inOut');
-  ft(tilt, { rotationX: -8, rotationY: 8 }, { rotationX: 0, rotationY: 0 }, 0.35, label, 'sine.inOut');
-  ft(tilt, { rotationX: 0, rotationY: 0 }, { rotationX: 5, rotationY: -5 }, label, 1, 'sine.inOut');
-  idle(scene.querySelector('.idle-turn'), { rotation: 360, duration: 240, ease: 'none', yoyo: false });
-}
-
-// A WebGL view (the NAD+ molecule, the swaying hair) is created once, in idle
-// time after the stage starts (or when its treatment approaches, if that
-// comes first), and kept on its scene element until the layout is rebuilt.
-function ensure3D(scene, create, pixelRatioCap) {
-  const state = scene.view3d || (scene.view3d = { view: null, promise: null });
-  if (!state.promise) {
-    state.promise = create()
-      .catch(() => null)
-      .then((view) => { state.view = view; return view; });
-  } else if (state.view) {
-    state.view.setPixelRatioCap(pixelRatioCap);
-  }
-  return state.promise;
-}
-
-// A turntable across the whole segment: one full turn, facing front at the
-// rest label, handed to the scene's 3D view on every frame.
-function turntable3D(c, create) {
-  const { scene, ft, live, start, L, label, isDesktop } = c;
-  const motion = { turn: -2 * Math.PI * label };
-  ft(motion, { turn: -2 * Math.PI * label }, { turn: 2 * Math.PI * (1 - label) }, 0, 1);
-  const cap = isDesktop ? 2 : 1.5;
-  live({
-    initFrom: start - 0.5 * L, // at the latest, set up while the previous treatment is on screen
-    init: () => ensure3D(scene, () => create(cap), cap).then((view) => view && view.render(motion)),
-    frame: (time, dt) => { if (scene.view3d?.view) scene.view3d.view.render(motion, dt); },
-  });
-}
-
-// Frees a scene's WebGL view (when the layout is rebuilt).
-function dispose3D(scene) {
-  const state = scene.view3d;
-  if (!state) return;
-  scene.view3d = null;
-  if (state.view) state.view.dispose();
-  else if (state.promise) state.promise.then((view) => view && view.dispose());
-}
-
-// Loads an image sequence (awaited before the stage starts) and sets up its
-// drawing on the scene's .fx--frames canvas. opts.cap caps the canvas's pixel
-// ratio; with opts.half, the half-size frames (<name>-half.webp) are used
-// whenever the canvas is no wider than them in device pixels (phones).
-// On phones (opts.phone) a sequence with a phoneStep uses only every so many
-// frames (always the first and the last), and when its frames are decoded is
-// left to the stage's loader. opts.frames, canvas, key and loop set up the
-// phones' pre-rendered sequences (NAD+ and Hair & Scalp) the same way.
-function preloadFrames(t, scene, { cap, half, phone = false, frames: def = t.showcase.frames, canvas = scene.querySelector('.fx--frames'), key = 'frameSequence', loop = false }) {
-  const { path, count, size, phoneStep = 1 } = def;
-  const need = canvas.clientWidth * Math.min(window.devicePixelRatio || 1, cap);
-  const useHalf = half && need > 0 && need <= Math.floor(size[0] / 2);
-  const shown = phone && phoneStep > 1 ? Math.ceil(count / phoneStep) : count;
-  const srcs = Array.from({ length: shown }, (_, i) => {
-    const n = shown === count ? i + 1 : 1 + Math.round((i * (count - 1)) / (shown - 1));
-    const src = path.replace('{n}', pad(n));
-    return useHalf ? src.replace(/\.webp$/, '-half.webp') : src;
-  });
-  return Promise.all(srcs.map(loadFrame)).then((frames) => {
-    const sequence = createFrameSequence(canvas, frames, cap, { loop, native: phone });
-    scene[key] = sequence;
-    if (!phone) sequence.setWanted(!!scene.framesWanted);
-    return sequence;
-  });
-}
-
-// Drives a frame sequence from the segment: map(f) turns the segment
-// fraction into a position between 0 and 1 along the sequence.
-function scrubFrames({ scene, tl, start, L, live, phone }, map) {
-  const proxy = { p: 0 };
-  tl.fromTo(proxy, { p: 0 }, {
-    p: 1, duration: L, ease: 'none', immediateRender: false,
-    onUpdate: () => {
-      const seq = scene.frameSequence;
-      if (seq) seq.setPosition(map(proxy.p) * (seq.count - 1));
-    },
-  }, start);
-  // Decoded frames are kept only while the treatment is near (on phones,
-  // the stage's loader decides, never mid-swipe).
-  live(phone ? { frame: () => scene.frameSequence && scene.frameSequence.draw() } : {
-    frame: () => scene.frameSequence && scene.frameSequence.draw(),
-    warm: () => { scene.framesWanted = true; scene.frameSequence?.setWanted(true); },
-    cool: () => { scene.framesWanted = false; scene.frameSequence?.setWanted(false); },
-  });
-}
-
-// Phones: plays a pre-rendered sequence (NAD+'s turn, the hair's sway) on a
-// canvas, at the frame position(time, dt, count), in place of the live
-// WebGL view. Once its first frame is drawn, `shown` gets the class that
-// crossfades from the picture to the canvas.
-function playFrames({ scene, live }, key, shown, className, position) {
-  live({
-    frame: (time, dt) => {
-      const sequence = scene[key];
-      if (!sequence || !sequence.ready()) return;
-      // Hundredths of a frame, so a slow idle drift redraws only when it shows.
-      sequence.setPosition(Math.round(position(time, dt, sequence.count) * 100) / 100);
-      sequence.draw();
-      if (!shown.classList.contains(className)) shown.classList.add(className);
-    },
-  });
-}
-
-// MYERS COCKTAIL: the two bottles, both on the 1200 × 920 canvas.
-//   origin  the bottle's mouth (its transformOrigin)
-//   pour    the pour pose: the mouth at the top of its stream, tipped over the flask
-//   stream  its stream (canvas px), from the mouth down into the flask's neck
-//   bob     idle bob period (s) and phase, so the bottles float slightly out of step
-// Both drain the same way: --level (% from the top) full → empty. Upside
-// down, the liquid runs to the mouth, so it empties from the base end.
-const BLEND_BOTTLES = [
-  { id: 'left', origin: '29.17% 16.3%', pour: { xPercent: 18.0, yPercent: 26.3, rotation: 120 },
-    stream: 'M566 392 Q572 432 590 474', colour: '#E8A64A', bob: [3.4, 0] },
-  { id: 'right', origin: '70.83% 16.3%', pour: { xPercent: -19.0, yPercent: 26.3, rotation: -120 },
-    stream: 'M622 392 Q616 432 598 474', colour: '#EBD773', bob: [3.8, 1.9] },
-];
-const BLEND_LEVEL = ['43.37%', '23.7%'];
-
-// RECOVERY: the eight glints on the ball, [x %, y %, width %] of the
-// 1000 × 1000 canvas (centred there), and the sixteen spots of reflected
-// light that drift past behind it, [x0 %, y %, size %, speed %]: a spot's
-// centre is at x0 + speed × u (wrapping round), with u 0 → 1 over 0 → 0.52
-// of the segment; its diameter is 1.6 × size (% of the canvas width).
-const SUNRISE_SPARKLES = [
-  [32.0, 30.6, 7], [26.1, 60.7, 6], [72.8, 44.7, 8], [20.9, 40.7, 5],
-  [36.1, 65.4, 6], [67.7, 26.6, 6], [65.6, 75.4, 7], [81.4, 48.7, 5],
-];
-const DISCO_DOTS = [
-  [5, 12, 3.2, 46], [18, 86, 4.0, 38], [33, 6, 2.8, 58], [47, 92, 3.4, 42],
-  [62, 12, 4.2, 34], [78, 88, 3.0, 55], [90, 20, 3.8, 40], [8, 48, 2.6, 60],
-  [92, 62, 3.2, 48], [22, 22, 3.6, 36], [72, 5, 2.4, 62], [58, 84, 3.4, 44],
-  [96, 40, 2.8, 52], [38, 95, 3.0, 39], [6, 72, 4.0, 33], [84, 30, 2.6, 57],
-];
-const DISCO_COLOURS = ['#8FA8FF', '#B58CFF', '#E48CF0', '#9FD0FF']; // in turn
-const DISCO_WARM = '#FFC76A';
-
-// SIGNATURE: the pen (and its shadow) is a 600 × 600 image, 44.91% of the
-// 1336 × 800 canvas wide, so 75% of its height. Its nib tip (92.3, 522 px)
-// sits 6.909% across and 65.25% down the canvas from the image's top left.
-// Lifted, it rises by (−0.6%, −2%) and grows 2%; its shadow falls further away.
-const PEN = {
-  w: 44.91, h: 75,
-  tip: [6.909, 65.25],
-  origin: '15.383% 87%', // the nib tip, as a share of the pen image
-  lift: { x: -0.6, y: -2, scale: 0.02 },
-  shadow: { down: [1.05, 2.25], lifted: [2.25, 6], liftedOpacity: 0.65 },
-  from: [95, -12],       // where the nib glides in from (off the top right)
-  rest: [80, 84],        // where the nib rests once the card is signed
-  write: [0.2, 0.62],    // the writing, as fractions of the segment
-};
-
-const SCENES = {
-  // ENERGY: fades in beside the text with a gentle move in from the left,
-  // bobs very slightly at rest, then runs off the right edge, fading as he goes.
-  runner: {
-    html: (t) => objHTML(t, 'runner', layerImg(t.image, t.imageSize, ' data-layer="runner"')),
-    animate(c) {
-      const { obj, scene, ft, idle, isLast } = c;
-      const root = document.getElementById('stage');
-      // Measured once per layout (not on every frame of the run).
-      let measured = -1, distance = 0;
-      const xExit = () => {
-        if (measured !== layoutVersion) {
-          measured = layoutVersion;
-          distance = window.innerWidth - offsetWithin(obj, root).left + 40;
-        }
-        return distance;
-      };
-
-      fadeIn(c, { x: -60 });
-      if (!isLast) {
-        // The distance is measured as it plays, so it always fits the current layout.
-        const run = { p: 0 };
-        ft(run, { p: 0 }, { p: 1, onUpdate: () => gsap.set(obj, { x: run.p * xExit() }) }, 0.82, 1, 'power1.in');
-        ft(obj, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
-      }
-      // A very subtle forward bob while he waits.
-      idle(scene.querySelector('[data-layer="runner"]'), { y: -2.5, x: 1.5, duration: 0.42 });
-    },
-  },
-
-  // IMMUNITY: the whole orange rises in, then splits into two halves and a
-  // burst of juice (unchanged, retimed). The halves meet at 49.8% 49.5%.
-  orange: {
-    html: (t) => objHTML(t, 'orange', [
-      layerImg(t.showcase.layers.juice, t.imageSize, ' data-layer="juice"'),
-      layerImg(t.showcase.layers.left, t.imageSize, ' data-layer="left"'),
-      layerImg(t.showcase.layers.right, t.imageSize, ' data-layer="right"'),
-      layerImg(t.showcase.layers.whole, t.imageSize, ' data-layer="whole"'),
-    ].join('')),
-    animate({ scene, shadow, ft, isLast, reel }) {
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const juice = q('juice'), left = q('left'), right = q('right'), whole = q('whole');
-      const MEET = '49.8% 49.5%';
-      const leftTogether = { xPercent: 8.4, yPercent: 3.0, rotation: -6 };
-      const rightTogether = { xPercent: -7.8, yPercent: -4.3, rotation: 6 };
-      const apart = { xPercent: 0, yPercent: 0, rotation: 0 };
-
-      gsap.set([juice, left, right, whole], { transformOrigin: MEET });
-      gsap.set([left, right, juice], { autoAlpha: 0 });
-      gsap.set(left, leftTogether);
-      gsap.set(right, rightTogether);
-      gsap.set(juice, { scale: 0.4 });
-
-      // Entrance: only the whole orange, rising gently into place (on phones
-      // it is already there as its section slides in).
-      if (!reel) {
-        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
-        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
-      }
-
-      // The split: a quick crossfade from the whole orange to the pushed-together halves.
-      ft(whole, { autoAlpha: 1, scale: 1 }, { autoAlpha: 0, scale: 1.03 }, 0.2, 0.28, 'power1.inOut');
-      ft([left, right], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.2, 0.28, 'power1.inOut');
-
-      // The halves settle apart while the juice bursts outward from the split.
-      ft(left, leftTogether, apart, 0.24, 0.5, 'power2.out');
-      ft(right, rightTogether, apart, 0.24, 0.5, 'power2.out');
-      ft(juice, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1 }, 0.24, 0.5, 'power2.out');
-
-      if (isLast) return;
-      // Exit: everything keeps drifting apart (opening a space in the centre) and fades.
-      ft(left, apart, { xPercent: -11, yPercent: -3.5, rotation: -6 }, 0.82, 1, 'power1.inOut');
-      ft(right, apart, { xPercent: 11, yPercent: 4.5, rotation: 6 }, 0.82, 1, 'power1.inOut');
-      ft(juice, { scale: 1 }, { scale: 1.15 }, 0.82, 1, 'power1.out');
-      ft([left, right, juice], { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
-      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
-    },
-  },
-
-  // IRON: the original photograph floats in and turns gently in-plane, with a
-  // subtle 3D tilt (never beyond ±12°) and a slow idle float at rest.
-  float: {
-    html: (t) => objHTML(t, 'float', `<div class="layer tilt"><div class="layer bob">${layerImg(t.image, t.imageSize)}</div></div>`),
-    animate(c) {
-      const { obj, scene, ft, idle } = c;
-      const tilt = scene.querySelector('.tilt');
-      fadeIn(c, { scale: 0.85, y: 30 });
-      gsap.set(tilt, { rotation: -20, rotationY: -12, transformPerspective: 1200 });
-      ft(tilt, { rotation: -20, rotationY: -12 }, { rotation: 15, rotationY: 8 }, 0, 1, 'sine.inOut');
-      idle(scene.querySelector('.bob'), { y: -5, duration: 3.2 });
-      fadeOut(c, { y: -30, scale: 0.94 });
-      return obj;
-    },
-  },
-
-  // HYDRATION: the whole coconut rises in, cracks, and its lid lifts open with
-  // a splash of water. The four layers share one 1000 × 1056 canvas.
-  coconut: {
-    html: (t) => {
-      const size = [1000, 1056];
-      return objHTML(t, 'coconut', [
-        layerImg(t.showcase.layers.bottom, size, ' data-layer="bottom"'),
-        layerImg(t.showcase.layers.splash, size, ' data-layer="splash"'),
-        layerImg(t.showcase.layers.top, size, ' data-layer="top"'),
-        layerImg(t.showcase.layers.whole, size, ' data-layer="whole"'),
-      ].join(''), size);
-    },
-    animate({ scene, shadow, ft, isLast, reel }) {
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const bottom = q('bottom'), splash = q('splash'), top = q('top'), whole = q('whole');
-      // Measured so the closed lid and the bottom make exactly the whole coconut's outline.
-      const closed = { xPercent: -4.0, yPercent: 30.1, rotation: -17.8, scale: 1.077 };
-      const open = { xPercent: 0, yPercent: 0, rotation: 0, scale: 1 };
-
-      gsap.set(whole, { transformOrigin: '50% 80%' });
-      gsap.set([bottom, top], { autoAlpha: 0 });
-      gsap.set(top, { transformOrigin: '53% 36%', ...closed });
-      gsap.set(splash, { transformOrigin: '48.7% 55.1%', autoAlpha: 0, scale: 0.3 }); // the shell's opening
-
-      // Entrance: only the whole coconut, rising gently into place (on phones
-      // it is already there as its section slides in).
-      if (!reel) {
-        gsap.set(whole, { autoAlpha: 0, yPercent: 8, scale: 0.9, rotation: -5 });
-        gsap.set(shadow, { autoAlpha: 0, scale: 0.8 });
-        ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, ...FADE_IN, 'power1.out');
-        ft(whole, { yPercent: 8, scale: 0.9, rotation: -5 }, { yPercent: 0, scale: 1, rotation: 0 }, 0, 0.2, 'power2.out');
-        ft(shadow, { autoAlpha: 0, scale: 0.8 }, { autoAlpha: 1, scale: 1 }, 0, 0.2, 'power2.out');
-      }
-
-      // The crack: the split pieces are fully opaque underneath before the
-      // whole coconut fades, so nothing ever looks see-through.
-      ft([bottom, top], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.2, 0.21);
-      ft(whole, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.2, 0.26, 'power1.inOut');
-
-      // The lid lifts open while the water splashes up from the opening.
-      ft(top, closed, open, 0.22, 0.52, 'power2.out');
-      ft(splash, { autoAlpha: 0, scale: 0.3 }, { autoAlpha: 1, scale: 1 }, 0.26, 0.5, 'power2.out');
-
-      if (isLast) return;
-      // Exit: the lid keeps lifting, the bottom sinks a little, the splash spreads, all fade.
-      ft(top, { yPercent: 0, rotation: 0 }, { yPercent: -5, rotation: 5 }, 0.82, 1, 'power1.inOut');
-      ft(bottom, { yPercent: 0 }, { yPercent: 3 }, 0.82, 1, 'power1.inOut');
-      ft(splash, { scale: 1 }, { scale: 1.12 }, 0.82, 1, 'power1.inOut');
-      ft([bottom, splash, top], { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
-      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0 }, ...FADE_OUT, 'power1.inOut');
-    },
-  },
-
-  // DETOX: a cucumber slice drops into a tall glass of water, passing behind
-  // the rim and the water line (glassFront) into the water, and the water
-  // splashes up out of the glass. The picture holds on that splash. All
-  // layers share the 570 × 1015 canvas; origins and offsets are % of it.
-  cucumber: {
-    label: 0.5,
-    html: (t) => {
-      const ly = t.showcase.layers;
-      return objHTML(t, 'cucumber', [
-        layerImg(ly.glass, t.imageSize, ' data-layer="glass"'),
-        layerImg(ly.sliceFall, t.imageSize, ' data-layer="slice-fall"'),
-        layerImg(ly.glassFront, t.imageSize, ' data-layer="glass-front"'),
-        layerImg(ly.splashBody, t.imageSize, ' data-layer="splash-body"'),
-        layerImg(ly.splashTop, t.imageSize, ' data-layer="splash-top"'),
-      ].join(''));
-    },
-    animate(c) {
-      const { scene, ft } = c;
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const fall = q('slice-fall'), body = q('splash-body'), top = q('splash-top');
-      const falling = { yPercent: -62, rotation: -38.2, scale: 0.85 };
-      const landed = { yPercent: 0, rotation: 21.8, scale: 1 };
-
-      fadeIn(c, { y: 40 });
-      gsap.set(fall, { transformOrigin: '52.28% 49.68%', autoAlpha: 0, ...falling });
-      gsap.set(top, { transformOrigin: '49.74% 22.66%', autoAlpha: 0, scaleX: 0.6, scaleY: 0.2 }); // the rim
-      gsap.set(body, { autoAlpha: 0 });
-
-      // The drop: the slice accelerates down and turns, then disappears into the splash.
-      ft(fall, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.08, 0.12);
-      ft(fall, falling, landed, 0.08, 0.3, 'power2.in');
-      ft(fall, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.3, 0.315);
-
-      // The splash bursts up from the rim and holds.
-      ft([body, top], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.29, 0.31);
-      ft(top, { scaleX: 0.6, scaleY: 0.2 }, { scaleX: 1, scaleY: 1 }, 0.29, 0.42, 'power2.out');
-      fadeOut(c, { y: -30 });
-    },
-  },
-
-  // NAD+: the real 3D structure (section 5) in clear glass, turning like a
-  // turntable once across its segment (facing front at rest), with a very
-  // slow extra idle turn. Its finished picture shows until the first 3D frame is drawn;
-  // without WebGL (or if loading fails) the photo turns in-plane instead.
-  // On phones the same turn plays from its pre-rendered frames (showcase.spin,
-  // one full turn, frame 1 facing front) on a square canvas centred on the
-  // object, exactly where the 3D view would draw it.
-  molecule: {
-    html: (t, { phone } = {}) => objHTML(t, 'molecule', phone && t.showcase.spin
-      ? `<div class="layer three-fallback">${spinHTML(t)}</div><canvas class="nad-spin" aria-hidden="true"></canvas>`
-      : threeHTML(spinHTML(t)), t.showcase.box || t.imageSize),
-    phoneFrames: (t, scene) => preloadFrames(t, scene, {
-      cap: 1.5, half: true, phone: true, frames: t.showcase.spin,
-      canvas: scene.querySelector('.nad-spin'), key: 'spinSequence', loop: true,
-    }),
-    animate(c) {
-      const { t, obj, scene, ft, label, phone } = c;
-      fadeIn(c, { scale: 0.9 });
-      spinImage(c, scene.querySelector('.three-fallback'));
-      fadeOut(c, { scale: 0.85 });
-      if (!phone || !t.showcase.spin) {
-        turntable3D(c, (cap) => createMolecule(obj, t.showcase.model, cap));
-        return;
-      }
-      const TURN = 2 * Math.PI;
-      const motion = { turn: -TURN * label };
-      ft(motion, { turn: -TURN * label }, { turn: TURN * (1 - label) }, 0, 1);
-      let idleAngle = 0;
-      playFrames(c, 'spinSequence', obj, 'is-3d', (time, dt, count) => {
-        idleAngle += MOLECULE.idleSpeed * dt;
-        const k = ((motion.turn + idleAngle) / TURN) % 1;
-        return (k < 0 ? k + 1 : k) * count;
-      });
-    },
-  },
-
-  // LONGEVITY: the stem grows upward behind a soft (feathered) mask edge, then
-  // the bud emerges and the leaves unfurl. Origins are % of the 860 × 911 canvas.
-  plant: {
-    label: 0.74,
-    html: (t) => objHTML(t, 'plant', [
-      layerImg(t.showcase.layers.stem, t.imageSize, ' data-layer="stem"'),
-      layerImg(t.showcase.layers.bud, t.imageSize, ' data-layer="bud"'),
-      layerImg(t.showcase.layers.leafLeft, t.imageSize, ' data-layer="leaf-left"'),
-      layerImg(t.showcase.layers.leafRight, t.imageSize, ' data-layer="leaf-right"'),
-    ].join('')),
-    animate(c) {
-      const { scene, shadow, ft } = c;
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const stem = q('stem'), bud = q('bud'), leafL = q('leaf-left'), leafR = q('leaf-right');
-
-      // --reveal is how far up (from the bottom) the stem is fully visible; the
-      // mask fades out over the next 5%. −2.3% hides it all (base at 97.3%
-      // from the top); 58% shows everything above 42%.
-      gsap.set(stem, { '--reveal': '-2.3%' });
-      gsap.set(bud, { scale: 0, autoAlpha: 0, transformOrigin: '54.3% 49.0%' });
-      gsap.set(leafL, { scale: 0, rotation: 35, transformOrigin: '48.7% 48.0%' });
-      gsap.set(leafR, { scale: 0, rotation: -35, transformOrigin: '58.3% 47.6%' });
-      gsap.set(shadow, { autoAlpha: 0, scaleX: 0.3 });
-
-      // power1.out: the stem passes the stalk tops (~49% from the top) by 0.24,
-      // before the bud and leaves begin.
-      gateIn(c);
-      ft(stem, { '--reveal': '-2.3%' }, { '--reveal': '58%' }, 0, 0.32, 'power1.out');
-      ft(shadow, { autoAlpha: 0, scaleX: 0.3 }, { autoAlpha: 1, scaleX: 1 }, 0, 0.4, 'power1.out');
-      ft(bud, { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.24, 0.44, 'power2.out');
-      ft(leafL, { scale: 0, rotation: 35 }, { scale: 1, rotation: 0 }, 0.3, 0.64, 'power2.out');
-      ft(leafR, { scale: 0, rotation: -35 }, { scale: 1, rotation: 0 }, 0.37, 0.7, 'power2.out');
-      fadeOut(c, { y: 24 });
-    },
-  },
-
-  // HAIR & SCALP: a soft-edged wipe from bottom to top while easing out from
-  // 1.1× scale; the hair then sways with the scroll (section 5). On phones
-  // the sway plays from pre-rendered frames (showcase.swayFrames, −1 → +1).
-  wipe: {
-    html: (t, { phone } = {}) => objHTML(t, 'wipe', `
-      <div class="wipe-frame"><div class="wipe-mask"><div class="layer wipe-content">
-        <img class="wipe-img" src="${esc(t.image)}" alt="" width="${t.imageSize[0]}" height="${t.imageSize[1]}" decoding="async" draggable="false">${phone && t.showcase.swayFrames ? `
-        <canvas class="wipe-canvas wipe-frames" aria-hidden="true"></canvas>` : ''}
-      </div></div></div>`),
-    phoneFrames: (t, scene) => preloadFrames(t, scene, {
-      cap: 1.5, half: true, phone: true, frames: t.showcase.swayFrames,
-      canvas: scene.querySelector('.wipe-frames'), key: 'swaySequence',
-    }),
-    animate(c) {
-      const { t, scene, shadow, ft, live, start, L, isDesktop, phone } = c;
-      const mask = scene.querySelector('.wipe-mask');
-      const content = mask.querySelector('.wipe-content');
-
-      // The mask layer is 1.25× the image height; its top edge is a soft fade.
-      // Moving it up while counter-moving the content reveals it from the bottom.
-      gsap.set(mask, { yPercent: 100 });
-      gsap.set(content, { yPercent: -125, scale: 1.1 });
-      gsap.set(shadow, { autoAlpha: 0 });
-      gateIn(c);
-      ft(mask, { yPercent: 100 }, { yPercent: 0 }, 0, 0.3, 'power1.inOut');
-      ft(content, { yPercent: -125 }, { yPercent: 0 }, 0, 0.3, 'power1.inOut');
-      ft(content, { scale: 1.1 }, { scale: 1 }, 0, 0.4, 'power1.out');
-      ft(shadow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.1, 0.3, 'power1.inOut');
-      fadeOut(c, { y: -30 });
-
-      // One and a half slow oscillations across the segment: 0 → +1 → −1 → +0.6 → 0.
-      if (phone && t.showcase.swayFrames) {
-        const sway = { v: 0 };
-        [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
-          ft(sway, { v: from }, { v: to }, f0, f1, 'sine.inOut');
-        });
-        // Plus the same slow idle sway, played back and forth through the frames.
-        playFrames(c, 'swaySequence', content, 'is-swaying', (time, dt, count) => {
-          const idleSway = HAIR_SWAY.idle * Math.sin((time / HAIR_SWAY.idlePeriod) * Math.PI * 2);
-          return ((gsap.utils.clamp(-1, 1, sway.v + idleSway) + 1) / 2) * (count - 1);
-        });
-        return;
-      }
-      if (!t.showcase.swayMask) return;
-      const sway = { v: 0 };
-      const push = () => { if (scene.view3d?.view) scene.view3d.view.setSway(sway.v); };
-      [[0, 1, 0, 0.25], [1, -1, 0.25, 0.5], [-1, 0.6, 0.5, 0.75], [0.6, 0, 0.75, 1]].forEach(([from, to, f0, f1]) => {
-        ft(sway, { v: from }, { v: to, onUpdate: push }, f0, f1, 'sine.inOut');
-      });
-      const cap = isDesktop ? 2 : 1.5;
-      live({
-        initFrom: start - 0.5 * L, // at the latest, set up while the previous treatment is on screen
-        init: () => ensure3D(scene, () => createHairSway(content, content.querySelector('.wipe-img'), t.showcase.swayMask, cap), cap)
-          .then((view) => view && view.setSway(sway.v)),
-        frame: (time) => { if (scene.view3d?.view) scene.view3d.view.render(time); },
-      });
-    },
-  },
-
-  // SKIN & BEAUTY: a closed seashell lifts slightly, letting out a line of
-  // light, then opens on its hinge in 3D: the closed top swings up and away
-  // while the open top half rises from leaning back to standing, and the
-  // bottom crossfades from closed to open, revealing the pearl. The pearl
-  // then glows, a band of light passes over it and it glints. No frame: the
-  // two base pictures already fade into the Skin tint at their edges, with
-  // the shell's own soft shadow. All layers share the 900 × 800 canvas.
-  pearl: {
-    label: 0.7,
-    html: (t) => {
-      const ly = t.showcase.layers;
-      return objHTML(t, 'pearl', `
-        ${layerImg(ly.closedBase, t.imageSize, ' data-layer="closed-base"')}
-        ${layerImg(ly.openBase, t.imageSize, ' data-layer="open-base"')}
-        <span class="shell-leak" aria-hidden="true"></span>
-        ${layerImg(ly.openLid, t.imageSize, ' data-layer="open-lid"')}
-        <span class="pearl-halo" aria-hidden="true"></span>
-        ${layerImg(ly.pearl, t.imageSize, ' data-layer="pearl"')}
-        <span class="pearl-shimmer" aria-hidden="true"><span class="pearl-shimmer__band"></span></span>
-        ${layerImg(ly.closedLid, t.imageSize, ' data-layer="closed-lid"')}
-        <img class="pearl-sparkle" src="${esc(ly.sparkle)}" alt="" width="256" height="256" decoding="async" draggable="false">`);
-    },
-    animate(c) {
-      const { obj, scene, ft } = c;
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const closedBase = q('closed-base'), openBase = q('open-base'), openLid = q('open-lid');
-      const pearl = q('pearl'), closedLid = q('closed-lid');
-      const leak = scene.querySelector('.shell-leak'), halo = scene.querySelector('.pearl-halo');
-      const shimmer = scene.querySelector('.pearl-shimmer'), band = scene.querySelector('.pearl-shimmer__band');
-      const sparkle = scene.querySelector('.pearl-sparkle');
-
-      fadeIn(c, { y: 30 });
-
-      // The lids turn in 3D, seen with a perspective of 1.6 × the object's width.
-      // Negative rotationX takes a lid's lower edge up and away from the viewer.
-      const lids = [closedLid, openLid];
-      const perspective = () => gsap.set(lids, { transformPerspective: 1.6 * obj.offsetWidth });
-      new ResizeObserver(perspective).observe(obj);
-      perspective();
-      gsap.set(closedLid, { transformOrigin: '50% 37.5%', yPercent: 0, rotationX: 0 }); // its top, near the hinge
-      gsap.set(openLid, { transformOrigin: '50% 57.25%', rotationX: 80, autoAlpha: 0 }); // the hinge line
-      gsap.set([openBase, pearl, leak, halo, shimmer], { autoAlpha: 0 });
-      gsap.set(sparkle, { x: 0, y: 0, xPercent: -50, yPercent: -50, scale: 0.5, autoAlpha: 0 });
-      // The band starts beyond the pearl's upper left and ends beyond its lower right.
-      gsap.set(band, { xPercent: -66.7 });
-
-      // The lid lifts slightly, and a line of light escapes.
-      ft(closedLid, { yPercent: 0 }, { yPercent: -1.25 }, 0.14, 0.24, 'power2.inOut');
-      ft(leak, { autoAlpha: 0 }, { autoAlpha: 0.55 }, 0.16, 0.24);
-      ft(leak, { autoAlpha: 0.55 }, { autoAlpha: 0 }, 0.28, 0.34);
-
-      // The shell opens: the closed top swings up and away and fades, the
-      // bottom crossfades to the open one with the pearl, and the open top
-      // half rises from a thin sliver leaning back to standing open.
-      ft(closedLid, { rotationX: 0 }, { rotationX: -75 }, 0.22, 0.34, 'power2.inOut');
-      ft(closedLid, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.27, 0.33);
-      ft([openBase, pearl], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.24, 0.32, 'sine.inOut');
-      ft(closedBase, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.24, 0.32, 'sine.inOut');
-      ft(openLid, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.26, 0.3);
-      ft(openLid, { rotationX: 80 }, { rotationX: 0 }, 0.26, 0.44, 'power2.inOut');
-
-      // The pearl glows, a band of light passes over it, and it glints.
-      ft(halo, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.42, 0.56, 'sine.inOut');
-      ft(shimmer, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.501);
-      ft(band, { xPercent: -66.7 }, { xPercent: 0 }, 0.5, 0.62, 'sine.inOut');
-      ft(shimmer, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.619, 0.62);
-      ft(sparkle, { scale: 0.5, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.56, 0.61, 'sine.out');
-      ft(sparkle, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.61, 0.68, 'sine.in');
-
-      fadeOut(c, { y: -30 });
-    },
-  },
-
-  // RECOVERY: a silver mirror ball sparkles under blue and violet party
-  // lights, with spots of reflected light drifting past behind it. Gold
-  // spreads out from its heart as the lights and glints warm, then the sun
-  // blooms out from the middle and takes over; the party fades away and the
-  // sun floats gently, turning very slowly. The gold and the sun spread
-  // through radial masks (--g and --r, see styles.css). Everything is on the
-  // 1000 × 1000 canvas (see SUNRISE_SPARKLES and DISCO_DOTS).
-  sunrise: {
-    label: 0.7,
-    html: (t) => {
-      const ly = t.showcase.layers;
-      const glint = (src, cls) => `<img class="${cls}" src="${esc(src)}" alt="" width="256" height="256" decoding="async" draggable="false">`;
-      const sparkles = SUNRISE_SPARKLES.map(([x, y, w]) => `
-          <span class="sunrise-sparkle" style="left: ${x}%; top: ${y}%; width: ${w}%">${glint(ly.sparkleWarm, 'is-warm')}${glint(ly.sparkleCool, 'is-cool')}</span>`).join('');
-      const dots = DISCO_DOTS.map(([, y, size], i) =>
-        `<span class="disco-dot" style="top: ${y}%; width: ${+(1.6 * size).toFixed(2)}%; --dot: ${DISCO_COLOURS[i % DISCO_COLOURS.length]}"></span>`).join('');
-      return objHTML(t, 'sunrise', `
-        <span class="sunrise-shadow" aria-hidden="true"></span>
-        <div class="layer disco-dots" aria-hidden="true">${dots}</div>
-        <div class="layer sunrise-sphere">
-          ${layerImg(ly.night, t.imageSize, ' data-layer="night"')}
-          ${layerImg(ly.gold, t.imageSize, ' data-layer="gold"')}
-          ${layerImg(ly.sun, t.imageSize, ' data-layer="sun"')}
-          <div class="layer sunrise-sparkles" aria-hidden="true">${sparkles}
-          </div>
-        </div>
-        <span class="sun-bloom" aria-hidden="true"></span>`);
-    },
-    animate(c) {
-      const { scene, ft, idle } = c;
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const night = q('night'), gold = q('gold'), sun = q('sun');
-      const sphere = scene.querySelector('.sunrise-sphere');
-      const shadow = scene.querySelector('.sunrise-shadow');
-      const dotLayer = scene.querySelector('.disco-dots'), dots = [...dotLayer.children];
-      const sparkleLayer = scene.querySelector('.sunrise-sparkles'), sparkles = [...sparkleLayer.children];
-      const bloom = scene.querySelector('.sun-bloom');
-      const clamp01 = gsap.utils.clamp(0, 1);
-
-      fadeIn({ ...c, obj: [sphere, shadow] }, { y: 40 });
-      gsap.set([dotLayer, sparkleLayer, bloom], { autoAlpha: 0 });
-      ft(dotLayer, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.06, 0.2);
-      ft(sparkleLayer, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.08, 0.2);
-
-      // The spots drift sideways like light from a turning mirror ball (x as
-      // % of the canvas becomes % of the spot's own width), fading out near
-      // the edges instead of popping as they wrap round, and warm with the ball.
-      const rgb = gsap.utils.splitColor;
-      const warmOf = DISCO_DOTS.map((_, i) => {
-        const mix = gsap.utils.interpolate(rgb(DISCO_COLOURS[i % DISCO_COLOURS.length]), rgb(DISCO_WARM));
-        return (k) => `rgb(${mix(k).map(Math.round).join(', ')})`;
-      });
-      const party = { u: 0, warm: 0 };
-      let warmShown = -1;
-      const drift = () => {
-        const recolour = party.warm !== warmShown;
-        warmShown = party.warm;
-        DISCO_DOTS.forEach(([x0, , size, speed], i) => {
-          const x = (x0 + speed * party.u) % 100;
-          gsap.set(dots[i], { xPercent: (x / (1.6 * size)) * 100 - 50, opacity: 0.6 * clamp01(Math.min(x, 100 - x) / 10) });
-          if (recolour) dots[i].style.setProperty('--dot', warmOf[i](party.warm));
-        });
-      };
-      gsap.set(dots, { yPercent: -50 });
-      drift();
-      ft(party, { u: 0 }, { u: 1, onUpdate: drift }, 0, 0.52);
-      ft(party, { warm: 0 }, { warm: 1, onUpdate: drift }, 0.24, 0.4);
-
-      // The glints twinkle all the time, each out of step with the next, and
-      // crossfade from cool to warm with the ball.
-      const cool = sparkleLayer.querySelectorAll('.is-cool'), warm = sparkleLayer.querySelectorAll('.is-warm');
-      gsap.set(sparkles, { x: 0, y: 0, xPercent: -50, yPercent: -50 });
-      gsap.set(warm, { opacity: 0 });
-      ft(cool, { opacity: 1 }, { opacity: 0 }, 0.24, 0.4, 'sine.inOut');
-      ft(warm, { opacity: 0 }, { opacity: 1 }, 0.24, 0.4, 'sine.inOut');
-      const twinkle = { a: 0 };
-      const shine = () => sparkles.forEach((el, i) => {
-        const k = 0.5 + 0.5 * Math.sin(twinkle.a - i * 0.37 * 2 * Math.PI);
-        gsap.set(el, { scale: 0.45 + 0.55 * k, opacity: 0.4 + 0.6 * k });
-      });
-      shine();
-      idle(twinkle, { a: 2 * Math.PI, duration: 2.2, ease: 'none', yoyo: false, onUpdate: shine });
-
-      // The party light warms: gold spreads out from the heart of the ball.
-      gsap.set(gold, { '--g': '-25%' });
-      ft(gold, { '--g': '-25%' }, { '--g': '80%' }, 0.22, 0.4, 'sine.inOut');
-
-      // The sun is born from the middle and covers the ball, with a warm
-      // flash; the ball goes once the sun hides it. The sun turns very slowly.
-      gsap.set(sun, { '--r': '-22%', rotation: -3 });
-      ft(night, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.4, 0.44);
-      ft(sun, { '--r': '-22%' }, { '--r': '100%' }, 0.4, 0.58, 'sine.inOut');
-      ft(bloom, { autoAlpha: 0 }, { autoAlpha: 0.55 }, 0.44, 0.5);
-      ft(bloom, { autoAlpha: 0.55 }, { autoAlpha: 0 }, 0.5, 0.62);
-      ft(gold, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.56, 0.6);
-      ft(sun, { rotation: -3 }, { rotation: 3 }, 0.4, 0.9);
-
-      // The party ends; the sun gives off light, so its shadow softens.
-      ft(dotLayer, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.4, 0.5);
-      ft(sparkleLayer, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.42, 0.5);
-      ft(shadow, { autoAlpha: 1 }, { autoAlpha: 0.4 }, 0.42, 0.58);
-
-      // Idle: a very gentle float (±0.6% of the canvas).
-      const float = { a: 0 };
-      const bob = () => gsap.set(sphere, { yPercent: 0.6 * Math.sin(float.a) });
-      idle(float, { a: 2 * Math.PI, duration: 5, ease: 'none', yoyo: false, onUpdate: bob });
-
-      fadeOut(c, { y: -30 });
-    },
-  },
-
-  // MUSCLE RECOVERY: a 30-frame deadlift drawn on a canvas, crossfading
-  // between neighbouring frames. Frame 01 holds before, frame 30 after.
-  frames: {
-    label: 0.74,
-    html: (t) => objHTML(t, 'frames', `<canvas class="layer fx--frames" aria-hidden="true"></canvas>`, t.showcase.frames.size),
-    preload: (t, scene, opts) => preloadFrames(t, scene, opts),
-    animate(c) {
-      fadeIn(c, { x: 40 });
-      const FROM = 0.12, TO = 0.7;
-      scrubFrames(c, (p) => gsap.utils.clamp(0, 1, (p - FROM) / (TO - FROM)));
-      fadeOut(c, { y: -30 });
-    },
-  },
-
-  // VITAMIN D: two halves of a broken bone slide together from either side,
-  // pivoting at the join (50.64% 54.22% of the 1405 × 320 canvas). As they
-  // approach, each broken half crossfades to its clean piece (the whole bone
-  // cut in two), so the crumbly ends fade; a soft glow blooms at the join and
-  // the whole bone takes over, invisibly, once the halves are exactly closed.
-  bone: {
-    label: 0.7,
-    html: (t) => {
-      const ly = t.showcase.layers;
-      return objHTML(t, 'bone', `
-        <div class="layer bone-half bone-half--left">
-          ${layerImg(ly.left, t.imageSize, ' data-layer="left"')}
-          ${layerImg(ly.leftClean, t.imageSize, ' data-layer="left-clean"')}
-        </div>
-        <div class="layer bone-half bone-half--right">
-          ${layerImg(ly.right, t.imageSize, ' data-layer="right"')}
-          ${layerImg(ly.rightClean, t.imageSize, ' data-layer="right-clean"')}
-        </div>
-        ${layerImg(ly.whole, t.imageSize, ' data-layer="whole"')}
-        <span class="bone-glow" aria-hidden="true"></span>`);
-    },
-    animate(c) {
-      const { scene, ft } = c;
-      const q = (name) => scene.querySelector(`[data-layer="${name}"]`);
-      const halfL = scene.querySelector('.bone-half--left'), halfR = scene.querySelector('.bone-half--right');
-      const brokenL = q('left'), brokenR = q('right'), cleanL = q('left-clean'), cleanR = q('right-clean');
-      const whole = q('whole'), glow = scene.querySelector('.bone-glow');
-      const apartL = { xPercent: -6, rotation: -4 }, apartR = { xPercent: 6, rotation: 4 };
-      const closed = { xPercent: 0, rotation: 0 };
-
-      fadeIn(c, { y: 30 });
-      gsap.set([halfL, halfR], { transformOrigin: '50.64% 54.22%' });
-      gsap.set(halfL, apartL);
-      gsap.set(halfR, apartR);
-      gsap.set([cleanL, cleanR, whole], { autoAlpha: 0 });
-      gsap.set(glow, { x: 0, y: 0, xPercent: -50, yPercent: -50, scale: 0.3, autoAlpha: 0 });
-
-      // The halves slide together, closing exactly.
-      ft(halfL, apartL, closed, 0.1, 0.5, 'power2.inOut');
-      ft(halfR, apartR, closed, 0.1, 0.5, 'power2.inOut');
-
-      // The broken ends fade as they approach. The clean piece (on top) comes
-      // in faster than the broken half goes, so the bone never looks see-through.
-      ft([cleanL, cleanR], { autoAlpha: 0 }, { autoAlpha: 1 }, 0.34, 0.46, 'power2.out');
-      ft([brokenL, brokenR], { autoAlpha: 1 }, { autoAlpha: 0 }, 0.34, 0.46, 'power2.in');
-
-      // A soft glow blooms at the join, then spreads and fades.
-      ft(glow, { scale: 0.3, autoAlpha: 0 }, { scale: 1, autoAlpha: 1 }, 0.44, 0.52, 'power1.out');
-      ft(glow, { scale: 1, autoAlpha: 1 }, { scale: 1.4, autoAlpha: 0 }, 0.52, 0.66, 'power1.in');
-
-      // Handover, once the halves are exactly closed: the clean pieces match
-      // the whole bone's shape, but as separately compressed images their
-      // colours differ very slightly, and while both are shown their soft
-      // edges add up. So the whole bone fades in on top (blending the pieces'
-      // texture and the cut into its own), then the halves fade out beneath
-      // it (its outline eases back), with no step anywhere.
-      ft(whole, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.5, 0.54, 'sine.inOut');
-      ft([halfL, halfR], { autoAlpha: 1 }, { autoAlpha: 0 }, 0.54, 0.58, 'sine.inOut');
-      fadeOut(c, { y: -30 });
-    },
-  },
-
-  // MYERS COCKTAIL: two small bottles float side by side above a round
-  // flask. Together they glide over the flask's neck and tip; a stream runs
-  // from each mouth into the neck while the bottles drain and the flask
-  // fills from the bottom, the streams run dry, and the empty bottles float
-  // back. The full flask then glows softly. Every part fills the 1200 × 920
-  // canvas (see BLEND_BOTTLES). Liquid levels are complementary masks
-  // (styles.css): --fill on the flask, --level on each bottle, whose masks
-  // tip with it.
-  blend: {
-    label: 0.78,
-    html: (t) => {
-      const ly = t.showcase.layers;
-      const pair = ([before, after], a, b) =>
-        layerImg(before, t.imageSize, ` data-state="${a}"`) + layerImg(after, t.imageSize, ` data-state="${b}"`);
-      // Each bottle: an outer element for the pour, an inner one for the idle bob.
-      const bottles = BLEND_BOTTLES.map((b) => `
-        <div class="layer myers-bottle" data-bottle="${b.id}"><div class="layer myers-float">${pair(ly[b.id], 'full', 'empty')}</div></div>`).join('');
-      // Each stream, with a thin highlight; pathLength="1" so the dash offset is a share of it.
-      const path = (b, attrs) => `<path d="${b.stream}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"${attrs}/>`;
-      const streams = BLEND_BOTTLES.map((b) => `
-        <g data-stream="${b.id}">${path(b, ` stroke="${b.colour}" stroke-width="10" stroke-opacity="0.9"`)}${path(b, ' stroke="#fff" stroke-width="2" stroke-opacity="0.5" transform="translate(-2 0)"')}</g>`).join('');
-      return objHTML(t, 'blend', `
-        <span class="myers-shadow" aria-hidden="true"></span>
-        <span class="myers-glow" aria-hidden="true"></span>
-        <div class="layer myers-flask">${pair(ly.flask, 'empty', 'full')}</div>
-        ${bottles}
-        <svg class="layer myers-streams" viewBox="0 0 1200 920" fill="none" stroke-linecap="round" aria-hidden="true">${streams}
-        </svg>`);
-    },
-    animate(c) {
-      const { scene, ft, idle } = c;
-      const flask = scene.querySelector('.myers-flask');
-      const glow = scene.querySelector('.myers-glow');
-      const floating = { xPercent: 0, yPercent: 0, rotation: 0 };
-
-      fadeIn(c, { y: 40 });
-
-      // The flask fills while the bottles pour, then glows softly.
-      gsap.set(flask, { '--fill': '6%' });
-      ft(flask, { '--fill': '6%' }, { '--fill': '30.4%' }, 0.33, 0.64, 'sine.inOut');
-      gsap.set(glow, { autoAlpha: 0 });
-      ft(glow, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.6, 0.76, 'sine.inOut');
-
-      BLEND_BOTTLES.forEach((b) => {
-        const outer = scene.querySelector(`[data-bottle="${b.id}"]`);
-        const float = outer.querySelector('.myers-float');
-        const stream = scene.querySelector(`[data-stream="${b.id}"]`);
-        const paths = stream.querySelectorAll('path');
-        const [full, empty] = BLEND_LEVEL;
-
-        gsap.set(outer, { transformOrigin: b.origin, ...floating, '--level': full });
-        gsap.set(stream, { autoAlpha: 0 });
-
-        // Both bottles glide over the neck and tip; each stream grows from
-        // the mouth into the flask while the bottle slowly drains, then its
-        // top end runs down into the flask, and the bottles float back. All
-        // of it is still before the exit (0.82).
-        ft(outer, floating, b.pour, 0.18, 0.32, 'power2.inOut');
-        ft(stream, { autoAlpha: 0 }, { autoAlpha: 1 }, 0.3, 0.301);
-        ft(paths, { attr: { 'stroke-dashoffset': 1 } }, { attr: { 'stroke-dashoffset': 0 } }, 0.3, 0.34, 'power2.out');
-        ft(outer, { '--level': full }, { '--level': empty }, 0.32, 0.62, 'sine.inOut');
-        ft(paths, { attr: { 'stroke-dashoffset': 0 } }, { attr: { 'stroke-dashoffset': -1 } }, 0.6, 0.65, 'power2.in');
-        ft(stream, { autoAlpha: 1 }, { autoAlpha: 0 }, 0.649, 0.65);
-        ft(outer, b.pour, floating, 0.63, 0.76, 'power2.inOut');
-
-        // Idle: a gentle bob (±0.5% of the canvas height) on the inner
-        // element only. It calms while the bottle pours, so its mouth stays
-        // on the stream.
-        const [period, phase] = b.bob;
-        const bob = { a: 0, calm: 1 };
-        const apply = () => gsap.set(float, { yPercent: 0.5 * bob.calm * Math.sin(bob.a + phase) });
-        ft(bob, { calm: 1 }, { calm: 0, onUpdate: apply }, 0.18, 0.24, 'sine.inOut');
-        ft(bob, { calm: 0 }, { calm: 1, onUpdate: apply }, 0.7, 0.76, 'sine.inOut');
-        idle(bob, { a: 2 * Math.PI, duration: period, ease: 'none', yoyo: false, onUpdate: apply });
-      });
-
-      fadeOut(c, { y: -30 });
-    },
-  },
-
-  // SIGNATURE: a fountain pen glides in over a cream card and writes
-  // "Bluebird". The ink is a 72-frame sequence (crossfaded like the
-  // deadlift); the nib follows penPath, the nib's position on every frame (%
-  // of the 1336 × 800 canvas), and lifts between strokes. Then it glides to
-  // rest at the lower right. The pen's whole path is a function of the
-  // segment fraction, so scrubbing either way always agrees with the ink.
-  signature: {
-    label: 0.76,
-    html: (t) => {
-      const ly = t.showcase.layers;
-      const pen = (src, cls) => `<img class="sig-pen${cls}" src="${esc(src)}" alt="" width="600" height="600" decoding="async" draggable="false">`;
-      return objHTML(t, 'signature', `
-        ${layerImg(ly.card, t.showcase.frames.size, ' data-layer="card"')}
-        <canvas class="layer fx--frames" aria-hidden="true"></canvas>
-        ${pen(ly.penShadow, ' sig-pen--shadow')}
-        ${pen(ly.pen, '')}`, t.showcase.frames.size);
-    },
-    preload: (t, scene, opts) => Promise.all([
-      fetch(t.showcase.penPath).then((r) => { if (!r.ok) throw new Error(`Could not load ${t.showcase.penPath}`); return r.json(); }),
-      preloadFrames(t, scene, opts),
-    ]).then(([data]) => {
-      scene.penPath = data.penPath;
-      if (scene.placePen) scene.placePen();
-    }),
-    animate(c) {
-      const { scene, ft } = c;
-      const card = scene.querySelector('[data-layer="card"]');
-      const ink = scene.querySelector('.fx--frames');
-      const pen = scene.querySelector('.sig-pen:not(.sig-pen--shadow)');
-      const shadow = scene.querySelector('.sig-pen--shadow');
-      const [W0, W1] = PEN.write;
-      const clamp01 = gsap.utils.clamp(0, 1);
-      const sine = gsap.parseEase('sine.inOut');
-      const lerp = (a, b, k) => a + (b - a) * k;
-      const smooth = (k) => k * k * (3 - 2 * k);
-
-      // Only the card and the ink fade up; the pen has its own entrance.
-      fadeIn({ ...c, obj: [card, ink] }, { y: 30 });
-      scrubFrames(c, (f) => clamp01((f - W0) / (W1 - W0)));
-
-      // How lifted the pen is at frame position p (0 down, 1 lifted): a
-      // stretch between two frames is lifted if either end is, and that is
-      // blended over one frame, so the pen never jumps.
-      let flags = null;
-      const liftAt = (path, p) => {
-        const n = path.length;
-        if (!flags) flags = path.slice(0, -1).map((pt, i) => (pt.down && path[i + 1].down ? 0 : 1));
-        const flag = (i) => flags[Math.max(0, Math.min(n - 2, i))];
-        let sum = 0;
-        for (let i = Math.floor(p - 0.5); i <= Math.floor(p + 0.5); i++) {
-          sum += Math.max(0, Math.min(p + 0.5, i + 1) - Math.max(p - 0.5, i)) * flag(i);
-        }
-        return smooth(clamp01(sum));
-      };
-
-      // The nib's position (% of the canvas), lift and opacity at segment fraction f.
-      const penAt = (path, f) => {
-        const first = path[0], last = path[path.length - 1];
-        if (f < W0) {
-          // Glides in, lifted, fading in, and settles onto the first point.
-          const k = sine(clamp01((f - 0.06) / (W0 - 0.06)));
-          return {
-            x: lerp(PEN.from[0], first.x, k), y: lerp(PEN.from[1], first.y, k),
-            lift: 1 - sine(clamp01((f - 0.16) / (W0 - 0.16))),
-            alpha: clamp01((f - 0.06) / 0.06),
-          };
-        }
-        if (f <= W1) {
-          // Writes: linear in frame position, like the ink.
-          const p = ((f - W0) / (W1 - W0)) * (path.length - 1);
-          const i0 = Math.floor(p), i1 = Math.min(path.length - 1, i0 + 1), k = p - i0;
-          return { x: lerp(path[i0].x, path[i1].x, k), y: lerp(path[i0].y, path[i1].y, k), lift: liftAt(path, p), alpha: 1 };
-        }
-        // Leaves, lifted, and settles down to rest at the lower right.
-        const k = sine(clamp01((f - W1) / 0.1));
-        return {
-          x: lerp(last.x, PEN.rest[0], k), y: lerp(last.y, PEN.rest[1], k),
-          lift: lerp(liftAt(path, path.length - 1), 0, sine(clamp01((f - 0.69) / 0.05))),
-          alpha: 1,
-        };
-      };
-
-      // Transforms only: x/y as % of the canvas become % of the pen's own box.
-      const place = (el, x, y, scale, alpha) =>
-        gsap.set(el, { xPercent: (x / PEN.w) * 100, yPercent: (y / PEN.h) * 100, scale, autoAlpha: alpha });
-      const drive = { f: 0 };
-      const update = () => {
-        const path = scene.penPath;
-        if (!path || !path.length) return;
-        const { x, y, lift, alpha } = penAt(path, drive.f);
-        const left = x - PEN.tip[0] + PEN.lift.x * lift;
-        const top = y - PEN.tip[1] + PEN.lift.y * lift;
-        const { down, lifted, liftedOpacity } = PEN.shadow;
-        place(pen, left, top, 1 + PEN.lift.scale * lift, alpha);
-        place(shadow, left + lerp(down[0], lifted[0], lift), top + lerp(down[1], lifted[1], lift), 1, alpha * lerp(1, liftedOpacity, lift));
-      };
-
-      gsap.set([pen, shadow], { transformOrigin: PEN.origin, autoAlpha: 0 });
-      ft(drive, { f: 0 }, { f: 1, onUpdate: update }, 0, 1);
-      scene.placePen = update;
-      update();
-
-      fadeOut(c, { y: -30 }); // skipped while it is the last treatment
-    },
-  },
-
-  // Fallback for new treatments without a dedicated scene.
-  fade: {
-    html: (t) => objHTML(t, 'fade', t.image ? layerImg(t.image, t.imageSize) : placeholderHTML(t, ' placeholder--stage'), t.image ? t.imageSize : [1, 1]),
-    animate(c) {
-      fadeIn(c, { y: 40 });
-      fadeOut(c, { y: -30 });
-    },
-  },
-};
-
-/* ==========================================================================
-   5. Live effects. Each is { start?, stop?, frame?(time, dt), init? } and
-   only runs while its treatment (including the handovers) is on screen,
-   at most 60 times a second.
-   ========================================================================== */
-
-const loadImage = (src) => new Promise((resolve, reject) => {
-  const img = new Image();
-  img.onload = () => img.decode().then(() => resolve(img), () => resolve(img));
-  img.onerror = () => reject(new Error(`Could not load ${src}`));
-  img.src = src;
-});
-
-// Size a canvas's drawing buffer to its CSS box (device pixels, capped).
-function fitCanvas(canvas, ctx, cap) {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  const ratio = Math.min(window.devicePixelRatio || 1, cap);
-  canvas.width = Math.max(1, Math.round(w * ratio));
-  canvas.height = Math.max(1, Math.round(h * ratio));
-  ctx.setTransform(canvas.width / Math.max(1, w), 0, 0, canvas.height / Math.max(1, h), 0, 0);
-  return { w, h };
-}
-
-// 0 (still) to 1 (scrolling briskly), from Lenis's current velocity.
-const scrollBoost = () => Math.min(1, Math.abs(lenis ? lenis.velocity : 0) / 30);
-
-// One frame of an image sequence: its file, kept compressed (a few dozen KB)
-// until it is needed.
-const loadFrame = (src) => fetch(src).then((r) => {
-  if (!r.ok) throw new Error(`Could not load ${src}`);
-  return r.blob();
-});
-
-// Decodes a frame at exactly the canvas's size in device pixels (off the main
-// thread), or at its own size where resizing isn't supported or not wanted
-// (width 0: on phones, where resizing costs the main thread far more than
-// the canvas's own scaling does).
-function decodeFrame(blob, width, height) {
-  if (!width) return createImageBitmap(blob);
-  return createImageBitmap(blob, { resizeWidth: width, resizeHeight: height, resizeQuality: 'high' })
-    .catch(() => createImageBitmap(blob));
-}
-
-// Image sequences (Muscle Recovery, Signature): every frame is drawn at the
-// same position and size (they are pre-aligned). Between two frames, frame
-// floor(p) and then frame ceil(p) on top with the fractional part as
-// opacity. Only redraws when the position changes. A loop (NAD+'s turn on
-// phones) blends its last frame into its first; native (phones) keeps the
-// frames at their own size.
-// The frames are decoded once, at the canvas's size, while the treatment is
-// near (setWanted(true)), so drawing never waits for a decode; they are
-// released again when it is far away, to keep memory down.
-function createFrameSequence(canvas, frames, cap, { loop = false, native = false } = {}) {
-  const ctx = canvas.getContext('2d');
-  let w = 0, h = 0, position = 0, drawn = -1;
-  let wanted = false, bitmaps = null, decoding = '', decodedFor = '';
-  let waiting = [];
-  const done = () => { waiting.forEach((resolve) => resolve()); waiting = []; };
-  const release = () => {
-    if (bitmaps) bitmaps.forEach((b) => b.close());
-    bitmaps = null;
-    decodedFor = '';
-  };
-  const decode = () => {
-    const key = native ? 'native' : `${canvas.width}x${canvas.height}`;
-    if (!wanted || !w || key === decodedFor || key === decoding) return;
-    decoding = key;
-    // Two at a time, so the decoding never crowds out the page's own painting.
-    const list = [];
-    let chain = Promise.resolve();
-    for (let i = 0; i < frames.length; i += 2) {
-      chain = chain.then(() => {
-        if (decoding !== key) throw new Error('superseded');
-        return Promise.all(frames.slice(i, i + 2).map((blob) => decodeFrame(blob, native ? 0 : canvas.width, native ? 0 : canvas.height)))
-          .then((pair) => { list.push(...pair); });
-      });
-    }
-    chain.then(() => list, (error) => { list.forEach((b) => b.close()); throw error; }).then((list) => {
-      if (decoding !== key || !wanted) { list.forEach((b) => b.close()); return; }
-      release();
-      bitmaps = list;
-      decodedFor = key;
-      decoding = '';
-      drawn = -1;
-      draw();
-      done();
-    }, () => { if (decoding === key) { decoding = ''; done(); } });
-  };
-  const resize = () => {
-    ({ w, h } = fitCanvas(canvas, ctx, cap));
-    // Resizing resets the context, so ask again for the sharpest scaling.
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    drawn = -1;
-    decode();
-    draw();
-  };
-  const draw = () => {
-    if (drawn === position || !w || !bitmaps) return;
-    const n = bitmaps.length;
-    const i0 = loop ? Math.floor(position) % n : Math.floor(position);
-    const i1 = loop ? (i0 + 1) % n : Math.min(n - 1, Math.ceil(position));
-    const f = position - Math.floor(position);
-    const blend = i1 !== i0 && f > 0.001;
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(bitmaps[i0], 0, 0, w, h);
-    if (blend) {
-      ctx.globalAlpha = f;
-      ctx.drawImage(bitmaps[i1], 0, 0, w, h);
-    }
-    ctx.globalAlpha = 1;
-    drawn = position;
-  };
-  const observer = new ResizeObserver(resize);
-  observer.observe(canvas);
-  resize();
-  return {
-    count: frames.length,
-    setPosition(p) { position = Math.round(p * 1000) / 1000; },
-    // Resolves once the frames are decoded (or at once if they already are).
-    setWanted(on) {
-      wanted = on;
-      if (on) decode();
-      else { decoding = ''; release(); done(); }
-      if (!on || bitmaps) return Promise.resolve();
-      return new Promise((resolve) => waiting.push(resolve));
-    },
-    ready: () => !!bitmaps,
-    draw,
-    dispose() { observer.disconnect(); wanted = false; decoding = ''; release(); done(); },
-  };
-}
-
-/* ---------- Hair & Scalp: the hair sways with the scroll ----------
-   hair.webp is drawn on a Three.js plane with a small shader that shifts the
-   texture lookup sideways. The shift grows from the top of the head (still)
-   to the ends of the hair (most movement) and is multiplied by
-   hair-mask.webp, so the face, ear and background never move. */
-
-const HAIR_SWAY = {
-  amplitude: 0.02,   // main sway at the ends, as a share of image width; with the
-                     // secondary wave the ends move at most about 2.5%
-  idle: 0.1,         // idle sway strength, relative to a full scroll swing
-  idlePeriod: 6,     // seconds per idle cycle
-};
-
-async function createHairSway(content, img, maskSrc, pixelRatioCap) {
-  const probe = document.createElement('canvas');
-  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return null;
-
-  const THREE = await import('three');
-  const maskImg = await loadImage(maskSrc);
-  if (!img.complete || !img.naturalWidth) await img.decode();
-
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, premultipliedAlpha: true });
-  renderer.setClearColor(0x000000, 0);
-  // Sizes are handed to Three.js in whole device pixels (see resize), so the
-  // drawing buffer, viewport and textures always agree exactly.
-  renderer.setPixelRatio(1);
-  let pixelRatio = Math.min(window.devicePixelRatio || 1, pixelRatioCap);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NoToneMapping;
-  const canvas = renderer.domElement;
-  canvas.className = 'wipe-canvas';
-  canvas.setAttribute('aria-hidden', 'true');
-
-  // Both textures are resampled by the browser to the canvas's exact pixel
-  // size, so at rest every canvas pixel maps onto one texel and the hair looks
-  // identical to the <img> (GPU mipmapping would soften the fine strands).
-  const scaled = (source, w, h) => {
-    const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    // A CPU-backed canvas: its high-quality downscale is sharper than the GPU path.
-    const g = c.getContext('2d', { willReadFrequently: true });
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(source, 0, 0, w, h);
-    return c;
-  };
-  const texture = (colorSpace, premultiply) => {
-    const tex = new THREE.Texture();
-    tex.colorSpace = colorSpace;
-    tex.premultiplyAlpha = premultiply;
-    tex.minFilter = tex.magFilter = THREE.LinearFilter;
-    tex.generateMipmaps = false;
-    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-    return tex;
-  };
-  // Colour: sRGB, premultiplied on upload so soft edges blend without fringes.
-  const map = texture(THREE.SRGBColorSpace, true);
-  // Mask: plain data, no colour conversion.
-  const mask = texture(THREE.NoColorSpace, false);
-
-  const uniforms = {
-    uMap: { value: map },
-    uMask: { value: mask },
-    uSway: { value: 0 },
-    uTime: { value: 0 },
-    uAmplitude: { value: HAIR_SWAY.amplitude },
-  };
-
-  const material = new THREE.ShaderMaterial({
-    uniforms,
-    transparent: true,
-    premultipliedAlpha: true,
-    depthTest: false,
-    depthWrite: false,
-    vertexShader: /* glsl */ `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = vec4(position.xy, 0.0, 1.0);
-      }`,
-    fragmentShader: /* glsl */ `
-      uniform sampler2D uMap;
-      uniform sampler2D uMask;
-      uniform float uSway;
-      uniform float uTime;
-      uniform float uAmplitude;
-      varying vec2 vUv;
-
-      void main() {
-        // vUv.y is 1 at the top of the image: the scalp barely moves, the ends move most.
-        float weight = smoothstep(0.1, 0.95, 1.0 - vUv.y);
-        float offset = uAmplitude * (uSway * weight + 0.25 * uSway * weight * sin(vUv.y * 6.0 + uTime * 0.8));
-
-        // How much this pixel may move (the mask value):
-        //  - hair moves by the mask (white = hair, black = never moves);
-        //  - clear background may receive hair swinging in from beside it;
-        //  - skin (opaque and black in the mask) never moves, and hair never
-        //    pulls skin in, so the face and ear stay perfectly still.
-        // (Near-black mask values and near-opaque pixels count as fully still.)
-        vec2 from = vec2(vUv.x - offset, vUv.y);
-        float maskHere = smoothstep(0.02, 1.0, texture2D(uMask, vUv).r);
-        float maskFrom = smoothstep(0.02, 1.0, texture2D(uMask, from).r);
-        float clearHere = 1.0 - smoothstep(0.02, 0.6, texture2D(uMap, vUv).a);
-        float clearFrom = 1.0 - smoothstep(0.02, 0.6, texture2D(uMap, from).a);
-        float mask = max(maskHere, clearHere * maskFrom) * max(maskFrom, clearFrom);
-
-        vec2 uv = vec2(vUv.x - offset * mask, vUv.y);
-        vec4 color = texture2D(uMap, uv); // premultiplied
-        if (uv.x < 0.0 || uv.x > 1.0) color = vec4(0.0);
-        gl_FragColor = color;
-        #include <colorspace_fragment>
-      }`,
-  });
-
-  const scene = new THREE.Scene();
-  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
-  const camera = new THREE.Camera();
-
-  // The canvas fills the same box as the image (the image's aspect ratio);
-  // CSS sizes it, and its drawing buffer matches that box in device pixels.
-  let textureSize = '';
-  const resize = () => {
-    const w = content.clientWidth, h = content.clientHeight;
-    if (!w || !h) return;
-    const pw = Math.max(1, Math.round(w * pixelRatio));
-    const ph = Math.max(1, Math.round(h * pixelRatio));
-    renderer.setSize(pw, ph, false);
-    const key = `${pw}x${ph}`;
-    if (key === textureSize) return;
-    textureSize = key;
-    // A new size needs new GPU storage; dispose so the textures are re-allocated.
-    map.dispose();
-    mask.dispose();
-    map.image = scaled(img, pw, ph);
-    mask.image = scaled(maskImg, pw, ph);
-    map.needsUpdate = mask.needsUpdate = true;
-  };
-  const observer = new ResizeObserver(resize);
-  observer.observe(content);
-  resize();
-
-  let scrollSway = 0;
-  let idle = HAIR_SWAY.idle;
-  const sway = {
-    canvas,
-    setSway(v) { scrollSway = v; },
-    setIdle(v) { idle = v; },
-    setPixelRatioCap(cap) {
-      pixelRatio = Math.min(window.devicePixelRatio || 1, cap);
-      resize();
-    },
-    render(time) {
-      uniforms.uTime.value = time;
-      uniforms.uSway.value = scrollSway + idle * Math.sin((time / HAIR_SWAY.idlePeriod) * Math.PI * 2);
-      renderer.render(scene, camera);
-    },
-    dispose() {
-      observer.disconnect();
-      map.dispose();
-      mask.dispose();
-      material.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
-      canvas.remove();
-      img.style.visibility = '';
-    },
-  };
-
-  // Draw the first frame before swapping, so the canvas replaces the image invisibly.
-  content.appendChild(canvas);
-  sway.render(0);
-  img.style.visibility = 'hidden';
-  return sway;
-}
-
-/* ---------- 3D scene (NAD+): shared setup ----------
-   Each 3D scene draws with Three.js into a transparent canvas that fills its
-   object's .three-host (so the layout keeps the photo's proportions), lit by
-   a studio reflection map (RoomEnvironment through PMREM). The model sits on
-   a turntable: a fixed forward tilt, with the model turning inside it. */
-
-const hasWebGL = () => {
-  const probe = document.createElement('canvas');
-  return !!(probe.getContext('webgl2') || probe.getContext('webgl'));
-};
-
-async function createStudio(obj, pixelRatioCap, { tilt, idleSpeed, exposure = 1 }) {
-  const [THREE, { RoomEnvironment }] = await Promise.all([
-    import('three'),
-    import('three/addons/environments/RoomEnvironment.js'),
-  ]);
-  const host = obj.querySelector('.three-host');
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true });
-  renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = exposure;
-  renderer.domElement.className = 'three-canvas';
-
-  const scene = new THREE.Scene();
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
-
-  const spinner = new THREE.Group();
-  const tilted = new THREE.Group();
-  tilted.rotation.x = tilt;
-  tilted.add(spinner);
-  scene.add(tilted);
-
-  // Frame the model so it fits, with a little margin, at every angle of the
-  // turn: its points are projected at 72 angles and the camera distance is
-  // found by bisection.
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
-  let samples = [];
-  const fit = () => {
-    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const limit = 0.94; // share of the half-width/height the model may reach
-    const fits = (d) => samples.every(([v, r]) => {
-      const depth = d - v.z - r;
-      return depth > 0
-        && (Math.abs(v.x) + r) / (depth * tanV * camera.aspect) <= limit
-        && (Math.abs(v.y) + r) / (depth * tanV) <= limit;
-    });
-    let lo = 0, hi = 500;
-    for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
-    camera.position.set(0, 0, hi);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-  };
-  const resize = () => {
-    const w = host.clientWidth, h = host.clientHeight;
-    if (!w || !h) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    fit();
-  };
-  let dirty = true;
-  const observer = new ResizeObserver(() => { resize(); dirty = true; });
-  observer.observe(host);
-
-  // Only draws when the picture changes: at once while the turn moves with
-  // the scroll; for the slow idle turn alone, whenever it has moved by at
-  // least MIN_TURN (a fraction of a pixel at the molecule's edge).
-  const MIN_TURN = 0.0015;
-  let idleAngle = 0, drawnAngle = NaN;
-  const view = {
-    setPixelRatioCap(cap) {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
-      resize();
-      dirty = true;
-    },
-    // motion.turn: the scroll-driven turn; a very slow extra turn is added while the page is still.
-    render(motion, dt = 0) {
-      idleAngle += idleSpeed * dt * (1 - scrollBoost());
-      const angle = motion.turn + idleAngle;
-      if (!dirty && Math.abs(angle - drawnAngle) < MIN_TURN) return;
-      dirty = false;
-      drawnAngle = angle;
-      spinner.rotation.y = angle;
-      renderer.render(scene, camera);
-    },
-    dispose() {
-      observer.disconnect();
-      scene.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); });
-      scene.environment?.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
-      renderer.domElement.remove();
-      obj.classList.remove('is-3d');
-    },
-  };
-
-  return {
-    THREE, scene, spinner,
-    // points: [position, radius] pairs in the model's own frame.
-    frameAround(points) {
-      samples = [];
-      const turn = new THREE.Matrix4(), tiltM = new THREE.Matrix4().makeRotationX(tilt), spin = new THREE.Matrix4();
-      for (let k = 0; k < 72; k++) {
-        turn.multiplyMatrices(tiltM, spin.makeRotationY((k / 72) * Math.PI * 2));
-        points.forEach(([p, r]) => samples.push([p.clone().applyMatrix4(turn), r]));
-      }
-      resize();
-    },
-    // Draw the first frame, then crossfade from the photo to the canvas.
-    show() {
-      host.appendChild(renderer.domElement);
-      view.render({ turn: 0 });
-      obj.classList.add('is-3d');
-      return view;
-    },
-  };
-}
-
-/* ---------- NAD+: a clear glass molecule on a turntable ----------
-   The real 3D structure, read from a V2000 SDF file, drawn as glass spheres
-   (atoms) and rods (bonds). Three instanced meshes keep it to three draw
-   calls, so it stays light on phones. */
-
-const MOLECULE = {
-  heavyRadius: 0.38,
-  hydrogenRadius: 0.22,
-  bondRadius: 0.09,
-  tilt: 0.3,          // fixed forward tilt (radians), so the turn reads as 3D
-  idleSpeed: 0.03,    // extra idle turn while the page is still (radians per second)
-  opacity: 0.8,
-  bondOpacity: 0.85,
-  hydrogenOpacity: 0.6,
-  colour: 0xD9E3F0,   // a light, cool glass
-  edge: 0x6F84A3,     // the darker, bluer edge at grazing angles
-  tints: { O: 0xE2EBFF, N: 0xE9E4FF, P: 0xFFEFD9 }, // hints only: it reads as clear glass
-};
-
-// A tiny V2000 reader: the counts line gives the number of atoms and bonds,
-// then one line per atom (x, y, z, element) and per bond (two atom numbers).
-function parseSDF(text) {
-  const lines = text.split(/\r?\n/);
-  const counts = lines[3] || '';
-  if (!counts.includes('V2000')) throw new Error('Not a V2000 molfile');
-  const atomCount = parseInt(counts.slice(0, 3), 10);
-  const bondCount = parseInt(counts.slice(3, 6), 10);
-  const atoms = lines.slice(4, 4 + atomCount).map((l) => ({
-    x: parseFloat(l.slice(0, 10)),
-    y: parseFloat(l.slice(10, 20)),
-    z: parseFloat(l.slice(20, 30)),
-    el: l.slice(31, 34).trim(),
-  }));
-  const bonds = lines.slice(4 + atomCount, 4 + atomCount + bondCount).map((l) => [
-    parseInt(l.slice(0, 3), 10) - 1,
-    parseInt(l.slice(3, 6), 10) - 1,
-  ]);
-  if (!atoms.length || atoms.some((a) => !Number.isFinite(a.x + a.y + a.z))) throw new Error('Bad atom block');
-  return { atoms, bonds };
-}
-
-// Centre the molecule on its centroid and turn it so its longest axis lies
-// across the screen and its flattest axis points at the viewer (the widest
-// view faces front at rest). Principal axes by power iteration.
-function orientMolecule(THREE, atoms) {
-  const n = atoms.length;
-  const c = atoms.reduce((s, a) => s.add(new THREE.Vector3(a.x, a.y, a.z)), new THREE.Vector3()).divideScalar(n);
-  const pts = atoms.map((a) => new THREE.Vector3(a.x, a.y, a.z).sub(c));
-  const cov = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  pts.forEach((p) => {
-    const v = [p.x, p.y, p.z];
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) cov[i][j] += v[i] * v[j];
-  });
-  const mul = (m, v) => new THREE.Vector3(
-    m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
-    m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
-    m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z);
-  const principal = (m, start) => {
-    let v = start.clone().normalize();
-    for (let k = 0; k < 64; k++) v = mul(m, v).normalize();
-    return v;
-  };
-  const e1 = principal(cov, new THREE.Vector3(1, 0.3, 0.1));
-  const l1 = mul(cov, e1).dot(e1);
-  const deflated = cov.map((row, i) => row.map((x, j) => x - l1 * e1.getComponent(i) * e1.getComponent(j)));
-  let e2 = principal(deflated, new THREE.Vector3(0.1, 1, 0.3));
-  e2.sub(e1.clone().multiplyScalar(e2.dot(e1))).normalize();
-  const e3 = new THREE.Vector3().crossVectors(e1, e2);
-  const basis = new THREE.Matrix4().makeBasis(e1, e2, e3).transpose(); // world → (e1, e2, e3)
-  return pts.map((p) => p.applyMatrix4(basis));
-}
-
-async function createMolecule(obj, src, pixelRatioCap) {
-  if (!hasWebGL()) return null;
-
-  // 3D structure: PubChem CID 5892 (NCBI)
-  const text = await fetch(src).then((r) => { if (!r.ok) throw new Error(`Could not load ${src}`); return r.text(); });
-  const { atoms, bonds } = parseSDF(text);
-  const studio = await createStudio(obj, pixelRatioCap, MOLECULE);
-  const { THREE, scene, spinner } = studio;
-  const pts = orientMolecule(THREE, atoms);
-
-  const light = new THREE.DirectionalLight(0xffffff, 1.6);
-  light.position.set(-3, 5, 6);
-  scene.add(light);
-
-  // Glass without transmission (over a transparent canvas it renders dark and
-  // muddy): a light cool tint, crisp reflections, and a fresnel rim that
-  // darkens towards a deeper blue at grazing angles, so every sphere and rod
-  // has a clear outline, like glass photographed on white. At this opacity
-  // the glass writes depth, so parts behind a sphere never show through it
-  // in the wrong order.
-  const edge = new THREE.Color(MOLECULE.edge); // linear, like the shader's colours
-  const glass = (opacity) => {
-    const material = new THREE.MeshPhysicalMaterial({
-      color: MOLECULE.colour,
-      metalness: 0,
-      roughness: 0.05,
-      clearcoat: 1,
-      clearcoatRoughness: 0.05,
-      ior: 1.5,
-      envMapIntensity: 1.5,
-      transparent: true,
-      opacity,
-    });
-    material.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
-        float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 1.8);
-        outgoingLight = mix(outgoingLight, vec3(${edge.r.toFixed(4)}, ${edge.g.toFixed(4)}, ${edge.b.toFixed(4)}), 0.85 * rim);
-        diffuseColor.a = min(1.0, diffuseColor.a + 0.4 * rim);
-        #include <opaque_fragment>`);
-    };
-    return material;
-  };
-
-  const heavy = [], hydrogens = [];
-  atoms.forEach((a, i) => (a.el === 'H' ? hydrogens : heavy).push(i));
-  const sphere = new THREE.SphereGeometry(1, 32, 20);
-  const rod = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
-  const heavyMesh = new THREE.InstancedMesh(sphere, glass(MOLECULE.opacity), heavy.length);
-  const hydrogenMesh = new THREE.InstancedMesh(sphere, glass(MOLECULE.hydrogenOpacity), hydrogens.length);
-  const bondMesh = new THREE.InstancedMesh(rod, glass(MOLECULE.bondOpacity), bonds.length);
-
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3();
-  const colour = new THREE.Color();
-  const up = new THREE.Vector3(0, 1, 0);
-  const placeAtoms = (mesh, indices, radius) => indices.forEach((atomIndex, k) => {
-    mesh.setMatrixAt(k, m.compose(pts[atomIndex], q.identity(), s.setScalar(radius)));
-    mesh.setColorAt(k, colour.set(MOLECULE.tints[atoms[atomIndex].el] ?? 0xffffff));
-  });
-  placeAtoms(heavyMesh, heavy, MOLECULE.heavyRadius);
-  placeAtoms(hydrogenMesh, hydrogens, MOLECULE.hydrogenRadius);
-  bonds.forEach(([a, b], k) => {
-    const dir = pts[b].clone().sub(pts[a]);
-    const mid = pts[a].clone().add(pts[b]).multiplyScalar(0.5);
-    q.setFromUnitVectors(up, dir.clone().normalize());
-    bondMesh.setMatrixAt(k, m.compose(mid, q, s.set(MOLECULE.bondRadius, dir.length(), MOLECULE.bondRadius)));
-  });
-
-  // The atoms draw first, then the rods between them.
-  heavyMesh.renderOrder = 0;
-  hydrogenMesh.renderOrder = 1;
-  bondMesh.renderOrder = 2;
-  spinner.add(heavyMesh, hydrogenMesh, bondMesh);
-
-  const radius = (i) => (atoms[i].el === 'H' ? MOLECULE.hydrogenRadius : MOLECULE.heavyRadius);
-  studio.frameAround(pts.map((p, i) => [p, radius(i)]));
-  return studio.show();
-}
-
-/* ---------- Running the live effects ---------- */
-
-let lives = [];
-
-// Sets up an effect (its WebGL view), once.
-function initLive(l) {
-  if (!l.init || l.inited) return;
-  l.inited = true;
-  l.init();
-}
-
-// On the stage: an effect runs while its treatment is visible, its frames
-// are decoded while it is near (up to one treatment away), and it is set up
-// once it approaches, unless idle time came first (initWhenIdle).
-function updateLives(time) {
-  for (const l of lives) {
-    if (time >= l.initFrom && time <= l.to) initLive(l);
-    const near = time >= l.nearFrom && time <= l.nearTo;
-    if (near !== l.near) {
-      l.near = near;
-      if (near) l.warm?.();
-      else l.cool?.();
-    }
-    const visible = time >= l.from && time <= l.to;
-    if (visible === l.visible) continue;
-    l.visible = visible;
-    l.last = 0;
-    if (visible) l.start?.();
-    else l.stop?.();
-  }
-}
-
-// Runs a visible effect's frame, at most 60 times a second.
-function frameLive(l, time) {
-  if (!l.visible || !l.frame) return;
-  if (l.last && time - l.last < 1 / 60 - 0.002) return;
-  const dt = l.last ? Math.min(0.1, time - l.last) : 1 / 60;
-  l.last = time;
-  l.frame(time, dt);
-}
-
-// Driven by gsap.ticker; nothing runs once the stage has scrolled out of view.
-let stageOnScreen = true;
-function tickLives(time) {
-  if (!stageOnScreen) return;
-  for (const l of lives) frameLive(l, time);
-}
-
-/* ---------- Idle time ----------
-   Setting up a WebGL view takes a moment of main-thread work (shaders,
-   lighting), so it is done while the page is still, never mid-scroll. */
-
-let lastScrollAt = -Infinity;
-window.addEventListener('scroll', () => { lastScrollAt = performance.now(); }, { passive: true });
-
-// Calls fn once the page has been still for a moment and the browser is idle.
-// Returns a function that cancels it.
-function whenIdle(fn, stillFor = 500) {
-  let cancelled = false, timer = 0;
-  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
-  const attempt = () => {
-    if (cancelled) return;
-    const wait = stillFor - (performance.now() - lastScrollAt);
-    if (wait > 0) { timer = setTimeout(attempt, wait + 50); return; }
-    idle(() => {
-      if (cancelled) return;
-      if (performance.now() - lastScrollAt < stillFor) attempt();
-      else fn();
-    }, { timeout: 1000 });
-  };
-  timer = setTimeout(attempt, 300);
-  return () => { cancelled = true; clearTimeout(timer); };
-}
-
-// Sets up each effect in turn, in idle time.
-function initWhenIdle(list) {
-  let cancel = () => {};
-  const next = (i) => {
-    while (i < list.length && (!list[i].init || list[i].inited)) i++;
-    if (i >= list.length) return;
-    cancel = whenIdle(() => { initLive(list[i]); next(i + 1); });
-  };
-  next(0);
-  return () => cancel();
-}
-
-// Bumped on every resize, so layout measurements cached by the scenes are re-taken.
-let layoutVersion = 0;
-window.addEventListener('resize', () => { layoutVersion++; }, { passive: true });
-
-/* ==========================================================================
-   6. Motion
-   ========================================================================== */
-
-let lenis = null;
-let stage = null; // { st, pin, tl, ids, anchors, labelScroll } once the stage is live
-let phoneStage = null; // { anchors, goTo(id) } while the phones' treatments are live
-
-// Header gains its divider once the page has scrolled.
-function initHeader() {
-  const header = document.getElementById('site-header');
-  if (!header) return;
-  const update = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
-  update();
-  window.addEventListener('scroll', update, { passive: true });
-}
-
-/* ---------- Programmatic scrolling (links, progress indicator, snapping) ---------- */
-
-let autoScrolling = false;
-const easeInOutSine = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
-const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-
-function glideTo(y, duration, easing = easeInOutCubic) {
-  if (!lenis) {
-    window.scrollTo({ top: y, behavior: 'smooth' });
-    return;
-  }
-  autoScrolling = true;
-  lenis.scrollTo(y, { duration, easing, onComplete: () => { autoScrolling = false; } });
-}
-
-function scrollToTreatment(id) {
-  if (phoneStage) {
-    phoneStage.goTo(id);
-    return;
-  }
-  if (!stage) return;
-  const y = stage.labelScroll(id);
-  const distance = Math.abs(y - window.scrollY) / window.innerHeight;
-  glideTo(y, gsap.utils.clamp(0.9, 2, 0.8 + distance * 0.2));
-}
-
 // An anchor on a closed <details> (e.g. #vitamin-d in the standalone
 // section) opens it. Returns whether the target is one.
 function openTarget(target) {
@@ -2455,848 +969,92 @@ function openTarget(target) {
   return true;
 }
 
-// Where to scroll so an accordion entry sits just below the fixed header,
-// measured without the fade-up transform its list may still be running.
+// Where to scroll so an accordion entry sits just below the fixed header.
 function entryScroll(target) {
   const header = document.getElementById('site-header');
   return offsetWithin(target, null).top - (header ? header.offsetHeight : 0) - 24;
 }
 
-// In-page links scroll smoothly through Lenis. Links to a featured treatment
-// go to its rest point on the stage. Bare "#" links are booking placeholders.
+const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Going to an in-page target. A nearby one (within about a screen and a
+// half) glides there with the browser's own smooth scrolling; anything
+// further away is a straight jump, so the page never streams through every
+// treatment on the way (as Apple's pages do). The target's scroll-margin
+// and the page's scroll-padding keep it clear of the header and the bar.
+function goTo(target, { instant = false } = {}) {
+  const isEntry = openTarget(target);
+  const distance = Math.abs(isEntry ? entryScroll(target) - window.scrollY : target.getBoundingClientRect().top);
+  const behavior = instant || reduceMotion() || distance > window.innerHeight * 1.5 ? 'auto' : 'smooth';
+  if (isEntry) window.scrollTo({ top: entryScroll(target), behavior });
+  else target.scrollIntoView({ block: 'start', behavior });
+}
+
+// Every in-page link on the home page ("Treatments", "Book now", the bar
+// of names, Next…) goes through goTo. Bare "#" links are booking placeholders.
 function initAnchors() {
+  document.documentElement.classList.add('js-jumps');
   document.addEventListener('click', (event) => {
-    const link = event.target.closest('a[href^="#"], [data-goto]');
-    if (!link) return;
-
-    if (link.dataset.goto) {
-      scrollToTreatment(link.dataset.goto);
-      return;
-    }
-
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest('a[href^="#"]');
+    // The skip link keeps the browser's own behaviour (it moves the focus too).
+    if (!link || link.classList.contains('skip-link')) return;
     const hash = link.getAttribute('href');
-    if (hash === '#') {
-      event.preventDefault();
-      return;
-    }
+    event.preventDefault();
+    if (hash === '#') return;
     const id = decodeURIComponent(hash.slice(1));
-    const featured = stage || phoneStage;
-    if (featured && featured.anchors.includes(id)) {
-      event.preventDefault();
-      scrollToTreatment(id);
-      history.pushState(null, '', hash);
-      return;
-    }
+    const target = id === 'top' ? document.getElementById('top') || document.body : document.getElementById(id);
+    if (!target) return;
+    if (id === 'top') window.scrollTo({ top: 0, behavior: reduceMotion() || window.scrollY > window.innerHeight * 1.5 ? 'auto' : 'smooth' });
+    else goTo(target);
+    if (location.hash !== hash) history.pushState(null, '', hash);
+  });
+  // Going back or forward between anchors, or arriving at one: straight
+  // there (the page is built by this script, so the browser can't find it
+  // on its own when it first loads).
+  const toHash = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!id || id === 'top') return;
     const target = document.getElementById(id);
-    const isEntry = openTarget(target);
-    if (target && lenis) {
-      event.preventDefault();
-      // Lenis honours the CSS scroll-padding-top, which clears the fixed header.
-      lenis.scrollTo(isEntry ? entryScroll(target) : target);
-      history.pushState(null, '', hash);
+    if (target) goTo(target, { instant: true });
+  };
+  window.addEventListener('popstate', toHash);
+  toHash();
+  // Web fonts can move things a little: settle on the target again once they've loaded.
+  if (location.hash && document.fonts && document.fonts.ready) document.fonts.ready.then(toHash);
+}
+
+// Each block below the hero (headings, cards, tiles) rises gently as it
+// scrolls into view, once: CSS transitions started by an
+// IntersectionObserver (the hero's own entrance is pure CSS). On phones the
+// rise is shorter and the cards are simply there, ready to scan.
+function initReveals() {
+  if (reduceMotion() || !('IntersectionObserver' in window)) return;
+  const phone = window.matchMedia('(max-width: 819.98px)').matches;
+  const targets = [...document.querySelectorAll(phone ? '[data-fade]' : '[data-fade], [data-card]')];
+  const stagger = phone ? 30 : 70;
+  const io = new IntersectionObserver((entries) => {
+    let k = 0;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      el.style.transitionDelay = `${Math.min(k++, 6) * stagger}ms`;
+      el.classList.add('is-in');
+      io.unobserve(el);
+      // Once it has risen, hovering (a card's lift) responds straight away.
+      el.addEventListener('transitionend', () => { el.style.transitionDelay = ''; }, { once: true });
     }
-  });
-  // Arriving at, or going back to, an anchor on a closed <details> opens it
-  // (with or without Lenis).
-  const openHash = () => openTarget(document.getElementById(decodeURIComponent(location.hash.slice(1))));
-  window.addEventListener('hashchange', openHash);
-  openHash();
-}
-
-// After the stage exists, honour a #hash in the address (e.g. #iron or #book).
-function jumpToHash() {
-  const id = decodeURIComponent(location.hash.slice(1));
-  if (!id || id === 'top') return;
-  if (phoneStage && phoneStage.anchors.includes(id)) {
-    phoneStage.goTo(id, true);
-    return;
-  }
-  if (!lenis) return;
-  if (stage && stage.anchors.includes(id)) {
-    lenis.scrollTo(stage.labelScroll(id), { immediate: true, force: true });
-  } else {
-    const target = document.getElementById(id);
-    if (target) lenis.scrollTo(openTarget(target) ? entryScroll(target) : target, { immediate: true, force: true });
-  }
-}
-
-/* ---------- Gentle snapping, done through Lenis ----------
-   When scrolling has stopped inside the pinned stage, glide to the nearest
-   rest point. The very start and end of the pin count as rest points too, so
-   the page never pulls you back while you're entering or leaving it. */
-
-let snapTimer = 0;
-let touching = false;
-
-function maybeSnap() {
-  if (!stage || !lenis || autoScrolling || touching) return;
-  const { pin, ids, labelScroll } = stage;
-  const y = lenis.scroll;
-  if (y <= pin.start + 1 || y >= pin.end - 1) return;
-  const targets = [pin.start, ...ids.map(labelScroll), pin.end];
-  const nearest = targets.reduce((best, t) => (Math.abs(t - y) < Math.abs(best - y) ? t : best));
-  const distance = Math.abs(nearest - y);
-  if (distance < 2) return;
-  const [min, max] = STAGE.snap.duration;
-  glideTo(nearest, min + (max - min) * Math.min(1, distance / (window.innerHeight * 0.75)), easeInOutSine);
-}
-
-// Called on every Lenis scroll event: snapping waits until scrolling has been still for a moment.
-function scheduleSnap() {
-  clearTimeout(snapTimer);
-  if (!autoScrolling && !touching) snapTimer = setTimeout(maybeSnap, STAGE.snap.idle);
-}
-
-// Any direct input takes over from an automatic glide and postpones snapping.
-function initSnapInputs() {
-  const userInput = () => {
-    autoScrolling = false;
-    clearTimeout(snapTimer);
-  };
-  window.addEventListener('wheel', userInput, { passive: true });
-  window.addEventListener('keydown', userInput);
-  window.addEventListener('touchstart', () => { touching = true; userInput(); }, { passive: true });
-  const release = () => { touching = false; scheduleSnap(); };
-  window.addEventListener('touchend', release, { passive: true });
-  window.addEventListener('touchcancel', release, { passive: true });
-}
-
-/* ---------- The stage ---------- */
-
-function buildStage(root, isDesktop) {
-  const L = STAGE.segment;
-  const n = FEATURED.length;
-  const scenes = FEATURED.map((t) => root.querySelector(`.scene[data-scene="${t.id}"]`));
-  const copies = FEATURED.map((t) => root.querySelector(`.stage__copy[data-copy="${t.id}"]`));
-  const steps = [...root.querySelectorAll('.stage__step')];
-  const bg = root.querySelector('.stage__bg');
-  const defs = FEATURED.map((t) => SCENES[t.showcase.scene] || SCENES.fade);
-
-  // Where fraction f of treatment i's segment falls, from the segment's
-  // start. A longer treatment keeps the normal entrance and exit and
-  // stretches its rest in between; at length 1 this is simply f × L.
-  const lengths = FEATURED.map((t) => (t.length || 1) * L);
-  const E = STAGE.enterEnd, X = STAGE.exitStart;
-  const at = (i, f) => {
-    if (f <= E) return f * L;
-    if (f >= X) return lengths[i] - (1 - f) * L;
-    return E * L + ((f - E) / (X - E)) * (lengths[i] - (E + 1 - X) * L);
-  };
-
-  // Segment starts and rest labels. The next segment begins where this one's exit starts.
-  const starts = [0];
-  for (let i = 1; i < n; i++) starts.push(starts[i - 1] + at(i - 1, X));
-  const labelAt = defs.map((d) => d.label ?? STAGE.label);
-  const labels = starts.map((s, i) => s + at(i, labelAt[i]));
-  const end = starts[n - 1] + lengths[n - 1];
-
-  // The active treatment changes in the middle of each text handover.
-  const mid = ([a, b]) => (a + b) / 2;
-  const switches = starts.map((s, i) => (i === 0 ? -Infinity : (starts[i - 1] + at(i - 1, mid(STAGE.textOut)) + s + at(i, mid(STAGE.textIn))) / 2));
-
-  let active = -1;
-  const setActive = (index) => {
-    if (index === active) return;
-    active = index;
-    copies.forEach((el, i) => {
-      el.classList.toggle('is-active', i === index);
-      el.inert = i !== index;
-    });
-    steps.forEach((el, i) => {
-      el.classList.toggle('is-active', i === index);
-      if (i === index) el.setAttribute('aria-current', 'step');
-      else el.removeAttribute('aria-current');
-    });
-  };
-
-  // Safety net: only the treatments whose segment contains the playhead (the
-  // current one, plus the one it is handing over to) may show. Every other
-  // scene (with its shadow, canvases and 3D) and text block is hidden, and
-  // live effects only run inside their own segment. Within a segment the
-  // tweens decide; re-entering a segment always crosses one of its tweens.
-  const windows = starts.map((s, i) => [s, i === n - 1 ? Infinity : s + lengths[i]]);
-  const isHidden = (el) => el.style.visibility === 'hidden' && el.style.opacity === '0';
-  const sync = (time) => {
-    windows.forEach(([a, b], i) => {
-      const on = time >= a && time <= b;
-      if (on) {
-        if (isHidden(scenes[i])) gsap.set(scenes[i], { autoAlpha: 1 });
-        return;
-      }
-      if (!isHidden(scenes[i])) gsap.set(scenes[i], { autoAlpha: 0 });
-      if (!isHidden(copies[i])) gsap.set(copies[i], { autoAlpha: 0 });
-    });
-  };
-
-  lives = [];
-  const preloads = [];
-  const onUpdate = () => {
-    const time = tl.time();
-    let index = 0;
-    switches.forEach((at, i) => { if (time >= at) index = i; });
-    sync(time);
-    setActive(index);
-    updateLives(time);
-  };
-
-  const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' }, onUpdate });
-
-  // Visuals
-  FEATURED.forEach((t, i) => {
-    const start = starts[i];
-    const scene = scenes[i];
-    const isLast = i === n - 1;
-    // Live effects run while the treatment can be seen (after its fade in
-    // starts, until its fade out ends), and keep their frames decoded from
-    // one treatment before until one after.
-    const from = start + at(i, FADE_IN[0]), to = isLast ? end + 1 : start + at(i, FADE_OUT[1]);
-    const ft = (target, a, b, f0, f1, ease = 'none') =>
-      tl.fromTo(target, a, { ...b, duration: at(i, f1) - at(i, f0), ease, immediateRender: false }, start + at(i, f0));
-    const live = (effect) => lives.push({
-      from, to, initFrom: from, nearFrom: start - L, nearTo: to + L,
-      visible: false, near: false, inited: false, last: 0, ...effect,
-    });
-    const idle = (target, vars) => {
-      const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
-      live({ start: () => tween.play(), stop: () => tween.pause() });
-    };
-
-    const obj = scene.querySelector('.obj');
-    const shadow = scene.querySelector('.obj__shadow');
-    defs[i].animate({ t, tl, scene, obj, shadow, ft, idle, live, start, L, label: labelAt[i], isLast, isDesktop, phone: false });
-    if (defs[i].preload) preloads.push(defs[i].preload(t, scene, { cap: isDesktop ? 2 : 1.5, half: false }).catch(() => null));
-    tl.addLabel(t.id, labels[i]);
-  });
-
-  // Text: in during each entrance, fully visible through the rest, out at the exit.
-  gsap.set(copies, { autoAlpha: 0, y: 30 });
-  const [in0, in1] = STAGE.textIn;
-  const [out0, out1] = STAGE.textOut;
-  copies.forEach((copy, i) => {
-    tl.fromTo(copy, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: at(i, in1) - at(i, in0), ease: 'power2.out', immediateRender: false }, starts[i] + at(i, in0));
-    if (i < n - 1) {
-      tl.fromTo(copy, { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -30, duration: at(i, out1) - at(i, out0), ease: 'power1.inOut', immediateRender: false }, starts[i] + at(i, out0));
-    }
-  });
-
-  // Background: a gentle cross-fade between tints during each handover,
-  // then to Porcelain so the stage releases seamlessly into the grid.
-  const tints = FEATURED.map((t) => t.showcase.tint || '#F7F4EF');
-  gsap.set(bg, { backgroundColor: tints[0] });
-  for (let i = 0; i < n - 1; i++) {
-    tl.fromTo(bg, { backgroundColor: tints[i] }, { backgroundColor: tints[i + 1], duration: (1 - STAGE.exitStart) * L, ease: 'power1.inOut', immediateRender: false }, starts[i + 1]);
-  }
-  const lastFade = 0.14 * L;
-  tl.fromTo(bg, { backgroundColor: tints[n - 1] }, { backgroundColor: STAGE.finalTint, duration: lastFade, ease: 'power1.inOut', immediateRender: false }, end - lastFade);
-
-  tl.set({}, {}, end); // the timeline runs to the very end of the pin
-  sync(0);
-  setActive(0);
-  updateLives(0);
-  // After a refresh (resize, fonts) the playhead may not move, so re-apply.
-  const resync = () => { const time = tl.time(); sync(time); updateLives(time); };
-  return { tl, labels, end, preloads, resync };
-}
-
-// Every stage image (layers, 3D fallbacks) is loaded and decoded, and every
-// image sequence (the scenes' preload) is decoded and drawn, before the stage
-// starts, so nothing pops in while scrolling.
-async function preloadStage(root, preloads) {
-  const images = [...root.querySelectorAll('img')];
-  await Promise.all([
-    ...images.map((img) => img.decode().catch(() => {})),
-    ...preloads,
-  ]);
-}
-
-function initStage(context, isDesktop) {
-  const stageRoot = document.getElementById('stage-root');
-  if (!stageRoot || !MENU || !FEATURED.length) return () => {};
-  stageRoot.insertAdjacentHTML('afterbegin', stageHTML(FEATURED));
-  const root = document.getElementById('stage');
-
-  document.documentElement.classList.add('has-stage');
-  const { tl, end, preloads, resync } = buildStage(root, isDesktop);
-  gsap.ticker.add(tickLives);
-  const onScreen = new IntersectionObserver(([entry]) => { stageOnScreen = entry.isIntersecting; });
-  onScreen.observe(root);
-
-  let alive = true;
-  let cancelIdle = () => {};
-  (async () => {
-    // Every image and frame is decoded, Three.js is fetched and the fonts are
-    // in before the ScrollTrigger exists, so nothing loads mid-scroll.
-    const fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
-    const needs = (test) => FEATURED.some((t) => test(t.showcase));
-    const addon = (path) => import(`three/addons/${path}`).catch(() => null);
-    const three = needs((s) => s.swayMask || s.model) ? import('three').catch(() => null) : null;
-    const room = needs((s) => s.model) ? addon('environments/RoomEnvironment.js') : null;
-    await Promise.all([preloadStage(root, preloads), fonts, three, room]);
-    if (!alive) return;
-
-    context.add(() => {
-      const per = isDesktop ? STAGE.pinPerTreatment.desktop : STAGE.pinPerTreatment.mobile;
-      // One scrubbed driver covers the approach and the pin. Its first part
-      // (the stage scrolling into view) plays the first entrance, up to
-      // `intro`; the pinned part plays the rest of the timeline.
-      const intro = STAGE.enterEnd * STAGE.segment;
-      let k = 0; // share of the driver's scroll taken by the approach
-      const toTime = (p) => (p <= k ? (p / k) * intro : intro + ((p - k) / (1 - k)) * (end - intro));
-      const toProgress = (time) => (time <= intro ? (time / intro) * k : k + ((time - intro) / (end - intro)) * (1 - k));
-      const proxy = { p: 0 };
-      const driver = gsap.to(proxy, { p: 1, duration: 1, ease: 'none', paused: true, onUpdate: () => tl.time(toTime(proxy.p)) });
-
-      // Every treatment's rest-to-rest scroll is `per`, as if all had length
-      // 1; the pin grows with the timeline, so a longer treatment only adds
-      // its own extra scroll.
-      const baseEnd = STAGE.exitStart * STAGE.segment * (FEATURED.length - 1) + STAGE.segment;
-      const pinLength = (per * FEATURED.length * (end - intro)) / (baseEnd - intro);
-      const pin = ScrollTrigger.create({
-        trigger: root,
-        start: 'top top',
-        end: () => `+=${pinLength}%`,
-        pin: true,
-        anticipatePin: 1,
-        refreshPriority: 2,
-      });
-      const st = ScrollTrigger.create({
-        trigger: root,
-        start: `top ${STAGE.approach * 100}%`,
-        end: () => pin.end,
-        scrub: STAGE.scrub,
-        animation: driver,
-        refreshPriority: 1,
-        onRefresh: (self) => {
-          k = (pin.start - self.start) / Math.max(1, self.end - self.start);
-          resync();
-        },
-      });
-      const labelScroll = (id) => st.start + toProgress(tl.labels[id]) * (st.end - st.start);
-      // ids: every rest point; anchors: the ids that are this stage's own page
-      // anchors (a standalone item's anchor is its entry further down).
-      const ids = FEATURED.map((t) => t.id);
-      const anchors = FEATURED.filter((t) => !t.standalone).map((t) => t.id);
-      stage = { st, pin, tl, ids, anchors, labelScroll };
-    });
-    ScrollTrigger.refresh();
-    // The pin just made the page taller; let Lenis re-measure before any jump.
-    if (lenis) lenis.resize();
-    jumpToHash();
-    // The WebGL views are set up while the page is still, before they are needed.
-    cancelIdle = initWhenIdle(lives);
-  })();
-
-  return () => {
-    alive = false;
-    stage = null;
-    cancelIdle();
-    onScreen.disconnect();
-    stageOnScreen = true;
-    lives.forEach((l) => { if (l.visible) l.stop?.(); l.visible = false; });
-    lives = [];
-    gsap.ticker.remove(tickLives);
-    root.querySelectorAll('.scene').forEach((scene) => {
-      dispose3D(scene);
-      scene.frameSequence?.dispose();
-    });
-    root.remove();
-    document.documentElement.classList.remove('has-stage');
-  };
-}
-
-/* ---------- Phones: the treatments as full-screen sections ("reels") ----------
-   The page scrolls natively (no Lenis) and snaps (styles.css) so that one
-   flick brings the next section to fill the screen below the header.
-   A section's scene follows the scroll while its section slides up (from
-   when its top enters the screen until it reaches the header: to
-   REELS.scrub of the way to its rest label); once the page is still, the
-   rest plays by itself. A finished scene stays finished while any part of
-   its section is on screen, and scrolling back up finds the ones above
-   finished; a section starts again once it is completely below the screen.
-   Only the current section and REELS.near either side are built (their
-   pictures, timeline and frames), and never while a finger is down or the
-   page is moving; until a scene is ready its section shows its finished
-   picture. Positions are measured once (and on resize), never while
-   scrolling. The pill at the bottom opens a sheet listing every treatment.
-   With animated false (reduced motion) the sections show their finished
-   pictures, with no snapping and no animation. */
-
-function initReels(context, animated) {
-  const stageRoot = document.getElementById('stage-root');
-  if (!stageRoot || !MENU || !FEATURED.length) return () => {};
-  stageRoot.insertAdjacentHTML('afterbegin', reelsHTML(FEATURED, animated));
-  document.body.insertAdjacentHTML('beforeend', reelsSheetHTML(FEATURED));
-  const root = document.getElementById('stage');
-  const pill = document.querySelector('.reels-pill');
-  const pillLabel = pill.querySelector('.reels-pill__label');
-  const sheet = document.getElementById('reels-sheet');
-  const panel = sheet.querySelector('.reels-sheet__panel');
-  const header = document.getElementById('site-header');
-  const footer = document.querySelector('.site-footer');
-  const cue = root.querySelector('.reel__cue');
-  const html = document.documentElement;
-  html.classList.add('has-reels');
-  if (animated) html.classList.add('has-reel-snap');
-  const n = FEATURED.length;
-  const clamp01 = gsap.utils.clamp(0, 1);
-
-  let alive = true;
-  const offs = [];
-  const on = (el, type, fn, opts) => { el.addEventListener(type, fn, opts); offs.push(() => el.removeEventListener(type, fn, opts)); };
-
-  const reels = FEATURED.map((t, i) => {
-    const def = SCENES[t.showcase.scene] || SCENES.fade;
-    const el = root.querySelector(`[data-reel="${i}"]`);
-    return {
-      i, t, def, el,
-      visual: el.querySelector('.reel__visual'),
-      still: el.querySelector('img.reel__still'),
-      label: def.label ?? STAGE.label,
-      seconds: t.mobileSeconds || REELS.seconds,
-      top: 0, h: 0, vw: 0, visible: false,
-      built: false, loading: null, loaded: false, shown: false, stillLoaded: false, wantsPlay: false,
-      scene: null, tl: null, lives: [], play: null, done: false,
-    };
-  });
-
-  /* Pictures. The largest have 800px copies, chosen through srcset. */
-  const addCopies = (scope) => scope.querySelectorAll('img[data-src]').forEach((img) => {
-    const src = img.dataset.src;
-    if (PHONE_COPIES.has(src) && !img.dataset.srcset) img.dataset.srcset = `${phoneCopy(src)} 800w, ${src} ${img.getAttribute('width')}w`;
-  });
-  addCopies(root);
-  const loadImg = (img, width) => {
-    if (img.dataset.srcset) {
-      img.sizes = `${Math.ceil(width || 400)}px`;
-      img.srcset = img.dataset.srcset;
-      img.removeAttribute('data-srcset');
-    }
-    if (img.dataset.src) {
-      img.src = img.dataset.src;
-      img.removeAttribute('data-src');
-    }
-    return img.decode().catch(() => {});
-  };
-  const loadStill = (r) => {
-    r.stillLoaded = true;
-    return r.still ? loadImg(r.still, r.vw) : Promise.resolve();
-  };
-
-  /* Where everything is: measured once, and again on resize. */
-  const size = { vh: 1, header: 0, width: 0 };
-  const measure = () => {
-    size.vh = window.innerHeight;
-    size.header = header ? header.offsetHeight : 0;
-    size.width = root.clientWidth;
-    const y = window.scrollY;
-    reels.forEach((r) => {
-      const box = r.el.getBoundingClientRect();
-      r.top = box.top + y;
-      r.h = box.height;
-      r.vw = r.visual.clientWidth;
-    });
-    // The page below the treatments is one snap area, running on through the footer.
-    if (footer) html.style.setProperty('--footer-h', `${footer.offsetHeight}px`);
-    update();
-  };
-
-  /* Scenes: each on its own timeline, played by the scroll, then by time. */
-  const reset = (r) => {
-    if (r.play) { r.play.kill(); r.play = null; }
-    r.done = false;
-    r.tl.time(0);
-  };
-  const finish = (r) => {
-    if (r.play) { r.play.kill(); r.play = null; }
-    r.done = true;
-    r.tl.time(r.label);
-  };
-  const playOn = (r) => {
-    if (!r.tl || !r.shown || r.done || r.play) return;
-    const from = r.tl.time();
-    const duration = Math.max(0.3, r.seconds * clamp01((r.label - from) / (r.label * (1 - REELS.scrub))));
-    r.play = r.tl.tweenTo(r.label, {
-      duration, ease: REELS.ease,
-      onComplete: () => { r.play = null; r.done = true; },
-    });
-  };
-  const setVisible = (r, visible) => {
-    if (visible === r.visible) return;
-    r.visible = visible;
-    r.lives.forEach((l) => {
-      l.visible = visible;
-      l.last = 0;
-      if (visible) l.start?.();
-      else l.stop?.();
-    });
-  };
-
-  let focus = 0;    // the section in the middle of the screen (or the last one that was)
-  let current = -1; // the same, or −1 when no section is there
-  const setCurrent = (i) => {
-    current = i;
-    if (i >= 0) {
-      focus = i;
-      pillLabel.textContent = `${FEATURED[i].short} · ${i + 1} of ${n}`;
-      if (i > 0 && cue) cue.classList.add('is-gone');
-    }
-    pill.classList.toggle('is-shown', i >= 0);
-    pump();
-  };
-
-  // Everything follows the scroll position: which sections are visible, the
-  // scrubbed scenes, and the current one.
-  function update() {
-    const y = window.scrollY, { vh, header: top } = size;
-    const middle = y + (top + vh) / 2;
-    let now = -1;
-    for (const r of reels) {
-      const rel = r.top - y;
-      const below = rel >= vh - 1;
-      const above = rel + r.h <= top + 1;
-      setVisible(r, !below && !above);
-      if (r.top <= middle && r.top + r.h > middle) now = r.i;
-      if (!r.shown) continue;
-      if (below) { if (r.done || r.play || r.tl.time() !== 0) reset(r); continue; }
-      if (above) { if (!r.done) finish(r); continue; }
-      if (!r.done && !r.play) r.tl.time(clamp01((vh - rel) / Math.max(1, vh - top)) * REELS.scrub * r.label);
-    }
-    if (now !== current) setCurrent(now);
-    if (cue && y > reels[0].top - top + 24) cue.classList.add('is-gone');
-  }
-  let frame = 0;
-  const schedule = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); };
-
-  // The page is still: the section resting under the header plays on.
-  let moving = false, fingerDown = false, stillTimer = 0;
-  const settle = () => {
-    if (!alive) return;
-    moving = false;
-    const y = window.scrollY;
-    const r = reels.find((s) => Math.abs(s.top - y - size.header) < 2);
-    reels.forEach((s) => { if (s.loaded && !s.shown) show(s); });
-    if (r && r.shown) {
-      if (r.wantsPlay) { r.wantsPlay = false; reset(r); }
-      playOn(r);
-    }
-    trim();
-    pump();
-  };
-  const moved = () => {
-    moving = true;
-    clearTimeout(stillTimer);
-    if (!fingerDown) stillTimer = setTimeout(settle, REELS.still);
-    schedule();
-  };
-  on(window, 'scroll', moved, { passive: true });
-  on(window, 'scrollend', () => { if (fingerDown) return; clearTimeout(stillTimer); settle(); });
-  on(window, 'touchstart', () => { fingerDown = true; clearTimeout(stillTimer); }, { passive: true });
-  const lift = () => { fingerDown = false; clearTimeout(stillTimer); stillTimer = setTimeout(settle, REELS.still); };
-  on(window, 'touchend', lift, { passive: true });
-  on(window, 'touchcancel', lift, { passive: true });
-
-  /* Building sections, in idle time near the current one. */
-  const sequences = (r) => (r.scene ? [r.scene.frameSequence, r.scene.spinSequence, r.scene.swaySequence].filter(Boolean) : []);
-  const isReady = (r) => r.loaded && (!r.scene.frameSequence || r.scene.frameSequence.ready());
-  const decode = (r) => Promise.race([
-    Promise.all(sequences(r).map((s) => s.setWanted(true))),
-    new Promise((resolve) => setTimeout(resolve, 6000)),
-  ]);
-  // Swaps the finished picture for the scene, never while it can be seen moving:
-  // off screen below it waits at its start, on screen it shows finished.
-  function show(r) {
-    if (!alive || r.shown || !isReady(r)) return;
-    const rel = r.top - window.scrollY;
-    const below = rel >= size.vh - 1;
-    if (!below && moving) return; // again once the page is still
-    if (below) r.tl.time(0);
-    else { r.tl.time(r.label); r.done = true; }
-    r.shown = true;
-    r.el.classList.add('is-shown');
-    if (r.visible) r.lives.forEach((l) => { l.visible = true; l.last = 0; l.start?.(); });
-    // Just jumped to from the list: it plays from its start.
-    if (r.wantsPlay && Math.abs(r.top - window.scrollY - size.header) < 2) {
-      r.wantsPlay = false;
-      reset(r);
-      playOn(r);
-    }
-  }
-  function build(r) {
-    if (r.loading) return r.loading;
-    const { t, def } = r;
-    r.visual.insertAdjacentHTML('afterbegin', `<div class="scene scene--${esc(t.showcase.scene)}">${deferImages(def.html(t, { phone: true }))}</div>`);
-    const scene = r.visual.querySelector('.scene');
-    r.scene = scene;
-    addCopies(scene);
-    const obj = scene.querySelector('.obj');
-    const shadow = scene.querySelector('.obj__shadow');
-    context.add(() => {
-      const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
-      const ft = (target, a, b, f0, f1, ease = 'none') =>
-        tl.fromTo(target, a, { ...b, duration: f1 - f0, ease, immediateRender: false }, f0);
-      const live = (effect) => r.lives.push({ visible: false, last: 0, ...effect });
-      const idle = (target, vars) => {
-        const tween = gsap.to(target, { repeat: -1, yoyo: true, ease: 'sine.inOut', ...vars, paused: true });
-        live({ start: () => tween.play(), stop: () => tween.pause() });
-      };
-      def.animate({ t, tl, scene, obj, shadow, ft, idle, live, start: 0, L: 1, label: r.label, isLast: true, isDesktop: false, phone: true, reel: true });
-      tl.set({}, {}, 1);
-      r.tl = tl;
-    });
-    r.built = true;
-    const width = r.vw || size.width;
-    r.loading = Promise.all([
-      ...[...scene.querySelectorAll('img[data-src]')].map((img) => loadImg(img, width)),
-      def.preload ? def.preload(t, scene, { cap: 1.5, half: true, phone: true }).catch(() => null) : null,
-      def.phoneFrames ? def.phoneFrames(t, scene).catch(() => null) : null,
-    ]).then(() => {
-      r.loaded = true;
-      return decode(r);
-    }).then(() => show(r));
-    return r.loading;
-  }
-  // Frame sequences far from the current section give their memory back
-  // (it shows its finished picture again until it is near once more).
-  const trim = () => reels.forEach((r) => {
-    if (!r.scene || Math.abs(r.i - focus) <= REELS.keep) return;
-    if (!sequences(r).some((s) => s.ready())) return;
-    sequences(r).forEach((s) => s.setWanted(false));
-    r.scene.querySelectorAll('.is-3d, .is-swaying').forEach((el) => el.classList.remove('is-3d', 'is-swaying'));
-    if (r.scene.frameSequence && r.shown && !r.visible) {
-      r.shown = false;
-      r.el.classList.remove('is-shown');
-    }
-  });
-  // The next piece of work: the current section and REELS.near either side
-  // (built, then their frames decoded), then every other section's finished picture.
-  const nextJob = () => {
-    const close = [0, 1, -1, 2, -2].map((d) => reels[focus + d]).filter(Boolean)
-      .filter((r) => Math.abs(r.i - focus) <= REELS.near);
-    for (const r of close) if (!r.stillLoaded) return () => loadStill(r);
-    if (animated) {
-      for (const r of close) if (!r.built) return () => build(r);
-      for (const r of close) if (r.loaded && sequences(r).some((s) => !s.ready())) return () => decode(r).then(() => show(r));
-    }
-    for (const r of reels) if (!r.stillLoaded) return () => loadStill(r);
-    return null;
-  };
-  const idleCall = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 600 }) : setTimeout(fn, 50));
-  let pumping = false;
-  function pump() {
-    if (pumping || !alive) return;
-    pumping = true;
-    const step = () => {
-      if (!alive) return;
-      if (fingerDown || moving) { setTimeout(() => idleCall(step), 150); return; }
-      const job = nextJob();
-      if (!job) { pumping = false; return; }
-      job().then(() => idleCall(step));
-    };
-    idleCall(step);
-  }
-
-  /* Getting around: jumps, the pill and its sheet. */
-  // An instant jump to a section, whose scene then plays from its start.
-  const goTo = (i) => {
-    const r = reels[i];
-    if (!r) return;
-    focus = i;
-    window.scrollTo({ top: r.top - size.header, behavior: 'instant' });
-    update();
-    if (!animated) return;
-    r.wantsPlay = true;
-    if (r.shown) { r.wantsPlay = false; reset(r); playOn(r); }
-    else build(r); // at once: it is what the visitor asked to see
-    pump();
-  };
-  const openSheet = () => {
-    if (!window.SiteDialog) return;
-    sheet.querySelectorAll('[data-reel-go]').forEach((a, k) => {
-      if (k === focus) a.setAttribute('aria-current', 'true');
-      else a.removeAttribute('aria-current');
-    });
-    pill.setAttribute('aria-expanded', 'true');
-    window.SiteDialog.open(sheet, {
-      returnFocus: pill,
-      initialFocus: sheet.querySelector('[aria-current]'),
-      onClose: () => pill.setAttribute('aria-expanded', 'false'),
-    });
-    const item = sheet.querySelector('[aria-current]');
-    if (item) item.scrollIntoView({ block: 'center', behavior: 'instant' });
-  };
-  pill.hidden = false;
-  on(pill, 'click', openSheet);
-  on(sheet, 'click', (event) => {
-    const go = event.target.closest('[data-reel-go]');
-    if (go) {
-      event.preventDefault();
-      event.stopPropagation();
-      window.SiteDialog.close();
-      goTo(Number(go.dataset.reelGo));
-    } else if (event.target.closest('a[href]')) {
-      window.SiteDialog.close();
-    }
-  });
-  // A swipe down on the sheet (from its top) closes it.
-  let pull = null;
-  on(panel, 'touchstart', (event) => {
-    pull = panel.scrollTop <= 0 ? { y: event.touches[0].clientY, dy: 0 } : null;
-  }, { passive: true });
-  on(panel, 'touchmove', (event) => {
-    if (!pull) return;
-    pull.dy = Math.max(0, event.touches[0].clientY - pull.y);
-    panel.style.transform = pull.dy ? `translateY(${pull.dy}px)` : '';
-  }, { passive: true });
-  on(panel, 'touchend', () => {
-    if (!pull) return;
-    const far = pull.dy > 80;
-    pull = null;
-    panel.style.transform = '';
-    if (far) window.SiteDialog.close();
-  }, { passive: true });
-
-  /* Start. */
-  const tick = (time) => {
-    for (const r of reels) if (r.visible && r.shown) r.lives.forEach((l) => frameLive(l, time));
-  };
-  if (animated) gsap.ticker.add(tick);
-  const resizeObserver = new ResizeObserver(() => measure());
-  resizeObserver.observe(root);
-  measure();
-  // The first sections' finished pictures at once, so none is ever empty.
-  reels.slice(0, 3).forEach(loadStill);
-  pump();
-
-  const anchors = FEATURED.filter((t) => !t.standalone).map((t) => t.id);
-  phoneStage = {
-    anchors,
-    goTo(id) { goTo(FEATURED.findIndex((t) => t.id === id)); },
-  };
-  // The sections changed the page's height: re-measure the reveals below
-  // them, then honour a #hash. Done after this matchMedia callback has
-  // returned (a refresh inside it would file the reveals' context under
-  // this one, and the next layout switch would revert them with it).
-  requestAnimationFrame(() => {
-    if (!alive) return;
-    ScrollTrigger.refresh();
-    measure();
-    jumpToHash();
-  });
-
-  return () => {
-    alive = false;
-    phoneStage = null;
-    offs.forEach((off) => off());
-    resizeObserver.disconnect();
-    clearTimeout(stillTimer);
-    cancelAnimationFrame(frame);
-    gsap.ticker.remove(tick);
-    if (window.SiteDialog) window.SiteDialog.close();
-    reels.forEach((r) => {
-      if (r.play) r.play.kill();
-      r.lives.forEach((l) => { if (l.visible) l.stop?.(); });
-      sequences(r).forEach((s) => s.dispose());
-    });
-    root.remove();
-    pill.remove();
-    sheet.remove();
-    html.classList.remove('has-reels', 'has-reel-snap');
-    html.style.removeProperty('--footer-h');
-  };
-}
-
-function initHeroIntro() {
-  gsap.from('[data-hero]', {
-    y: 24, autoAlpha: 0, duration: 0.8, ease: 'power2.out', stagger: 0.08, delay: 0.1,
-  });
-}
-
-// On phones the reveals are lighter (a shorter rise, a smaller stagger), so
-// fast scrolling stays smooth, and the treatments list (the cards) is simply
-// there, ready to scan.
-function initSectionReveals() {
-  const phone = window.matchMedia(REELS.query).matches;
-  const targets = gsap.utils.toArray(phone ? '[data-fade]' : '[data-fade], [data-card]');
-  gsap.set(targets, { y: phone ? 12 : 24, autoAlpha: 0 });
-  ScrollTrigger.batch(targets, {
-    start: 'top 88%',
-    once: true,
-    onEnter: (batch) => gsap.to(batch, phone
-      ? { y: 0, autoAlpha: 1, duration: 0.6, ease: 'power2.out', stagger: 0.03, overwrite: true }
-      : { y: 0, autoAlpha: 1, duration: 0.8, ease: 'power2.out', stagger: window.innerWidth >= 768 ? 0.08 : 0.05, overwrite: true }),
-  });
-}
-
-function startLenis() {
-  if (typeof window.Lenis !== 'function') return null;
-  const instance = new window.Lenis({ lerp: 0.09 });
-  instance.on('scroll', ScrollTrigger.update);
-  const raf = (time) => instance.raf(time * 1000);
-  gsap.ticker.add(raf);
-  gsap.ticker.lagSmoothing(0);
-  instance.stopTicker = () => gsap.ticker.remove(raf);
-  return instance;
-}
-
-function initMotion() {
-  // Without GSAP (e.g. the CDN is unreachable) the page simply stays static.
-  if (!window.gsap || !window.ScrollTrigger) return;
-  gsap.registerPlugin(ScrollTrigger);
-  // The iPhone address bar showing/hiding must never re-measure the pinned stage.
-  ScrollTrigger.config({ ignoreMobileResize: true });
-
-  const mm = gsap.matchMedia();
-
-  // Smooth scrolling and snapping only on wider screens (phones scroll
-  // natively) and when the user hasn't asked for reduced motion.
-  mm.add({ motion: '(prefers-reduced-motion: no-preference)', isMobile: REELS.query }, (context) => {
-    const { motion, isMobile } = context.conditions;
-    if (!motion || isMobile) return;
-    lenis = startLenis();
-    if (lenis) lenis.on('scroll', scheduleSnap);
-    return () => {
-      if (!lenis) return;
-      lenis.stopTicker();
-      lenis.destroy();
-      lenis = null;
-      gsap.ticker.lagSmoothing(500, 33);
-    };
-  });
-
-  // The page's entrance and reveals, unless the user asked for reduced motion.
-  mm.add('(prefers-reduced-motion: no-preference)', () => {
-    initHeroIntro();
-    initSectionReveals();
-  });
-
-  // The featured treatments: on phones, full-screen sections (with finished
-  // pictures under reduced motion); on wider screens, the pinned
-  // stage, or under reduced motion calm stacked blocks with no pinning.
-  // Crossing between the two reverts one completely and builds the other.
-  mm.add({
-    isMobile: REELS.query,
-    reduceMotion: '(prefers-reduced-motion: reduce)',
-    always: 'all',
-  }, (context) => {
-    const { isMobile, reduceMotion } = context.conditions;
-    if (isMobile) return initReels(context, !reduceMotion);
-    if (reduceMotion) return;
-    return initStage(context, true);
-  });
-
-  // Web fonts can change text heights; re-measure once they have loaded.
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => ScrollTrigger.refresh());
-  }
+  }, { rootMargin: '0px 0px -12% 0px' });
+  targets.forEach((el) => { el.classList.add('reveal'); io.observe(el); });
 }
 
 /* ---------- Start ---------- */
 
 render();
 initHeader();
+initTreatments(!reduceMotion());
 initAnchors();
-initSnapInputs();
-initMotion();
+initReveals();
 
 const yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();

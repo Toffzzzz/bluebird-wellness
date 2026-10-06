@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 /* ==========================================================================
+   NOTE: this draws from the old pinned stage's code (createMolecule,
+   createHairSway, PHONE_COPIES in script.js), which the site no longer has.
+   Run it in a checkout of the commit tagged stage-animations:
+     git worktree add ../bluebird-stage stage-animations
+     cd ../bluebird-stage && node scripts/render-assets.mjs picture
+   then copy what you need (e.g. images/treatments/nad-plus-infusion.webp)
+   back into this repo, and remove the checkout (git worktree remove
+   ../bluebird-stage). The featured treatments' videos have their own tool,
+   scripts/render-videos/.
+
    Renders the pictures drawn from the site's own code, plus smaller copies:
 
    - images/treatments/nad-plus-infusion.webp: the NAD+ finished picture

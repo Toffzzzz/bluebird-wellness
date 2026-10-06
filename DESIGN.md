@@ -20,6 +20,7 @@ Bluebird Wellness is an IV drip clinic based at Bluebird Dentists near Westfield
 | Deep Bluebird | `#1C47A3` | `--color-bluebird-deep` | Hover and pressed state for Bluebird Blue buttons and links |
 | Sky Tint | `#E8EFFB` | `--color-sky` | Soft blue badge backgrounds, selected chips, gentle highlight washes |
 | Sage | `#4E6B58` | `--color-sage` | Rare, quiet secondary accent for availability labels such as "Mobile service available" |
+| Pro Green | `#17633F` | `--color-pro` | Everything Pro: the "PRO" badge (White on Pro Green, 7.3:1), the "PRO" tag on a Pro card's picture, a Pro card's edge, and "Upgrade to Pro" links (Pro Green on Pro Tint `#E8F4EC`, 6.4:1) |
 
 All text/background pairs above meet WCAG AA contrast (Ink on Cream 14.5:1, Slate on Cream 5.5:1, White on Bluebird Blue 6.4:1, Bluebird Blue on Cream 5.8:1).
 
@@ -89,7 +90,7 @@ Use `clamp()` so type scales smoothly from mobile to desktop.
 ### Site Header
 **Role:** Sitewide navigation, 64px tall
 
-Porcelain `#FBFAF7` background at 85% opacity with a backdrop blur, so content softly shows through as it scrolls beneath. "Bluebird Wellness" wordmark on the left in Inter 600, 18px, Ink Navy. Nav links in Inter 500, 15px, Slate, turning Ink Navy on hover. A compact Primary Pill Button ("Book now") on the right. A 1px Mist bottom border appears only once the page has scrolled.
+Solid Porcelain `#FBFAF7` background (no translucency or backdrop blur: a blur has to be redrawn on every frame while the page scrolls beneath it). "Bluebird Wellness" wordmark on the left in Inter 600, 18px, Ink Navy. Nav links in Inter 500, 15px, Slate, turning Ink Navy on hover. A compact Primary Pill Button ("Book now") on the right. A 1px Mist bottom border appears only once the page has scrolled.
 
 ### Primary Pill Button
 **Role:** Main call to action ("Book now", "Book")
@@ -102,9 +103,9 @@ Bluebird Blue `#2458C6` fill, White text, Inter 500 15px, 9999px radius, padding
 Transparent fill, Ink Navy text, 1px Ink Navy border at 20% opacity, 9999px radius, same padding as primary. Hover: Sand fill.
 
 ### Treatment Showcase Section
-**Role:** Full-screen, scroll-animated stage for one featured treatment
+**Role:** One section per featured treatment, with a short video of its animation
 
-Full viewport height, Cream Canvas background. Split layout on desktop: the floating treatment image on one side (alternate left/right between sections where the animation allows), text column on the other. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
+On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the section is taller than the screen and its content stays put while the scroll drives the video; on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A slim bar of the treatments' names sticks under the header while the sections are on screen, with a dark Next pill on its right. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
 
 ### Treatment Card
 **Role:** One treatment in the "All treatments" grid
@@ -135,14 +136,15 @@ Ink Navy `#152238` background — the only dark surface on the site — with Por
 
 Motion is **slow, smooth and purposeful** — it should feel like calm breathing, never flashy.
 
-- **Libraries:** GSAP + ScrollTrigger for scroll animations; Lenis for smooth scrolling.
-- **Scrubbed scroll animations:** tie treatment-image motion directly to scroll position (`scrub: true` or `scrub: 1`) with `ease: "none"`, so animations reverse naturally when scrolling back up.
-- **Pinned showcases:** pin each Treatment Showcase Section for roughly 150–200% of the viewport height so each animation has room to breathe.
-- **Text entrances:** fade up 24px over 0.8s with `power2.out`, staggered 0.08s between eyebrow, heading, description and button.
-- **Only animate transform, opacity and clip-path** for smooth performance.
+- **Like Apple's product pages:** the page always scrolls natively (no smooth-scroll library, no snapping: it never moves by itself). Each treatment's animation is a short pre-rendered video.
+- **Laptops and desktops:** scrolling drives the animation. The section's picture and text stay put while about half a screen of scrolling moves the video from start to finish; then the finished picture holds for a fifth of a screen before the next treatment slides up.
+- **Phones and tablets:** the video plays by itself once it's half in view.
+- **Animations never run backwards:** scrolling back up leaves an animation where it got to, and once it has finished it stays on its finished picture (on every screen size).
+- **Text entrances:** fade up 20–24px over 0.7–0.8s, ease-out, once, as each block arrives (CSS transitions started by an IntersectionObserver; the hero's are a CSS animation).
+- **Only animate opacity and transform/translate** for smooth performance, and never blur anything over moving content.
+- **Far jumps don't scroll:** an in-page link to somewhere more than about a screen and a half away goes straight there.
 - **One motion idea per section** — never stack several effects on the same object.
-- **Reduced motion:** when `prefers-reduced-motion: reduce` is set, disable pinning and scrubbing and show every section in its finished, static state.
-- **Mobile:** shorten pin distances and simplify effects on screens under 768px.
+- **Reduced motion:** when `prefers-reduced-motion: reduce` is set, nothing moves by itself: every treatment shows its finished picture, and its button plays the video on request.
 
 ## Do's and Don'ts
 
@@ -191,13 +193,13 @@ Imagery is object-first and bright: each treatment is represented by a single is
 
 ## Layout
 
-The page is a vertically sequenced treatment story on Cream Canvas. A translucent 64px header sits above a calm, centred hero (eyebrow, very large headline, one supporting line, primary button). Five pinned Treatment Showcase Sections follow, each a full-screen stage for one treatment object with its scroll animation, alternating image side where possible. Next, an "All treatments" grid of White cards on a Porcelain or Sand band. Then "How it works" with two Information Tiles side by side (in clinic at Bluebird Dentists near Westfield; mobile call-out to home, hotel or office), a booking/contact section, and the Ink Navy footer. The page stays spacious and image-led throughout.
+The page is a vertically sequenced treatment story on Cream Canvas. A solid 64px header sits above a calm, centred hero (eyebrow, very large headline, one supporting line, primary button). The Treatment Showcase Sections follow, one per featured treatment, each on its tint with a short video of its animation, under a sticky bar of their names. Next, an "All treatments" grid of White cards on a Porcelain or Sand band. Then "How it works" with two Information Tiles side by side (in clinic at Bluebird Dentists near Westfield; mobile call-out to home, hotel or office), a booking/contact section, and the Ink Navy footer. The page stays spacious and image-led throughout.
 
 ## Agent Prompt Guide
 
 Quick Color Reference:
 - Cream Canvas: #F7F4EF — page background
-- Porcelain: #FBFAF7 — alternate bands, translucent header
+- Porcelain: #FBFAF7 — alternate bands, the header
 - White: #FFFFFF — cards, tiles, button text on blue
 - Sand: #EFE9E0 — contrast bands, image wells, hover fills
 - Ink Navy: #152238 — all primary text; footer
@@ -207,9 +209,10 @@ Quick Color Reference:
 - Deep Bluebird: #1C47A3 — hover/pressed
 - Sky Tint: #E8EFFB — soft badges and highlights
 - Sage: #4E6B58 — rare availability labels
+- Pro Green: #17633F — everything Pro (badges, "Upgrade to Pro")
 
 Create a centred hero on Cream Canvas #F7F4EF with a small Slate uppercase eyebrow, an Inter 600 hero-display headline in Ink Navy #152238 with -0.03em tracking, one body-large Slate line, and a Bluebird Blue #2458C6 pill "Book now" button.
-Create a pinned full-screen treatment showcase on Cream Canvas: a transparent treatment image with a soft drop-shadow on one side, animated by scroll with GSAP ScrollTrigger; on the other side an eyebrow, a treatment-display heading, two calm factual sentences in Slate, and a Bluebird Blue pill button.
+Create a treatment showcase section on the treatment's tint: a short video of the treatment object (playing once it's half in view, with a round pause/play/replay button) on one side; an eyebrow, a treatment-display heading, two calm factual sentences in Slate, and a Bluebird Blue pill button.
 Create an "All treatments" grid of White 28px-radius cards with 1px Mist borders, each with a Sand image well, card title, one-line Slate description and compact Bluebird Blue "Book" pill; lift 4px with shadow-card on hover.
 Create a "How it works" section on a Sand #EFE9E0 band with two White information tiles, each with a Sky Tint circular icon badge, a card-title heading and body copy.
 
