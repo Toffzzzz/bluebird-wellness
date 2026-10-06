@@ -63,8 +63,8 @@
                                  "pearl" | "sunrise" | "frames" | "bone" |
                                  "blend" | "signature"
                                  (anything else fades in/out)
-                    tint:        its section's background colour (the video's
-                                 own background is matched to it exactly)
+                    tint:        its section's background colour (the videos are
+                                 rendered on it; re-render them if it changes)
                                  (also the soft background of its page)
                     layers:      ("orange", "plant", "cucumber", "pearl",
                                  "sunrise", "bone", "blend") layer images on the
@@ -533,16 +533,17 @@ function render() {
    moves by itself). Each section's picture is a short pre-rendered video of
    its animation (images/treatment-videos/, made by scripts/render-videos/).
 
-   Laptops and desktops (a mouse or trackpad, 820px and wider): like Apple's
-   product pages, scrolling drives the animation. Each section is taller than
-   the screen and its picture and text stay put (position: sticky) while you
-   scroll through it: the first SCRUB.anim of a screen of scrolling moves the
-   video from its first frame to its last, then SCRUB.hold more keeps the
-   finished picture before the next treatment slides up. It only ever moves
-   forwards: scrolling back up leaves it where it got to (once finished, it
-   stays finished). The video (<id>-scrub.mp4: 30 fps, a keyframe every 4
-   frames) is moved to the scroll position with a light smoothing
-   (SCRUB.ease), and only while a section is on screen.
+   Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling
+   drives the animation, while the page keeps scrolling continuously (nothing
+   is pinned). As a treatment's picture comes up the screen, its animation
+   runs from its first frame (the picture's top at SCRUB.start of the screen's
+   height) to its last (the picture centred in the space below the bar). It
+   only ever moves forwards: scrolling back up leaves it where it got to, and
+   once finished it stays finished. Arriving by a jump (the bar, Next, a
+   link), it plays on by itself from where it is instead. The video
+   (<id>-scrub.mp4: 30 fps, a keyframe every 4 frames) is moved to the
+   scroll position with a light smoothing (SCRUB.ease), and only while its
+   section is on screen.
 
    Phones and tablets (touch): each video plays by itself, from the start,
    once half of it is in view, and then stays on its last frame for good
@@ -552,9 +553,10 @@ function render() {
 
    Everywhere:
    - videos load as their section comes within a screen of the viewport;
-   - the section's background takes the exact colour the browser draws the
-     video's background in (read once from its corner), so the video's edge
-     never shows;
+   - each video's background is its section's own tint, and the videos are
+     tagged with the sRGB colour curve, so every browser draws the two the
+     same; a soft frame of the tint over the picture's outer edge (styles.css)
+     hides any last shade of difference, so no edge or box ever shows;
    - if a video can't play by itself (e.g. an iPhone in Low Power Mode), the
      section shows the finished picture and the button plays it; with
      reduced motion every section shows its finished picture (nothing moves
@@ -574,8 +576,7 @@ const TREATMENT_VIDEO = {
 // Laptops and desktops: the animation follows the scroll.
 const SCRUB = {
   query: '(min-width: 820px) and (hover: hover) and (pointer: fine)',
-  anim: 0.55,   // screens of scrolling that move the animation from start to finish
-  hold: 0.2,    // screens of scrolling that then keep the finished picture
+  start: 0.92,  // the animation starts when the picture's top is this far down the screen
   ease: 0.3,    // share of the remaining distance the video catches up each frame (1 = no smoothing)
 };
 
@@ -591,8 +592,7 @@ const TX_ICON = {
 const txAnchor = (t) => (t.standalone ? `tx-${t.id}` : t.id);
 
 // The bar of names, then one section per treatment: the video (or, without
-// a video, the treatment's own picture) and the text, inside the part that
-// stays put while scrolling drives the animation (laptops).
+// a video, the treatment's own picture) and the text.
 function treatmentsHTML(featured) {
   const items = featured.map((t, i) => `
         <li><a class="tx-nav__item" href="#${esc(txAnchor(t))}" data-tx-go="${i}">${esc(t.short)}</a></li>`).join('');
@@ -611,17 +611,15 @@ function treatmentsHTML(featured) {
     const name = esc(menuItem(t).name);
     return `
       <section class="tx" id="${esc(txAnchor(t))}" data-tx="${i}" style="--tint: ${esc(t.showcase.tint || '#F7F4EF')}" aria-labelledby="${esc(t.id)}-title">
-        <div class="tx__stage">
-          <div class="container tx__inner">
-            <div class="tx__media">
-              <div class="tx-media">
-                <img class="tx-still" src="${base}-end.webp" alt="${esc(t.alt || '')}" width="1080" height="1080" loading="lazy" decoding="async">
-                <video class="tx-video" data-base="${base}" muted playsinline webkit-playsinline preload="none" disablepictureinpicture disableremoteplayback role="img" aria-label="${esc(t.alt || '')}" tabindex="-1"></video>
-                <button type="button" class="tx-control" data-name="${name}" hidden></button>
-              </div>
+        <div class="container tx__inner">
+          <div class="tx__media">
+            <div class="tx-media">
+              <img class="tx-still" src="${base}-end.webp" alt="${esc(t.alt || '')}" width="1080" height="1080" loading="lazy" decoding="async">
+              <video class="tx-video" data-base="${base}" muted playsinline webkit-playsinline preload="none" disablepictureinpicture disableremoteplayback role="img" aria-label="${esc(t.alt || '')}" tabindex="-1"></video>
+              <button type="button" class="tx-control" data-name="${name}" hidden></button>
             </div>
-            <div class="tx__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
           </div>
+          <div class="tx__text">${textHTML(t, `${esc(t.id)}-title`)}</div>
         </div>
       </section>`;
   }).join('');
@@ -641,20 +639,16 @@ function initTreatments(animated) {
   const next = nav.querySelector('[data-tx-next]');
   const row = nav.querySelector('.tx-nav__list');
   const scrubQuery = window.matchMedia(SCRUB.query);
-  // The section's height comes from SCRUB (styles.css reads it).
-  html.style.setProperty('--tx-dwell', `${(SCRUB.anim + SCRUB.hold) * 100}vh`);
 
   const items = sections.map((section, i) => ({
     i,
     t: FEATURED[i],
     section,
-    stage: section.querySelector('.tx__stage'),
     media: section.querySelector('.tx-media'),
     video: section.querySelector('.tx-video'),
     still: section.querySelector('.tx-still'),
     button: section.querySelector('.tx-control'),
     src: '',         // the video file it has been given
-    matched: false,  // its background has been matched to the video's
     armed: true,     // phones: it plays by itself when it is first half in view (once)
     done: false,     // it has reached its finished picture, and stays there
     reached: 0,      // laptops: how far through the animation the scroll has taken it (it never goes back)
@@ -681,23 +675,6 @@ function initTreatments(animated) {
     it.button.setAttribute('aria-label', `${verb} the ${it.button.dataset.name} animation`);
   };
 
-  /* The background colour, matched to the video's own (see above). */
-  const probe = document.createElement('canvas');
-  probe.width = probe.height = 4;
-  const probeCtx = probe.getContext('2d', { willReadFrequently: true });
-  const matchTint = (it) => {
-    if (it.matched || !it.video.videoWidth || it.video.readyState < 2) return;
-    it.matched = true;
-    try {
-      probeCtx.drawImage(it.video, 6, 6, 4, 4, 0, 0, 4, 4);
-      const d = probeCtx.getImageData(0, 0, 4, 4).data;
-      let r = 0, g = 0, b = 0;
-      for (let k = 0; k < d.length; k += 4) { r += d[k]; g += d[k + 1]; b += d[k + 2]; }
-      const n = d.length / 4;
-      it.section.style.setProperty('--tint', `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`);
-    } catch (e) { /* keep the treatment's tint */ }
-  };
-
   // The file for the current behaviour: laptops scrub <id>-scrub.mp4;
   // phones play the 720 video where that's already sharp, else the 1080 one.
   const sourceFor = (it) => {
@@ -712,20 +689,19 @@ function initTreatments(animated) {
     v.muted = true;
     v.defaultMuted = true;
     v.playsInline = true;
-    if (v.requestVideoFrameCallback) {
-      const frame = () => { matchTint(it); if (!it.matched) v.requestVideoFrameCallback(frame); };
-      v.requestVideoFrameCallback(frame);
-    }
-    v.addEventListener('loadeddata', () => { matchTint(it); if (scrub) wake(); });
-    v.addEventListener('seeked', () => matchTint(it));
-    v.addEventListener('playing', () => { matchTint(it); showStill(it, false); setButton(it, 'pause'); });
+    v.addEventListener('loadeddata', () => { if (scrub) wake(); });
+    v.addEventListener('playing', () => { showStill(it, false); if (!scrub) setButton(it, 'pause'); });
     // Paused part-way: the button plays it on; stopped as it left the screen
     // (showing its finished picture): the button replays it.
     v.addEventListener('pause', () => {
       if (scrub || v.ended) return;
       setButton(it, it.done && it.section.classList.contains('is-still') ? 'replay' : 'play');
     });
-    v.addEventListener('ended', () => { it.done = true; if (!scrub) setButton(it, 'replay'); });
+    v.addEventListener('ended', () => {
+      it.done = true;
+      if (scrub) { it.autoplaying = false; it.reached = 1; it.shown = v.currentTime; return; }
+      setButton(it, 'replay');
+    });
     // No video (e.g. a new treatment that hasn't been rendered yet): its
     // finished picture, or failing that the treatment's own picture.
     v.addEventListener('error', () => {
@@ -781,12 +757,25 @@ function initTreatments(animated) {
   }));
 
   /* Laptops: the video follows the scroll. */
-  let stuck = 0; // where a section's picture and text stay put (just below the bar)
-  const measure = () => { stuck = parseFloat(getComputedStyle(items[0].stage).top) || 0; };
+  let below = 0; // the bottom of the header and the bar: the screen's visible space starts here
+  const header = document.getElementById('site-header');
+  const measure = () => { below = (header ? header.offsetHeight : 0) + nav.offsetHeight; };
+  // 0 as the picture comes into view, 1 once it is centred in the space below the bar.
   const progress = (it) => {
-    const scrolled = stuck - it.section.getBoundingClientRect().top;
-    return Math.min(1, Math.max(0, scrolled / (SCRUB.anim * window.innerHeight)));
+    const r = it.media.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const from = vh * SCRUB.start;
+    const to = below + (vh - below) / 2 - r.height / 2;
+    if (from - to < 1) return r.top <= to ? 1 : 0;
+    return Math.min(1, Math.max(0, (from - r.top) / (from - to)));
   };
+  // A jump (the bar, Next, a link) to a treatment that hasn't finished: it
+  // plays on by itself from where it is, rather than leaping to where the
+  // scroll would put it.
+  document.addEventListener('tx:arrive', (event) => {
+    const it = items.find((x) => x.section === event.detail);
+    if (it && scrub && !it.done) it.jumped = true;
+  });
   let ticking = false;
   const tick = () => {
     ticking = false;
@@ -797,6 +786,16 @@ function initTreatments(animated) {
       const v = it.video;
       if (v.readyState < 1 || !v.duration) continue;
       const end = Math.max(0, v.duration - 0.001);
+      // Arrived by a jump: play on from where it is (once it ends, it's done).
+      if (it.jumped) {
+        it.jumped = false;
+        it.autoplaying = true;
+        try { v.currentTime = it.shown; } catch (e) { /* starts where it is */ }
+        const attempt = v.play();
+        if (attempt && attempt.catch) attempt.catch(() => { it.autoplaying = false; it.reached = 1; it.done = true; });
+        continue;
+      }
+      if (it.autoplaying) continue;
       // Only forwards: scrolling back up leaves it where it got to.
       it.reached = Math.max(it.reached, progress(it));
       if (it.reached >= 1) it.done = true;
@@ -870,6 +869,8 @@ function initTreatments(animated) {
     for (const it of items) {
       const v = it.video;
       it.held = false;
+      it.jumped = false;
+      it.autoplaying = false;
       if (!v.paused) v.pause();
       if (!animated) { showStill(it, true); setButton(it, 'play'); continue; }
       if (it.failed) continue;
@@ -984,6 +985,8 @@ const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)')
 // and the page's scroll-padding keep it clear of the header and the bar.
 function goTo(target, { instant = false } = {}) {
   const isEntry = openTarget(target);
+  // A featured treatment: on laptops its animation plays on by itself (see section 3).
+  if (target.classList && target.classList.contains('tx')) document.dispatchEvent(new CustomEvent('tx:arrive', { detail: target }));
   const distance = Math.abs(isEntry ? entryScroll(target) - window.scrollY : target.getBoundingClientRect().top);
   const behavior = instant || reduceMotion() || distance > window.innerHeight * 1.5 ? 'auto' : 'smooth';
   if (isEntry) window.scrollTo({ top: entryScroll(target), behavior });

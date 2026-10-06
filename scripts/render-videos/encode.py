@@ -3,8 +3,11 @@
 
   python3 encode.py <frames folder> <id> <tint, e.g. #F3F1EE> <output folder>
 
-Writes <id>-1080.mp4 and <id>-720.mp4 (H.264 High, 60 fps, BT.709 limited
-range, fast start, no sound: the phones' videos, which play by themselves),
+Every video is H.264 High, BT.709 colours in limited range, tagged with the
+sRGB transfer curve (what the frames' colours really are), so every browser
+draws its background exactly like the page's own colour. It writes
+<id>-1080.mp4 and <id>-720.mp4 (60 fps, fast start, no sound: the phones'
+videos, which play by themselves),
 <id>-scrub.mp4 (1080, 30 fps with a keyframe every 4 frames and no B-frames,
 so laptops can move it to any point instantly as the page scrolls) and
 <id>-start.webp / <id>-end.webp (1080 x 1080, the first and last frames). The animation is cropped to everything that ever
@@ -72,7 +75,7 @@ for size in (1080, 720):
           'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p')
     subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', '60', '-i', os.path.join(clean, 'f%04d.png'), '-vf', vf,
                     '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0', '-preset', 'slow', '-crf', '22', '-g', '60',
-                    '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
+                    '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'iec61966-2-1',
                     '-color_range', 'tv', '-movflags', '+faststart', '-an', os.path.join(out, f'{vid}-{size}.mp4')], check=True)
     if size == 1080:
         for f, suffix in ((cleaned[0], 'start'), (cleaned[-1], 'end')):
@@ -84,7 +87,7 @@ for size in (1080, 720):
         subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', '60', '-i', os.path.join(clean, 'f%04d.png'), '-vf', vf,
                         '-r', '30', '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0', '-preset', 'slow', '-crf', '21',
                         '-g', '4', '-keyint_min', '4', '-bf', '0', '-sc_threshold', '0',
-                        '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
+                        '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'iec61966-2-1',
                         '-color_range', 'tv', '-movflags', '+faststart', '-an', os.path.join(out, f'{vid}-scrub.mp4')], check=True)
     print(f'{vid}: {size} x {size}, picture {sw} x {sh}')
 shutil.rmtree(clean)

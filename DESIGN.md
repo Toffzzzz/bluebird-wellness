@@ -105,7 +105,7 @@ Transparent fill, Ink Navy text, 1px Ink Navy border at 20% opacity, 9999px radi
 ### Treatment Showcase Section
 **Role:** One section per featured treatment, with a short video of its animation
 
-On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the section is taller than the screen and its content stays put while the scroll drives the video; on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A slim bar of the treatments' names sticks under the header while the sections are on screen, with a dark Next pill on its right. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
+On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the scroll drives the video as the section moves up the screen (nothing is pinned); on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A slim bar of the treatments' names sticks under the header while the sections are on screen, with a dark Next pill on its right. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
 
 ### Treatment Card
 **Role:** One treatment in the "All treatments" grid
@@ -137,7 +137,8 @@ Ink Navy `#152238` background — the only dark surface on the site — with Por
 Motion is **slow, smooth and purposeful** — it should feel like calm breathing, never flashy.
 
 - **Like Apple's product pages:** the page always scrolls natively (no smooth-scroll library, no snapping: it never moves by itself). Each treatment's animation is a short pre-rendered video.
-- **Laptops and desktops:** scrolling drives the animation. The section's picture and text stay put while about half a screen of scrolling moves the video from start to finish; then the finished picture holds for a fifth of a screen before the next treatment slides up.
+- **Laptops and desktops:** scrolling drives the animation while the page keeps scrolling continuously (nothing is pinned): the animation runs as the picture comes up the screen and finishes as it reaches the middle. Arriving by a jump, it plays on by itself.
+- **No edges:** each video is rendered on its section's tint, tagged with the sRGB colour curve so every browser draws it like the page's colours, and softly framed in the tint, so no box or border ever shows.
 - **Phones and tablets:** the video plays by itself once it's half in view.
 - **Animations never run backwards:** scrolling back up leaves an animation where it got to, and once it has finished it stays on its finished picture (on every screen size).
 - **Text entrances:** fade up 20–24px over 0.7–0.8s, ease-out, once, as each block arrives (CSS transitions started by an IntersectionObserver; the hero's are a CSS animation).
