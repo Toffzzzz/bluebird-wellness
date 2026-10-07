@@ -31,6 +31,21 @@ Last reviewed: 6 October 2026.
 | 19 | License fonts and images | **Done.** Inter is under the SIL Open Font License; its licence is in `fonts/LICENSE.txt`. Where every picture comes from is in `CREDITS.md` |
 | 20 | Data deletion request | **Done.** The privacy policy explains how to ask for information to be deleted (and the other rights), and what has to be kept, such as clinical records |
 
+## Beyond the 20: what a doctor-led clinic's site also needs
+
+| Item | Status |
+|---|---|
+| Complaints procedure | **Done, needs the clinic's decisions.** `complaints/` explains how to complain, what happens next, and where to go if still unhappy: ISCAS if the clinic subscribes (most private providers' independent adjudication), the CQC (which wants to hear about care but doesn't investigate individual private complaints), the GMC for a doctor's fitness to practise, and the ICO for data. CQC-registered providers must run a complaints system. The time limits and who investigates are highlighted for the clinic to fill in |
+| The doctors' registration | **Done, needs the numbers.** About us names Dr Nema and Dr Mahdi with their GMC numbers (`gmcDrNema`, `gmcDrMahdi`), linked to the medical register, so patients can check them. GMC guidance expects information about doctors' services to be factual and verifiable |
+| CQC rating on the website | **Done, needs the details.** Once the CQC rates the clinic, the law (Regulation 20A) requires the latest rating on the website. About us shows it from `cqcRating`, `cqcRatingDate` and `cqcReportUrl`, or the registration (`cqcNumber`) until then. CQC also offers a ready-made widget; it loads from the CQC's site, so it would be the one exception to "nothing loads from other sites" |
+| Not for emergencies | **Done.** The contact section, the chat, the questions page and every study say to call NHS 111 or 999 |
+| Health information (the studies) | **Done, needs the doctors' review.** Six studies (`studies/`) summarise what NHS, NICE, NDNS and published research say about deficiencies, every figure cited and independently fact-checked against its source. Each is marked "Draft" until `studiesReviewed: true`. Following ASA guidance on IV drips, they say nothing about the clinic's treatments, contain no Book buttons or links to drips, and sit at the bottom of the home page, apart from the menu: evidence about deficiency doesn't support claims for drips, and a statistic beside a drip can read as an implied claim. Don't use their figures in adverts for drips |
+| Questions page | **Done, needs the clinic's answers** (`faq/`): consultations, blood tests, where, how long, age, risks, aftercare, payment, emergencies. The gaps are highlighted |
+| Link previews and search | **Done.** Each page has a title, description and preview picture (`images/share.png`) for when it's shared, and the home page describes the clinic for search engines. The picture shows no medicine. Search engines are kept out until `launched: true` |
+| A page for mistyped addresses | **Done** (`404.html`) |
+
+**One to fix in the menu wording:** Iron's summary beside its drawing on the home page is the opening of its menu description ("…close to 50% of women have iron levels low enough to confirm iron deficiency"), and it sits next to the Book button. That's the pattern the ASA warns about (a deficiency statistic beside a drip). Consider changing the opening of Iron's description in `data/drips.json`, or leaving Iron off the scrolling line until the wording is reviewed.
+
 ## What the clinic needs to provide
 
 Fill these in in `site-config.js`, then run `node scripts/build-menu.mjs`. The policy pages show a highlighted gap for each one until then.
@@ -45,6 +60,9 @@ Fill these in in `site-config.js`, then run `node scripts/build-menu.mjs`. The p
 - `callOutFee`, `cancellationNotice`, `cancellationFee`: the call-out charge (or "none"), the notice needed to cancel and the late-cancellation charge.
 - `phone`, `email`: needed for the policy pages as well as the contact links.
 - `minimumAge`: confirm 18.
+- `gmcDrNema`, `gmcDrMahdi`: each doctor's GMC number.
+- `cqcRating`, `cqcRatingDate`, `cqcReportUrl`: once the CQC has rated the clinic.
+- The About us text (in `index.html`), the answers on the questions page and the complaints procedure's details.
 
 The policy pages also have gaps the clinic has to decide in words (search the page for the highlighted text): how long enquiries are kept, how and when payment is taken, the complaints procedure, whether cancelling with enough notice is free, and what's charged if the doctor decides a treatment isn't suitable. These are in `content/legal/`.
 
@@ -101,4 +119,5 @@ Line by line, the clinic should review these (the wording is in `data/drips.json
 2. Have the policy pages and the treatment wording reviewed (see above). Consider CAP Copy Advice.
 3. Register with the ICO (if not already), and check CQC registration.
 4. Choose how the chat and booking will really send (see the README); update the privacy policy's "booking system" and the chat's privacy wording to match; remove the "Preview" labels.
-5. Then remove the `noindex` meta tag (in `index.html` and the generator's templates).
+5. Have the doctors review the studies; set `studiesReviewed: true`.
+6. Then set `launched: true` in `site-config.js` and run the generator: it removes the `noindex` tag from every page and writes `robots.txt` and `sitemap.xml`.

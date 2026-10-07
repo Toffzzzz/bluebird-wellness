@@ -1,28 +1,39 @@
 Menu check: data/drips.json (16 drips) against the generated pages and the home page.
 Every string marked data-verbatim must equal data/drips.json (whitespace collapsed), and every required string must be shown.
 
-PASS  treatments/hydration-infusion/               12 strings
-PASS  treatments/immunity-infusion/                37 strings
-PASS  treatments/immunity-pro-infusion/            41 strings
-PASS  treatments/recovery-infusion/                37 strings
-PASS  treatments/recovery-pro-infusion/            44 strings
-PASS  treatments/detox-infusion/                   44 strings
-PASS  treatments/hair-and-scalp-infusion/          43 strings
-PASS  treatments/hair-and-scalp-pro-infusion/      47 strings
-PASS  treatments/beauty-and-glow-infusion/         25 strings
-PASS  treatments/myers-cocktail-infusion/          36 strings
-PASS  treatments/energy-infusion/                  39 strings
-PASS  treatments/muscle-and-fitness-infusion/      45 strings
-PASS  treatments/nad-plus-infusion/                15 strings
-PASS  treatments/longevity-infusion/               21 strings
-PASS  treatments/signature-infusion/               15 strings
-PASS  treatments/iron-infusion/                    76 strings
-PASS  ingredients/ (glossary)                      194 strings
+PASS  treatments/hydration-infusion/               76 strings
+PASS  treatments/immunity-infusion/                101 strings
+PASS  treatments/immunity-pro-infusion/            105 strings
+PASS  treatments/recovery-infusion/                101 strings
+PASS  treatments/recovery-pro-infusion/            108 strings
+PASS  treatments/detox-infusion/                   108 strings
+PASS  treatments/hair-and-scalp-infusion/          107 strings
+PASS  treatments/hair-and-scalp-pro-infusion/      111 strings
+PASS  treatments/beauty-and-glow-infusion/         89 strings
+PASS  treatments/myers-cocktail-infusion/          100 strings
+PASS  treatments/energy-infusion/                  103 strings
+PASS  treatments/muscle-and-fitness-infusion/      109 strings
+PASS  treatments/nad-plus-infusion/                79 strings
+PASS  treatments/longevity-infusion/               85 strings
+PASS  treatments/signature-infusion/               79 strings
+PASS  treatments/iron-infusion/                    140 strings
+PASS  ingredients/ (glossary)                      258 strings
 PASS  privacy/ (policy)                            13 gaps for the clinic to fill in
 PASS  terms/ (policy)                              16 gaps for the clinic to fill in
 PASS  cancellations/ (policy)                      8 gaps for the clinic to fill in
 PASS  cookies/ (policy)                            complete
 PASS  accessibility/ (policy)                      2 gaps for the clinic to fill in
+PASS  complaints/ (policy)                         7 gaps for the clinic to fill in
+PASS  faq/ (policy)                                7 gaps for the clinic to fill in
+PASS  studies/ (all studies)                       6 studies
+PASS  studies/iron-deficiency-in-the-uk/           9 sources
+PASS  studies/vitamin-d-in-the-uk/                 6 sources
+PASS  studies/vitamin-b12-deficiency/              6 sources
+PASS  studies/folate-and-folic-acid-in-the-uk/     11 sources
+PASS  studies/magnesium-uk-data/                   9 sources
+PASS  studies/dehydration-in-adults/               7 sources
+PASS  404.html (page not found)                    links from /bluebird-wellness/
+PASS  images/icons/treatments.svg (the menu's drawings) 13 drawings
 PASS  index.html (home page, as script.js renders it) 67 strings
 
 Result: all passed

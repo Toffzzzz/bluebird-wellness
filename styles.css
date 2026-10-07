@@ -18,9 +18,25 @@
   --color-bluebird-deep: #1C47A3;
   --color-sky: #E8EFFB;
   --color-sage: #4E6B58;
-  --color-pro: #17633F;                      /* Pro Green: everything Pro */
-  --color-pro-tint: #E8F4EC;
-  --color-pro-line: rgba(23, 99, 63, 0.38);
+  --color-pro: #B0216B;                      /* Pro Berry: everything Pro */
+  --color-pro-tint: #FFE3EF;
+  --color-pro-line: rgba(176, 33, 107, 0.4);
+
+  /* Berry & Violet: the colour that pops (see "Colour" near the end) */
+  --color-violet-night: #24145F;
+  --color-violet: #4B23A8;
+  --color-violet-bright: #7B3FE4;
+  --color-violet-band: #3A1C8C;
+  --color-lavender: #E4DBFF;
+  --color-pop: #FF5FA2;                      /* Hot pink: the main Book buttons */
+  --color-pop-deep: #FF3D8C;
+  --color-ink-soft: #3E4553;                 /* body text on the colour bands */
+  /* The bands behind the featured treatments and the cards, in turn */
+  --band-1: #FFD9E9;                         /* pink */
+  --band-2: #E7DCFF;                         /* lilac */
+  --band-3: #D6E8FF;                         /* sky */
+  --band-4: #FFDFCF;                         /* peach */
+  --band-5: #FFF0B8;                         /* butter */
 
   /* Typography */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -295,10 +311,10 @@ a { color: inherit; }
 }
 
 /* ---------- Pro versions ----------
-   Pro has its own colour, green, so a Pro drip never looks like its standard
+   Pro has its own colour, berry, so a Pro drip never looks like its standard
    version: "PRO" beside every Pro drip's name and on its card's picture
-   (White on Pro Green, 7.3:1), a green edge round its card, and on every drip
-   that has a Pro version an "Upgrade to Pro" link to it (Pro Green on Pro
+   (White on Pro Berry, 6.3:1), a berry edge round its card, and on every drip
+   that has a Pro version an "Upgrade to Pro" link to it (Pro Berry on Pro
    Tint, 6.4:1). */
 
 .pro-badge {
@@ -703,20 +719,20 @@ html.is-locked body { overflow: hidden; }
 
 /* ---------- Featured treatments: Apple-style sections with videos ----------
    Ordinary sections in the page, one after another, each on its tint, with
-   its video beside the text (above it on phones). A slim bar of the
-   treatments' names sticks under the header while you're among them.
+   its video beside the text (above it on phones). A side list of the
+   treatments' names shows while you're among them.
    Laptops (html.tx-scrub, set by script.js): scrolling drives the video
    while the page keeps moving (nothing is pinned).
    Phones and tablets: the video plays by itself when it's in view. */
 
 .tx {
-  --tx-nav-h: 52px;
+  --tx-nav-h: 0px;   /* no bar under the header any more (the names are a side list) */
   display: flex;
   align-items: center;
   min-height: min(100vh - var(--header-h) - var(--tx-nav-h), 900px);
   padding: var(--space-64) 0;
   background: var(--tint, var(--color-cream));
-  /* Anchors land just below the bar (the page's scroll-padding clears the header). */
+  /* Anchors land just below the header (the page's scroll-padding clears it). */
   scroll-margin-top: var(--tx-nav-h);
 }
 @supports (height: 100svh) {
@@ -808,88 +824,97 @@ html.is-locked body { overflow: hidden; }
 }
 .tx-rise.is-in { opacity: 1; translate: none; }
 
-/* The bar of names (Apple's "local nav"): sticks under the header while the
-   treatments are on screen, and scrolls away with the last one. */
+/* The side list of the featured treatments' names: down the right side
+   while you're among them, with a short dash beside the current one (as the
+   first version of the site had it). It shows only while the featured
+   treatments are on screen (script.js adds .is-shown). Below 1360px wide
+   (smaller laptops, tablets and phones) the names become dots, so they never
+   crowd the text. */
 .tx-nav {
-  position: sticky;
-  top: var(--header-h);
-  z-index: 50;
-  height: 52px;
-  border-bottom: 1px solid var(--color-mist);
-  background: var(--color-porcelain);
+  position: fixed;
+  z-index: 60;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--duration-base) var(--ease-out), visibility 0s linear var(--duration-base);
 }
-.tx-nav__inner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  height: 100%;
-  max-width: calc(var(--content-max) + var(--gutter) * 2);
-  margin-inline: auto;
-  padding-inline: var(--gutter) calc(var(--gutter) - 8px);
+.tx-nav.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--duration-base) var(--ease-out), visibility 0s;
 }
 .tx-nav__list {
   display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 0;
-  min-width: 0;
-  height: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   margin: 0;
-  padding: 0 8px;
-  overflow-x: auto;
+  padding: 8px 4px;
   list-style: none;
-  scrollbar-width: none;
-  /* Soft edges where names run off the bar. */
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 20px), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 20px), transparent);
 }
-.tx-nav__list::-webkit-scrollbar { display: none; }
-.tx-nav__list li { flex: none; }
 .tx-nav__item {
   display: flex;
   align-items: center;
-  min-height: 36px;
-  padding: 0 11px;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 6px;
   border-radius: var(--radius-pill);
-  color: var(--color-slate);
+  color: var(--color-ink-soft);
   font-size: var(--text-caption);
   font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
   text-decoration: none;
   white-space: nowrap;
-  transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.tx-nav__item::before {
+  content: "";
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 .tx-nav__item:hover { color: var(--color-ink); }
-.tx-nav__item.is-active { color: var(--color-ink); background: rgba(21, 34, 56, 0.07); }
-.tx-nav__item--all { color: var(--color-bluebird-deep); }
-/* Laptops: a little closer together, so every name fits on the bar. */
-@media (min-width: 820px) and (max-width: 1399.98px) {
-  .tx-nav__item { padding: 0 8px; }
-}
-.tx-nav__item--all:hover { color: var(--color-bluebird); }
+.tx-nav__item.is-active { color: var(--color-violet); }
+.tx-nav__item.is-active::before { transform: scaleX(1); }
 
-/* Next: on to the next treatment (after the last one, All treatments). */
-.tx-nav__next {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 14px 0 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-ink);
-  color: var(--color-porcelain);
-  font-size: var(--text-caption);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
-  transition: background-color var(--duration-fast) var(--ease-out);
+/* Smaller screens: a column of dots on the right edge (each a 24px target). */
+@media (max-width: 1359.98px) {
+  .tx-nav { right: 4px; }
+  .tx-nav__list {
+    gap: 0;
+    padding: 6px 0;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.72);
+  }
+  .tx-nav__item {
+    justify-content: center;
+    width: 24px;
+    min-height: 24px;
+    padding: 0;
+    font-size: 0;
+  }
+  .tx-nav__item::before {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-ink-soft);
+    opacity: 0.45;
+    transform: none;
+    transition: opacity var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+  }
+  .tx-nav__item.is-active::before { background: var(--color-violet); opacity: 1; transform: scale(1.25); }
 }
-.tx-nav__next svg { width: 16px; height: 16px; }
-.tx-nav__next:hover { background: #26354F; }
 
 /* Phones: the video above the text, both centred. */
 @media (max-width: 819.98px) {
   .tx {
-    --tx-nav-h: 48px;
     display: block;
     min-height: 0;
     padding: var(--space-24) 0 var(--space-48);
@@ -911,14 +936,6 @@ html.is-locked body { overflow: hidden; }
   @supports (height: 100svh) {
     .tx-media { width: min(100%, 460px, 52svh); }
   }
-  .tx-nav { height: 48px; }
-  .tx-nav__inner { padding-inline: 0 var(--space-8); gap: var(--space-4); }
-  .tx-nav__list { padding: 0 8px 0 var(--gutter); }
-  .tx-nav__item { padding: 0 10px; min-height: 44px; }
-  .tx-nav__next { min-height: 36px; padding: 0 12px 0 8px; }
-  /* A 44px tap target round the Next button. */
-  .tx-nav__next { position: relative; }
-  .tx-nav__next::after { content: ""; position: absolute; inset: -4px -4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1039,12 +1056,12 @@ html.is-locked body { overflow: hidden; }
 .card__upgrade { align-self: flex-start; margin-top: var(--space-8); }
 
 /* A Pro card follows its standard version: "PRO" on its picture, a soft
-   green well and a green edge, so the two never look alike. */
+   berry well and a berry edge, so the two never look alike. */
 .card--pro {
   border-color: var(--color-pro-line);
   box-shadow: inset 0 0 0 1px var(--color-pro-line);
 }
-.card__media--pro { background: #E6EFE8; }
+.card__media--pro { background: var(--color-pro-tint); }
 .card__pro {
   position: absolute;
   top: 12px;
@@ -2084,7 +2101,7 @@ html.is-locked body { overflow: hidden; }
   /* All treatments: a compact list. Each row is one link: a small picture,
      the name (with PRO), the price, "Upgrade to Pro" where there is one,
      and a chevron; a Pro row sits just under its standard version, slightly
-     indented, with a green edge. */
+     indented, with a berry edge. */
   .card-grid {
     display: block;
     overflow: hidden;
@@ -3081,6 +3098,7 @@ html.is-locked body { overflow: hidden; }
 
 .tx--line {
   --art: clamp(300px, 32vw, 440px);
+  --tx-side: 28px;   /* room for the side list of names (dots below 1360px) */
   display: block;
   min-height: 0;
   padding: 0;
@@ -3156,11 +3174,17 @@ html.is-locked body { overflow: hidden; }
   }
   .tx--text-left .tx__summary { left: calc(50% + var(--art) / 2 + 48px); }
   .tx--text-right .tx__summary { right: calc(50% + var(--art) / 2 + 48px); text-align: right; }
+  /* Whatever sits on the right keeps clear of the side list of names. */
+  .tx--text-right .tx__text { width: min(24rem, calc(50% - var(--art) / 2 - 64px - var(--tx-side))); }
+  .tx--text-left .tx__summary { width: min(22rem, calc(50% - var(--art) / 2 - 64px - var(--tx-side))); }
   .tx__summary sup { font-size: 0.7em; line-height: 0; }
   .tx__source { color: var(--color-bluebird); text-decoration: none; }
   .tx__source:hover { text-decoration: underline; }
   .tx--line .treatment-title { font-size: clamp(36px, 4vw, 60px); }
   .tx--line .treatment-title--long { font-size: clamp(32px, 3.4vw, 52px); }
+}
+@media (min-width: 1360px) {
+  .tx--line { --tx-side: 136px; }
 }
 
 /* Phones: the drawing, then the text as a card on the line. */
@@ -3170,7 +3194,7 @@ html.is-locked body { overflow: hidden; }
   .tx--line .tx__text {
     position: relative;
     z-index: 1;
-    width: min(100% - 32px, 420px);
+    width: min(100% - 64px, 420px);   /* clear of the side dots */
     margin-top: var(--space-48);
     padding: var(--space-24) var(--space-16);
     border: 1px solid var(--color-mist);
@@ -3222,3 +3246,317 @@ html.is-locked body { overflow: hidden; }
 @media (max-width: 819.98px) {
   .card__media--art .line-art { width: 100%; height: 100%; stroke-width: 17; }
 }
+
+
+/* ==========================================================================
+   Colour: Berry & Violet
+   The page in bold blocks of colour: a deep violet hero with hot-pink Book
+   buttons, each featured treatment on its own colour band (pink, lilac,
+   sky, peach, butter, in turn), the cards' pictures on the same colours, a
+   violet "How it works" band, and Pro in berry. The line drawings stay in
+   Bluebird Blue, like the logo.
+   ========================================================================== */
+
+.site-header { background: var(--color-white); }
+
+.hero {
+  background-color: var(--color-violet-band);
+  background-image: linear-gradient(160deg, var(--color-violet-night) 0%, var(--color-violet) 55%, var(--color-violet-bright) 100%);
+  color: var(--color-white);
+}
+.hero .eyebrow, .hero__note, .hero__lead, .hero__cue { color: var(--color-lavender); }
+.hero__title, .hero__points { color: var(--color-white); }
+.hero__points svg { color: #FF8EC0; }
+.hero__cue::after, .tx-lines .hero__cue::after { background: var(--color-pop); }
+.hero .btn--secondary { color: var(--color-white); border-color: rgba(255, 255, 255, 0.55); }
+.hero .btn--secondary:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* The main Book buttons: hot pink with Ink Navy text (5.6:1). */
+.hero .btn--primary,
+.site-header .btn--primary,
+.site-menu__book.btn--primary {
+  background: var(--color-pop);
+  color: var(--color-ink);
+  box-shadow: 0 10px 30px rgba(21, 34, 56, 0.18);
+}
+.hero .btn--primary:hover,
+.site-header .btn--primary:hover,
+.site-menu__book.btn--primary:hover { background: var(--color-pop-deep); }
+.site-header .btn--primary { box-shadow: none; }
+
+/* Each featured treatment on its own band, in turn. */
+.tx-list > .tx--line:nth-child(5n+1) { background: var(--band-1); }
+.tx-list > .tx--line:nth-child(5n+2) { background: var(--band-2); }
+.tx-list > .tx--line:nth-child(5n+3) { background: var(--band-3); }
+.tx-list > .tx--line:nth-child(5n+4) { background: var(--band-4); }
+.tx-list > .tx--line:nth-child(5n+5) { background: var(--band-5); }
+.tx--line .eyebrow, .tx--line .tx__summary { color: var(--color-ink-soft); }
+
+/* The cards' pictures on the same colours, in turn (a Pro card keeps its berry tint). */
+#treatments { background: var(--color-white); }
+.card:nth-child(5n+1) .card__media { background: var(--band-1); }
+.card:nth-child(5n+2) .card__media { background: var(--band-2); }
+.card:nth-child(5n+3) .card__media { background: var(--band-3); }
+.card:nth-child(5n+4) .card__media { background: var(--band-4); }
+.card:nth-child(5n+5) .card__media { background: var(--band-5); }
+.card .card__media.card__media--pro { background: var(--color-pro-tint); }
+.badge { background: var(--band-1); color: #9D174D; }
+
+/* How it works: a violet band with white cards. */
+#how-it-works { background: var(--color-violet-band); color: var(--color-white); }
+#how-it-works .section-title, #how-it-works .step__title, #how-it-works .step__num { color: var(--color-white); }
+#how-it-works .section-lead, #how-it-works .eyebrow, #how-it-works .step__body { color: var(--color-lavender); }
+#how-it-works .tile { color: var(--color-ink); border-color: transparent; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14); }
+#how-it-works .step { border-color: rgba(255, 255, 255, 0.28); }
+
+/* Booking: a pink panel. */
+#book .book-panel { background: var(--band-1); border-color: transparent; }
+.tx--line .badge { background: var(--color-white); }
+
+/* ==========================================================================
+   The header's drop-down menus (Treatments, Studies)
+   Laptops: a button opens a panel under the header (click, or hover with a
+   mouse); Escape, a click elsewhere or tabbing out closes it. Treatments
+   lists every drip with its mini drawing, name and price; Studies lists
+   every study. Phones: the same lists open inside the menu (<details>).
+   ========================================================================== */
+
+.nav-drop { position: relative; display: flex; align-items: center; }
+.nav-drop__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.01em;
+  color: var(--color-slate);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.nav-drop__button:hover,
+.nav-drop__button[aria-expanded="true"] { color: var(--color-ink); }
+.nav-drop__chevron { width: 14px; height: 14px; transition: transform var(--duration-fast) var(--ease-out); }
+.nav-drop__button[aria-expanded="true"] .nav-drop__chevron { transform: rotate(180deg); }
+@media (min-width: 820px) and (max-width: 1099.98px) {
+  .nav-drop__button { font-size: var(--text-caption); }
+}
+
+.nav-drop__panel {
+  position: absolute;
+  top: calc(100% + 18px);
+  left: 50%;
+  z-index: 120;
+  width: 22rem;
+  max-height: calc(100vh - var(--header-h) - 32px);
+  overflow-y: auto;
+  padding: var(--space-12);
+  border: 1px solid var(--color-mist);
+  border-radius: 20px;
+  background: var(--color-white);
+  box-shadow: 0 24px 60px rgba(36, 20, 95, 0.18);
+  transform: translateX(-50%);
+}
+.nav-drop__panel--wide { width: min(46rem, calc(100vw - 48px)); }
+.nav-drop__panel[hidden] { display: none; }
+.nav-drop__panel .menu-list--icons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--space-8); }
+.nav-drop__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-24);
+  margin: var(--space-8) 0 0;
+  padding: var(--space-12) var(--space-12) var(--space-4);
+  border-top: 1px solid var(--color-mist);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+}
+.site-nav .nav-drop__foot a { color: var(--color-violet); font-size: var(--text-caption); }
+.site-nav .nav-drop__foot a:hover { color: var(--color-ink); }
+
+.menu-list { margin: 0; padding: 0; list-style: none; }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 48px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.site-nav .menu-item { color: var(--color-ink); white-space: normal; }
+.menu-item:hover { background: var(--band-2); }
+.menu-item--text { min-height: 44px; font-size: var(--text-caption); font-weight: var(--font-weight-medium); line-height: 1.35; }
+.menu-item__text { display: flex; flex-direction: column; min-width: 0; }
+.menu-item__name { font-size: var(--text-caption); font-weight: var(--font-weight-medium); line-height: 1.3; }
+.menu-item__price { font-size: 13px; color: var(--color-ink-soft); }
+.menu-item .pro-badge { margin-left: 4px; vertical-align: 1px; }
+.menu-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--band-2);
+  color: var(--color-bluebird);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 16;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.menu-list--icons li:nth-child(5n+1) .menu-icon { background: var(--band-1); }
+.menu-list--icons li:nth-child(5n+3) .menu-icon { background: var(--band-3); }
+.menu-list--icons li:nth-child(5n+4) .menu-icon { background: var(--band-4); }
+.menu-list--icons li:nth-child(5n+5) .menu-icon { background: var(--band-5); }
+
+/* Phones: the lists open inside the menu. */
+.menu-group > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  font-size: 28px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  list-style: none;
+  cursor: pointer;
+}
+.menu-group > summary::-webkit-details-marker { display: none; }
+.menu-group > summary::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-4px);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.menu-group[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
+.site-menu__links .menu-list a { min-height: 52px; font-size: var(--text-body); letter-spacing: 0; font-weight: var(--font-weight-medium); }
+.site-menu__links .menu-list li + li { border-top: 0; }
+.site-menu__links .menu-item__name { font-size: var(--text-body); }
+.menu-group__foot { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); margin: var(--space-8) 0 var(--space-16); }
+.site-menu__links .menu-group__foot a { min-height: 44px; font-size: var(--text-body); font-weight: var(--font-weight-medium); letter-spacing: 0; color: var(--color-violet); }
+
+/* ==========================================================================
+   About us, the emergency note, and the studies
+   ========================================================================== */
+
+.placeholder-note {
+  max-width: 40rem;
+  margin: calc(var(--space-32) * -1) auto var(--space-48);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-tile);
+  background: #FCEFC7;
+  font-size: var(--text-caption);
+  text-align: center;
+}
+.about__grid { display: grid; gap: var(--space-48); align-items: start; }
+@media (min-width: 900px) { .about__grid { grid-template-columns: 1.1fr 1fr; } }
+.about__copy { display: flex; flex-direction: column; gap: var(--space-16); font-size: var(--text-body-lg); line-height: 1.6; color: var(--color-ink-soft); }
+.about__doctors { display: grid; gap: var(--space-16); }
+.doctor {
+  display: flex;
+  gap: var(--space-16);
+  padding: var(--space-24);
+  border-radius: var(--radius-card);
+  background: var(--band-2);
+}
+.doctor:nth-child(2) { background: var(--band-1); }
+.doctor__photo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-violet);
+  color: var(--color-white);
+  font-size: 24px;
+  font-weight: var(--font-weight-semibold);
+}
+.doctor__name { font-size: var(--text-card-title); font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; }
+.doctor__role, .doctor__gmc, .doctor__bio { margin-top: 4px; font-size: var(--text-caption); line-height: 1.5; color: var(--color-ink-soft); }
+.doctor__gmc a { color: var(--color-violet); }
+.about__regulator {
+  margin-top: var(--space-48);
+  padding: var(--space-16) var(--space-24);
+  border: 1px solid var(--color-mist);
+  border-radius: var(--radius-tile);
+  font-size: var(--text-caption);
+  text-align: center;
+}
+.about__regulator a { color: var(--color-violet); }
+
+.contact-emergency {
+  max-width: 40rem;
+  margin: var(--space-48) auto 0;
+  font-size: var(--text-caption);
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
+.study-grid {
+  display: grid;
+  gap: var(--space-24);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 720px) { .study-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .studies .study-grid, .study-more .study-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.study-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-32);
+  border-radius: var(--radius-card);
+  background: var(--band-3);
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
+}
+.study-card:nth-child(3n+2) { background: var(--band-2); }
+.study-card:nth-child(3n+3) { background: var(--band-4); }
+.study-card__title { font-size: var(--text-card-title); font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; line-height: 1.25; }
+.study-card__link { color: var(--color-ink); text-decoration: none; }
+.study-card__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.study-card__link:focus-visible { outline: none; }
+.study-card:focus-within { outline: 2px solid var(--color-violet); outline-offset: 3px; }
+.study-card__summary { font-size: var(--text-caption); line-height: 1.6; color: var(--color-ink-soft); }
+.study-card__more { margin-top: auto; font-size: var(--text-caption); font-weight: var(--font-weight-semibold); color: var(--color-violet); }
+@media (hover: hover) {
+  .study-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(36, 20, 95, 0.14); }
+}
+.studies__all { margin-top: var(--space-48); text-align: center; }
+
+.study-notice {
+  margin-top: var(--space-24);
+  padding: var(--space-16) var(--space-24);
+  border-radius: var(--radius-tile);
+  background: var(--band-3);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+}
+.study-notice p + p { margin-top: var(--space-8); }
+.studies-index .study-grid { margin-top: var(--space-48); }
+.study-body sup.cite { font-size: 0.72em; line-height: 0; }
+.study-body sup.cite a { padding: 0 1px; text-decoration: none; font-weight: var(--font-weight-semibold); }
+.study-body .table-wrap { margin: var(--space-16) 0; overflow-x: auto; }
+.study-body table { width: 100%; border-collapse: collapse; font-size: var(--text-caption); }
+.study-body th, .study-body td { padding: 10px 12px; border-bottom: 1px solid var(--color-mist); text-align: left; vertical-align: top; }
+.study-body thead th { font-weight: var(--font-weight-semibold); background: var(--color-porcelain); }
+.study-body tbody th { font-weight: var(--font-weight-regular); }
+.study-body ol.sources { margin: 0; padding-left: 1.4em; font-size: var(--text-caption); line-height: 1.55; overflow-wrap: anywhere; }
+.study-body ol.sources li + li { margin-top: var(--space-8); }
+.study-body ol.sources li:target { background: #FCEFC7; border-radius: 4px; }
+.study-more { margin-top: var(--space-64); }
+.study-more__title { margin-bottom: var(--space-24); font-size: 24px; font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; }
+.not-found__links { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: var(--space-32); }

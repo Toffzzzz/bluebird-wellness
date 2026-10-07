@@ -20,7 +20,13 @@ Bluebird Wellness is an IV drip clinic based at Bluebird Dentists near Westfield
 | Deep Bluebird | `#1C47A3` | `--color-bluebird-deep` | Hover and pressed state for Bluebird Blue buttons and links |
 | Sky Tint | `#E8EFFB` | `--color-sky` | Soft blue badge backgrounds, selected chips, gentle highlight washes |
 | Sage | `#4E6B58` | `--color-sage` | Rare, quiet secondary accent for availability labels such as "Mobile service available" |
-| Pro Green | `#17633F` | `--color-pro` | Everything Pro: the "PRO" badge (White on Pro Green, 7.3:1), the "PRO" tag on a Pro card's picture, a Pro card's edge, and "Upgrade to Pro" links (Pro Green on Pro Tint `#E8F4EC`, 6.4:1) |
+| Pro Berry | `#B0216B` | `--color-pro` | Everything Pro: the "PRO" badge (White on Pro Berry, 6.4:1), the "PRO" tag on a Pro card's picture, a Pro card's edge, and "Upgrade to Pro" links (Pro Berry on Pro Tint `#FFE3EF`, 5.4:1) |
+| Violet Night → Violet → Bright Violet | `#24145F` → `#4B23A8` → `#7B3FE4` | `--color-violet-night`, `--color-violet`, `--color-violet-bright` | The hero's gradient (White text), the side list's current name, menu links |
+| Violet Band | `#3A1C8C` | `--color-violet-band` | "How it works" (White and Lavender `#E4DBFF` text) and the hero's fallback colour |
+| Hot Pink | `#FF5FA2` | `--color-pop` | The main Book now buttons (hero, header, phones' menu), with Ink Navy text (5.6:1); `#FF3D8C` on hover |
+| Colour bands | `#FFD9E9` pink, `#E7DCFF` lilac, `#D6E8FF` sky, `#FFDFCF` peach, `#FFF0B8` butter | `--band-1` … `--band-5` | In turn: behind each featured treatment, the cards' pictures, the menu's mini drawings, the study cards; body text on them in Ink Soft `#3E4553` |
+
+**Berry & Violet (October 2026).** The colour pops in blocks: a deep violet hero with hot-pink Book buttons, each featured treatment on its own colour band, the cards' pictures on the same colours, a violet "How it works", a pink booking panel and Pro in berry. The line drawings, the logo and the other buttons stay Bluebird Blue. No green, except WhatsApp's own button.
 
 All text/background pairs above meet WCAG AA contrast (Ink on Cream 14.5:1, Slate on Cream 5.5:1, White on Bluebird Blue 6.4:1, Bluebird Blue on Cream 5.8:1).
 
@@ -90,12 +96,14 @@ Use `clamp()` so type scales smoothly from mobile to desktop.
 ### Hero
 **Role:** The first screen, and the main selling point: doctor-led
 
-Centred on Cream Canvas: a Slate eyebrow ("IV drip clinic · London"), the headline "Doctor-led IV drips." (Inter 600, hero size, a non-breaking hyphen so it never splits), a Slate lead line, Book now (Primary) and Speak to a doctor (Secondary), three ticks in Pro Green with Ink Navy 14px labels, and the medical-consultation note.
+Centred on the violet gradient: a Lavender eyebrow ("IV drip clinic · London"), the headline "Doctor-led IV drips." in White (Inter 600, hero size, a non-breaking hyphen so it never splits), a Lavender lead line, Book now (Hot Pink) and Speak to a doctor (White outline), three ticks in soft pink with White 14px labels, and the medical-consultation note. "Scroll to explore" ends in a hot-pink line.
 
 ### Site Header
 **Role:** Sitewide navigation, 64px tall
 
-Solid Porcelain `#FBFAF7` background (no translucency or backdrop blur: a blur has to be redrawn on every frame while the page scrolls beneath it). "Bluebird Wellness" wordmark on the left in Inter 600, 18px, Ink Navy. Nav links in Inter 500, 15px, Slate, turning Ink Navy on hover. A compact Primary Pill Button ("Book now") on the right. A 1px Mist bottom border appears only once the page has scrolled.
+Solid White background (no translucency or backdrop blur: a blur has to be redrawn on every frame while the page scrolls beneath it). "Bluebird Wellness" wordmark on the left in Inter 600, 18px, Ink Navy. Nav: Treatments and Studies (each opening a menu, with a chevron), About, How it works, Contact, in Inter 500, 15px, Slate, turning Ink Navy on hover. A compact Hot Pink "Book now" on the right. A 1px Mist bottom border appears only once the page has scrolled.
+
+The drop-down menus: a White panel with 20px corners and a soft violet shadow under the header. Treatments lists every drip in two columns, each with its mini line drawing on a colour-band tile (40px), its name (Inter 500, 14px) and price (13px, Ink Soft), then "All treatments" and "Ingredient glossary" in Violet; Studies lists each study. On phones they open inside the Menu, under "Treatments" and "Studies".
 
 ### Primary Pill Button
 **Role:** Main call to action ("Book now", "Book")
@@ -110,12 +118,12 @@ Transparent fill, Ink Navy text, 1px Ink Navy border at 20% opacity, 9999px radi
 ### Treatment Line Drawings (the live version)
 **Role:** One section per featured treatment, joined by one line
 
-On Cream Canvas. A single Bluebird Blue `#2458C6` line, 3.2px, round ends and joins, runs straight down the middle of the page and draws as the page scrolls (the pen is two thirds of the way down the screen, so each drawing finishes low and stays in view). The cards under "All treatments" and the treatment pages show the same drawings in the same blue, drawing themselves in from the top down as they come into view. It stops at the top of each treatment's drawing, the drawing is drawn from the top down, and the line carries on from its bottom. Drawings are clean line art (no hand-drawn wobble), all the same weight (four, the people, are traced from ChatGPT line art with small details left out), about 440px on laptops and 340px on phones; the Signature drawing is the logo itself, with its strokes made thinner (`images/logo/bluebird-mark-thin.svg`) so it sits with the lines, revealed from the top down. On laptops the text (eyebrow, name at 36–60px, Book, Learn more, price) sits beside the drawing, alternately left (right-aligned towards the line) and right, and a short summary in Slate (the opening sentences of the drip's description, 17px) sits on the other side of the drawing; on phones it's a Porcelain card with a Mist border under the drawing, the line running into its top and out of its bottom. The hero's "Scroll to explore" line is drawn in the same blue, as the start of the line.
+Each section on its own colour band, in turn. A single Bluebird Blue `#2458C6` line, 3.2px, round ends and joins, runs straight down the middle of the page and draws as the page scrolls (the pen is two thirds of the way down the screen, so each drawing finishes low and stays in view). The cards under "All treatments" and the treatment pages show the same drawings in the same blue, drawing themselves in from the top down as they come into view. It stops at the top of each treatment's drawing, the drawing is drawn from the top down, and the line carries on from its bottom. Drawings are clean line art (no hand-drawn wobble), all the same weight (four, the people, are traced from ChatGPT line art with small details left out), about 440px on laptops and 340px on phones; the Signature drawing is the logo itself, with its strokes made thinner (`images/logo/bluebird-mark-thin.svg`) so it sits with the lines, revealed from the top down. On laptops the text (eyebrow, name at 36–60px, Book, Learn more, price) sits beside the drawing, alternately left (right-aligned towards the line) and right, and a short summary in Slate (the opening sentences of the drip's description, 17px) sits on the other side of the drawing; on phones it's a Porcelain card with a Mist border under the drawing, the line running into its top and out of its bottom. The hero's "Scroll to explore" line is drawn in the same blue, as the start of the line.
 
 ### Treatment Showcase Section (the video version)
 **Role:** One section per featured treatment, with a short video of its animation
 
-On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the scroll drives the video as the section moves up the screen (nothing is pinned); on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A slim bar of the treatments' names sticks under the header while the sections are on screen, with a dark Next pill on its right. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
+On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the scroll drives the video as the section moves up the screen (nothing is pinned); on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A side list of the treatments' names shows down the right while the sections are on screen (dots below 1360px), the current one in Violet with a short dash beside it. Text column: eyebrow ("IV therapy" in Slate, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Slate, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
 
 ### Treatment Card
 **Role:** One treatment in the "All treatments" grid
@@ -224,7 +232,7 @@ Imagery is object-first and bright: each treatment is represented by a single is
 
 ## Layout
 
-The page is a vertically sequenced treatment story on Cream Canvas. A solid 64px header sits above a calm, centred hero that leads with the service being doctor-led (eyebrow, very large headline, one supporting line, Book now and Speak to a doctor, three ticks). The Treatment Showcase Sections follow, one per featured treatment, each on its tint with a short video of its animation, under a sticky bar of their names. Next, an "All treatments" grid of White cards on a Porcelain or Sand band. Then "How it works" with two Information Tiles side by side (in clinic at Bluebird Dentists near Westfield; mobile call-out to home, hotel or office), a booking/contact section, and the Ink Navy footer. The page stays spacious and image-led throughout.
+The page is a vertically sequenced treatment story in bold blocks of colour. A solid 64px White header (with the Treatments and Studies menus) sits above a centred violet hero that leads with the service being doctor-led (eyebrow, very large headline, one supporting line, Book now and Speak to a doctor, three ticks). The featured treatments follow, one per colour band, joined by one Bluebird Blue line, with a side list of their names. Next, an "All treatments" grid of White cards on White, their pictures on the colour bands. Then "How it works" on a violet band, About us (placeholder text until the clinic writes its own, and the two doctors with their GMC numbers), a booking/contact section with a pink panel, the studies (three cards and a link to them all), and the Ink Navy footer.
 
 ## Agent Prompt Guide
 

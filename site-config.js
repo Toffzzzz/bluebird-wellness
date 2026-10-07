@@ -51,6 +51,17 @@ window.SITE = {
   // generator after changing it (it checks the ids).
   featured: ['iron', 'skin', 'hydration', 'muscle-recovery', 'signature'],
 
+  // The site's address, ending in /. Used for link previews (when the site is
+  // shared on WhatsApp, iMessage, social media), the 404 page and, once
+  // launched, the sitemap for search engines.
+  siteUrl: 'https://toffzzzz.github.io/bluebird-wellness/',
+
+  // false while the site is a preview: every page asks search engines not to
+  // list it. Set to true at launch (after the compliance review, with the
+  // business details filled in), then run the generator: it lifts that and
+  // writes robots.txt and sitemap.xml.
+  launched: false,
+
   /* ---------- The business and its policies ----------
      Shown in every page's footer and in the policy pages (privacy/, terms/,
      cancellations/, cookies/, accessibility/). The law says a business
@@ -88,4 +99,23 @@ window.SITE = {
   policiesUpdated: '6 October 2026',
   // true: each policy page says it is a draft awaiting the clinic's details and a compliance review.
   legalDraft: true,
+
+  /* ---------- The doctors and the regulator (About us) ---------- */
+
+  // Each doctor's GMC (General Medical Council) number, so patients can
+  // check their registration on the medical register. Shown in About us.
+  gmcDrNema: '',
+  gmcDrMahdi: '',
+
+  // The Care Quality Commission. Once the clinic is rated, the law requires
+  // the rating on the website: fill in the rating (e.g. 'Good'), the date of
+  // the report (e.g. '3 March 2027') and the link to the report on cqc.org.uk.
+  // Until then About us shows the registration ID (cqcNumber above), or a gap.
+  cqcRating: '',
+  cqcRatingDate: '',
+  cqcReportUrl: '',
+
+  // false until the clinic's doctors have reviewed the studies (studies/):
+  // each study shows a "Draft: awaiting review" note until then.
+  studiesReviewed: false,
 };

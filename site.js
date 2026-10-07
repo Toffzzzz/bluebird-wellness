@@ -2,6 +2,7 @@
    Bluebird Wellness: shared by every page (the home page, the treatment
    pages and the glossary)
 
+   - The header's drop-down menus (Treatments, Studies) on laptops.
    - The phones' menu: the header's Menu button opens a full-screen menu
      (below 820px; wider screens have the header's own links).
    - window.SiteDialog.open(el, options): a modal (the menu, the home page's
@@ -129,6 +130,58 @@
   };
   window.SiteDraw = { watch };
   watch(document);
+
+  // The header's drop-down menus (Treatments, Studies), on laptops: the
+  // button opens its panel (a mouse can also just hover); Escape, a click
+  // elsewhere, tabbing out or following a link closes it.
+  const drops = [...document.querySelectorAll('[data-drop]')].map((drop) => ({
+    drop,
+    button: drop.querySelector('.nav-drop__button'),
+    panel: drop.querySelector('.nav-drop__panel'),
+    timer: 0,
+  }));
+  const setOpen = (d, open) => {
+    clearTimeout(d.timer);
+    d.button.setAttribute('aria-expanded', String(open));
+    d.panel.hidden = !open;
+  };
+  const closeAll = (except) => drops.forEach((d) => { if (d !== except) setOpen(d, false); });
+  const hoverable = window.matchMedia('(hover: hover) and (pointer: fine)');
+  drops.forEach((d) => {
+    if (!d.button || !d.panel) return;
+    d.button.addEventListener('click', () => {
+      // A click straight after hovering it open keeps it open.
+      const justHovered = Date.now() - (d.hovered || 0) < 600;
+      const open = d.button.getAttribute('aria-expanded') !== 'true' || justHovered;
+      d.hovered = 0;
+      closeAll(d);
+      setOpen(d, open);
+    });
+    d.drop.addEventListener('mouseenter', () => {
+      if (!hoverable.matches) return;
+      if (d.panel.hidden) d.hovered = Date.now();
+      closeAll(d);
+      setOpen(d, true);
+    });
+    d.drop.addEventListener('mouseleave', () => {
+      if (!hoverable.matches) return;
+      clearTimeout(d.timer);
+      d.timer = setTimeout(() => setOpen(d, false), 180);
+    });
+    d.drop.addEventListener('focusout', (event) => {
+      if (!d.drop.contains(event.relatedTarget)) setOpen(d, false);
+    });
+    d.drop.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || d.panel.hidden) return;
+      event.stopPropagation();
+      setOpen(d, false);
+      d.button.focus();
+    });
+    d.panel.addEventListener('click', (event) => { if (event.target.closest('a[href]')) setOpen(d, false); });
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-drop]')) closeAll();
+  });
 
   // The phones' menu. A link in it closes it first, then goes where it goes
   // (on the home page, straight to that section).

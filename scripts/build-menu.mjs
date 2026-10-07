@@ -105,6 +105,11 @@ const SITE = (() => {
   FEATURED_IDS = (featured || []).map((id) => String(id).trim());
   return Object.fromEntries(Object.entries(window.SITE || {}).filter(([k]) => k !== 'featured').map(([k, v]) => [k, String(v ?? '').trim()]));
 })();
+// A true/false setting in site-config.js.
+const isOn = (key) => SITE[key] === 'true';
+const SITE_URL = SITE.siteUrl ? SITE.siteUrl.replace(/\/?$/, '/') : '';
+if (SITE_URL && !/^https?:\/\//.test(SITE_URL)) fail('siteUrl in site-config.js must start with https://.');
+
 const DRIPS = MENU.drips;
 if (!Array.isArray(DRIPS) || !DRIPS.length) fail('data/drips.json has no drips.');
 for (const drip of DRIPS) {
@@ -346,9 +351,133 @@ const LOGO = (() => {
 })();
 const withLogo = (html) => html.replace(/<svg class="brand__mark" data-logo[^>]*>[\s\S]*?<\/svg>/g, LOGO);
 
+/* ---------- Studies (content/studies/) ----------
+   One HTML file per study: a comment with its title, a short summary (for
+   the cards) and its order, then the text, with numbered sources at the end
+   (<ol class="sources">, each <li id="source-N">) and citations linking to
+   them (<a href="#source-N">). Each becomes studies/<file name>/; the home
+   page shows the first few, and the Studies menu lists them all. */
+
+const STUDIES = (existsSync(at('content/studies')) ? readdirSync(at('content/studies')) : [])
+  .filter((f) => f.endsWith('.html'))
+  .map((f) => {
+    const slug = f.replace(/\.html$/, '');
+    const text = read(`content/studies/${f}`);
+    const head = text.match(/^<!--([\s\S]*?)-->/);
+    const meta = Object.fromEntries((head ? head[1] : '').split('\n').map((l) => l.match(/^\s*(\w+):\s*(.+?)\s*$/)).filter(Boolean).map((m) => [m[1], m[2]]));
+    if (!/^[a-z0-9-]+$/.test(slug)) fail(`content/studies/${f}: use lowercase letters, numbers and hyphens in the file name.`);
+    for (const key of ['title', 'summary', 'order']) if (!meta[key]) fail(`content/studies/${f}: no ${key}.`);
+    return { slug, ...meta, order: Number(meta.order), body: text.slice(head[0].length).trim() };
+  })
+  .sort((a, b) => a.order - b.order);
+const STUDIES_ON_HOME = 3;   // how many the home page shows (the first, in order)
+
+/* ---------- The drop-down menus, About us and the page heads ----------
+   Written into index.html between its markers, then copied with the header
+   onto every page:
+     <!-- menu:treatments --> every drip, with its mini drawing (the line
+       drawings as one icon file, images/icons/treatments.svg), name and price;
+     <!-- menu:studies --> every study;
+     <!-- studies:home --> the first studies, as cards;
+     <!-- head:meta --> the robots, link-preview and search details;
+     data-gmc / data-cqc: the doctors' GMC numbers and the CQC line. */
+
+const ICON_FILE = 'images/icons/treatments.svg';
+const iconHTML = (art) => (art ? `<svg class="menu-icon" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><use href="${ICON_FILE}#art-${esc(art)}"/></svg>` : '<span class="menu-icon menu-icon--none" aria-hidden="true"></span>');
+function treatmentsMenuHTML() {
+  return `<ul class="menu-list menu-list--icons">${DRIPS.map((d) => {
+    const art = USE_LINES ? VISUALS[d.slug].art : null;
+    const pro = d.baseVariantSlug ? ' <span class="pro-badge" aria-hidden="true">Pro</span>' : '';
+    return `
+              <li><a class="menu-item" href="treatments/${esc(d.slug)}/">${iconHTML(art)}<span class="menu-item__text"><span class="menu-item__name"><span${vb(`drips.${d.slug}.name`)}>${esc(d.name)}</span>${pro}</span><span class="menu-item__price"${vb(`drips.${d.slug}.priceLabel`)}>${esc(d.priceLabel)}</span></span></a></li>`;
+  }).join('')}
+            </ul>`;
+}
+function studiesMenuHTML() {
+  return `<ul class="menu-list">${STUDIES.map((st) => `
+              <li><a class="menu-item menu-item--text" href="studies/${esc(st.slug)}/">${esc(st.title)}</a></li>`).join('')}
+            </ul>`;
+}
+const studyCardHTML = (st, up, h) => `
+          <li class="study-card">
+            <h${h} class="study-card__title"><a class="study-card__link" href="${up}studies/${esc(st.slug)}/">${esc(st.title)}</a></h${h}>
+            <p class="study-card__summary">${esc(st.summary)}</p>
+            <p class="study-card__more" aria-hidden="true">Read the summary</p>
+          </li>`;
+// h: the cards' heading level (3 under a section's h2; 2 on the studies page).
+const studyCardsHTML = (list, up, h = 3) => `<ul class="study-grid">${list.map((st) => studyCardHTML(st, up, h)).join('')}
+        </ul>`;
+
+// The robots line (until launch), the link preview and, on the home page, the
+// clinic's details for search engines.
+function headMeta({ title, description, path = '', home = false }) {
+  const lines = [];
+  if (!isOn('launched')) lines.push('<meta name="robots" content="noindex, nofollow">');
+  else if (SITE_URL) lines.push(`<link rel="canonical" href="${esc(SITE_URL + path)}">`);
+  lines.push('<meta property="og:type" content="website">');
+  lines.push(`<meta property="og:site_name" content="${esc(SITE_NAME)}">`);
+  lines.push(`<meta property="og:title" content="${esc(title)}">`);
+  if (description) lines.push(`<meta property="og:description" content="${esc(description)}">`);
+  if (SITE_URL) {
+    lines.push(`<meta property="og:url" content="${esc(SITE_URL + path)}">`);
+    lines.push(`<meta property="og:image" content="${esc(SITE_URL)}images/share.png">`);
+    lines.push('<meta property="og:image:width" content="1200">', '<meta property="og:image:height" content="630">');
+    lines.push(`<meta property="og:image:alt" content="${esc(`${SITE_NAME}: doctor-led IV drips, London`)}">`);
+  }
+  lines.push('<meta name="twitter:card" content="summary_large_image">');
+  if (home) {
+    const clinic = {
+      '@context': 'https://schema.org',
+      '@type': 'MedicalClinic',
+      name: SITE_NAME,
+      description: 'Doctor-led IV drips in clinic near Westfield, London, and as a mobile call-out.',
+      address: { '@type': 'PostalAddress', streetAddress: SITE.clinicAddress || 'Bluebird Dentists, near Westfield', addressLocality: 'London', addressCountry: 'GB' },
+    };
+    if (SITE_URL) { clinic.url = SITE_URL; clinic.image = `${SITE_URL}images/share.png`; }
+    if (SITE.phone) clinic.telephone = SITE.phone;
+    if (SITE.email) clinic.email = SITE.email;
+    lines.push(`<script type="application/ld+json">${JSON.stringify(clinic).replace(/</g, '\\u003c')}</script>`);
+  }
+  return lines.join('\n  ');
+}
+
+// The doctors' GMC numbers and the CQC line in About us.
+function gmcHTML(key) {
+  const n = SITE[key];
+  return n ? `GMC number: <a href="https://www.gmc-uk.org/registrants/${esc(n)}">${esc(n)}</a>` : 'GMC number: <mark class="legal-gap">[GMC number]</mark>';
+}
+function cqcHTML() {
+  if (SITE.cqcRating) {
+    const date = SITE.cqcRatingDate ? ` (report published ${esc(SITE.cqcRatingDate)})` : '';
+    const link = SITE.cqcReportUrl ? ` <a href="${esc(SITE.cqcReportUrl)}">Read the report on the CQC website</a>.` : '';
+    return `Rated <strong>${esc(SITE.cqcRating)}</strong> by the Care Quality Commission${date}.${link}`;
+  }
+  if (SITE.cqcNumber) return `Registered with the Care Quality Commission (ID ${esc(SITE.cqcNumber)}).`;
+  return 'Care Quality Commission: <mark class="legal-gap">[registration, and the clinic\'s latest rating once inspected]</mark>';
+}
+
+const region = (html, name, content) => {
+  const re = new RegExp(`(<!-- ${name} -->)[\\s\\S]*?(<!-- /${name} -->)`, 'g');
+  if (!re.test(html)) fail(`index.html has no <!-- ${name} --> … <!-- /${name} --> markers.`);
+  return html.replace(re, (m, open, close) => `${open}\n            ${content}\n            ${close}`);
+};
+const withContent = (html) => {
+  let out = region(html, 'menu:treatments', treatmentsMenuHTML());
+  out = region(out, 'menu:studies', studiesMenuHTML());
+  out = region(out, 'studies:home', studyCardsHTML(STUDIES.slice(0, STUDIES_ON_HOME), ''));
+  out = out.replace(/(<!-- head:meta [\s\S]*?-->)[\s\S]*?(<!-- \/head:meta -->)/, (m, open, close) => `${open}\n  ${headMeta({
+    title: 'Bluebird Wellness | Doctor-led IV drips in clinic and at home, London',
+    description: 'Doctor-led IV drips at Bluebird Dentists near Westfield, London, or as a mobile call-out to your home, hotel or office.',
+    home: true,
+  })}\n  ${close}`);
+  out = out.replace(/(<p class="doctor__gmc" data-gmc="(\w+)">)[\s\S]*?(<\/p>)/g, (m, open, key, close) => `${open}${gmcHTML(key)}${close}`);
+  out = out.replace(/(<p class="about__regulator" data-cqc>)[\s\S]*?(<\/p>)/, (m, open, close) => `${open}${cqcHTML()}${close}`);
+  return out;
+};
+
 /* ---------- Header and footer: the home page's, pointed back at it ---------- */
 
-const INDEX = withLogo(withSite(read('index.html')));
+const INDEX = withLogo(withSite(withContent(read('index.html'))));
 
 function slice(html, open, close) {
   const start = html.indexOf(open);
@@ -630,8 +759,7 @@ function pageHTML(drip) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(drip.name)} | ${esc(SITE_NAME)}</title>
   <meta name="theme-color" content="${esc(tint)}">
-  <!-- Remove before launch, after the menu wording has had its compliance review -->
-  <meta name="robots" content="noindex, nofollow">
+  ${headMeta({ title: `${drip.name} | ${SITE_NAME}`, description: `${drip.name}, ${drip.priceLabel}: a doctor-led IV drip at ${SITE_NAME}, London. Every treatment is subject to a medical consultation.`, path: `treatments/${drip.slug}/` })}
   ${rebase(ICONS, '../../')}
 
   <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -750,8 +878,7 @@ ${paras(item.text, '                  ')}
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(GLOSSARY_TITLE)} | ${esc(SITE_NAME)}</title>
   <meta name="theme-color" content="#F7F4EF">
-  <!-- Remove before launch, after the menu wording has had its compliance review -->
-  <meta name="robots" content="noindex, nofollow">
+  ${headMeta({ title: `${GLOSSARY_TITLE} | ${SITE_NAME}`, description: `What's in ${SITE_NAME}'s IV drips: every ingredient, and the drips it's in.`, path: 'ingredients/' })}
   ${rebase(ICONS, '../')}
 
   <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -829,7 +956,7 @@ ${paras(item.text, '                  ')}
    of the business's details, and [[text]] is a highlighted gap for something
    the clinic still has to decide. */
 
-const LEGAL = ['privacy', 'terms', 'cancellations', 'cookies', 'accessibility'];
+const LEGAL = ['privacy', 'terms', 'cancellations', 'cookies', 'accessibility', 'complaints', 'faq'];
 const LEGAL_GAPS = {
   legalName: "the business's legal name",
   companyNumber: 'company number, if a limited company',
@@ -910,8 +1037,7 @@ function legalPageHTML(name) {
   <title>${esc(page.title)} | ${esc(SITE_NAME)}</title>
   <meta name="description" content="${esc(page.description)}">
   <meta name="theme-color" content="#F7F4EF">
-  <!-- Remove before launch, after the menu wording has had its compliance review -->
-  <meta name="robots" content="noindex, nofollow">
+  ${headMeta({ title: `${page.title} | ${SITE_NAME}`, description: page.description, path: `${name}/` })}
   ${rebase(ICONS, '../')}
 
   <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -942,6 +1068,139 @@ ${page.body.replace(/^(<p class="legal-lead">[\s\S]*?<\/p>)/, `$1${toc}`)}
   <script src="../chat.js" defer></script>
 </body>
 </html>
+`;
+}
+
+/* ---------- Studies pages ---------- */
+
+const STUDIES_TITLE = 'Studies';
+const STUDIES_LEAD = 'Plain-English summaries of what UK surveys, NHS and NICE guidance and published research say about common deficiencies, with every source listed.';
+// Shown on every study: they're general information, and they say nothing about our treatments.
+const STUDY_NOTICE = `<div class="study-notice" role="note">
+        <p><strong>General information, not medical advice.</strong> These summaries describe what published research and UK guidance say. They are not about our treatments, and they can't tell you whether you have a deficiency: only a doctor and, often, a blood test can.</p>
+        <p>If you're worried about symptoms, speak to your GP or a pharmacist, or call NHS 111. In an emergency, call 999.</p>
+      </div>`;
+const studyDraft = () => (isOn('studiesReviewed') ? '' : `
+      <p class="legal-draft" role="note"><strong>Draft.</strong> This summary is awaiting review by the clinic's doctors.</p>`);
+
+function pageShell({ up, title, description, path, bodyClass, main, current }) {
+  let header = rebase(HEADER_HTML, up);
+  let footer = rebase(FOOTER_HTML, up);
+  if (current) {
+    header = header.replace(new RegExp(`<a href="${up}${current}">`, 'g'), '<a href="./" aria-current="page">');
+    footer = footer.replace(new RegExp(`<a href="${up}${current}">`, 'g'), '<a href="./" aria-current="page">');
+  }
+  return `<!DOCTYPE html>
+<!-- ${GENERATED} -->
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(title)} | ${esc(SITE_NAME)}</title>
+  <meta name="description" content="${esc(description)}">
+  <meta name="theme-color" content="#3A1C8C">
+  ${headMeta({ title: `${title} | ${SITE_NAME}`, description, path })}
+  ${rebase(ICONS, up)}
+
+  <link rel="preload" href="${up}fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="${up}styles.css">
+</head>
+<body class="drip-page ${bodyClass}">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  ${header}
+
+  <main id="main">
+${main}
+  </main>
+
+  ${footer}
+
+  <script src="${up}site-config.js" defer></script>
+  <script src="${up}data/book-list.js" defer></script>
+  <script src="${up}site.js" defer></script>
+  <script src="${up}treatment.js" defer></script>
+  <script src="${up}booking.js" defer></script>
+  <script src="${up}chat.js" defer></script>
+</body>
+</html>
+`;
+}
+
+function studiesIndexHTML() {
+  return pageShell({
+    up: '../', title: STUDIES_TITLE, description: STUDIES_LEAD, path: 'studies/', bodyClass: 'studies-page', current: 'studies/',
+    main: `    <div class="container legal studies-index">
+      <p class="drip-back-row"><a class="drip-back" href="../#studies">${BACK}Back to the home page</a></p>
+      <h1 class="drip-title">${esc(STUDIES_TITLE)}</h1>
+      <p class="legal-lead">${esc(STUDIES_LEAD)}</p>
+      ${STUDY_NOTICE}
+      ${studyCardsHTML(STUDIES, '../', 2)}
+    </div>`,
+  });
+}
+
+function studyPageHTML(st) {
+  const sections = [...st.body.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)];
+  const toc = sections.length > 2 ? `
+      <nav class="legal-toc" aria-labelledby="study-toc-title">
+        <p class="legal-toc__title" id="study-toc-title">On this page</p>
+        <ul>${sections.map((m) => `
+          <li><a href="#${m[1]}">${m[2]}</a></li>`).join('')}
+        </ul>
+      </nav>` : '';
+  const i = STUDIES.indexOf(st);
+  const more = STUDIES.filter((o) => o !== st).slice(0, 3);
+  const researched = st.researched ? `
+      <p class="legal-updated">Sources checked ${esc(st.researched)}</p>` : '';
+  return pageShell({
+    up: '../../', title: st.title, description: st.summary, path: `studies/${st.slug}/`, bodyClass: 'studies-page study-page',
+    main: `    <article class="container legal study">
+      <p class="drip-back-row"><a class="drip-back" href="../">${BACK}All studies</a></p>
+      <p class="eyebrow">Study ${i + 1} of ${STUDIES.length}</p>
+      <h1 class="drip-title">${esc(st.title)}</h1>${researched}${studyDraft()}
+      <p class="legal-lead">${esc(st.summary)}</p>
+      ${STUDY_NOTICE}${toc}
+      <div class="legal-body study-body">
+${st.body}
+      </div>
+      <section class="study-more" aria-labelledby="study-more-title">
+        <h2 class="study-more__title" id="study-more-title">More studies</h2>
+        ${studyCardsHTML(more, '../../')}
+      </section>
+    </article>`,
+  });
+}
+
+// The page for an address that doesn't exist (GitHub Pages shows 404.html).
+// Links work from any depth through <base>, from siteUrl.
+function notFoundHTML() {
+  const base = SITE_URL ? new URL(SITE_URL).pathname : '/';
+  return pageShell({
+    up: '', title: 'Page not found', description: "This page doesn't exist.", path: '404.html', bodyClass: 'legal-page not-found',
+    main: `    <div class="container legal">
+      <h1 class="drip-title">Page not found</h1>
+      <p class="legal-lead">Sorry, there's no page at this address. It may have moved, or the link may be mistyped.</p>
+      <p class="not-found__links"><a class="btn btn--primary" href="./">Go to the home page</a> <a class="btn btn--secondary" href="./#treatments">See all treatments</a></p>
+    </div>`,
+  }).replace('<head>\n', `<head>\n  <base href="${esc(base)}">\n`);
+}
+
+// The mini drawings for the Treatments menu, as one file of <symbol>s.
+function iconFileSVG() {
+  const used = [...new Set(DRIPS.map((d) => VISUALS[d.slug].art).filter(Boolean))];
+  const symbols = used.map((id) => {
+    const paths = LINE_ART[id].paths.map((p) => {
+      const o = typeof p === 'string' ? { d: p } : p;
+      const move = o.transform ? ` transform="${esc(o.transform)}"` : '';
+      return o.fill ? `<path d="${esc(o.d)}"${move} fill="currentColor" stroke="none"/>` : `<path d="${esc(o.d)}"${move}/>`;
+    }).join('');
+    return `  <symbol id="art-${esc(id)}" viewBox="0 0 400 400">${paths}</symbol>`;
+  }).join('\n');
+  return `<svg xmlns="http://www.w3.org/2000/svg">
+<!-- ${GENERATED} (from data/line-art.js): the Treatments menu's mini drawings -->
+${symbols}
+</svg>
 `;
 }
 
@@ -977,8 +1236,34 @@ for (const drip of DRIPS) write(`treatments/${drip.slug}/index.html`, pageHTML(d
 // The ingredient glossary.
 if (GLOSSARY.length) write('ingredients/index.html', glossaryPageHTML());
 
-// The policy pages.
+// The policy pages, complaints and questions.
 for (const name of LEGAL) write(`${name}/index.html`, legalPageHTML(name));
+
+// The studies: generated folders are replaced; anything else is left alone.
+if (!CHECK_ONLY && existsSync(at('studies'))) {
+  for (const name of readdirSync(at('studies'))) {
+    const file = at(`studies/${name}/index.html`);
+    if (existsSync(file) && readFileSync(file, 'utf8').includes(GENERATED)) rmSync(at(`studies/${name}`), { recursive: true });
+  }
+}
+write('studies/index.html', studiesIndexHTML());
+for (const st of STUDIES) write(`studies/${st.slug}/index.html`, studyPageHTML(st));
+
+// The page for missing addresses, the Treatments menu's drawings, and the
+// files for search engines (a sitemap only once launched).
+write('404.html', notFoundHTML());
+if (USE_LINES) write(ICON_FILE, iconFileSVG());
+const PAGES = ['', ...DRIPS.map((d) => `treatments/${d.slug}/`), 'ingredients/', ...LEGAL.map((n) => `${n}/`), 'studies/', ...STUDIES.map((st) => `studies/${st.slug}/`)];
+write('robots.txt', isOn('launched')
+  ? `User-agent: *\nAllow: /\n${SITE_URL ? `\nSitemap: ${SITE_URL}sitemap.xml\n` : ''}`
+  : 'User-agent: *\nDisallow: /\n');
+if (isOn('launched') && SITE_URL) {
+  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${PAGES.map((path) => `  <url><loc>${esc(SITE_URL + path)}</loc></url>`).join('\n')}
+</urlset>
+`);
+} else if (!CHECK_ONLY && existsSync(at('sitemap.xml'))) rmSync(at('sitemap.xml'));
 
 // index.html: only its Book and contact links, the business details and the logo change.
 if (INDEX !== read('index.html')) write('index.html', INDEX);
@@ -1102,7 +1387,7 @@ function checkPage(html, drip, expectedTitle = `${drip.name} | ${SITE_NAME}`) {
   const problems = [];
   const title = (html.match(/<title>([^<]*)<\/title>/) || [])[1];
   if (decode(title || '') !== expectedTitle) problems.push(`title is "${title}"`);
-  if (!html.includes('<meta name="robots" content="noindex, nofollow">')) problems.push('robots meta missing');
+  if (html.includes('<meta name="robots" content="noindex, nofollow">') === isOn('launched')) problems.push(isOn('launched') ? 'still asks search engines not to list it (launched is true)' : 'robots meta missing (launched is false)');
   const levels = [...html.matchAll(/<h([1-6])\b/g)].map((m) => Number(m[1]));
   if (levels.filter((l) => l === 1).length !== 1) problems.push(`${levels.filter((l) => l === 1).length} h1 elements`);
   levels.forEach((l, i) => { if (i && l > levels[i - 1] + 1) problems.push(`heading level skips from h${levels[i - 1]} to h${l}`); });
@@ -1142,6 +1427,33 @@ for (const name of LEGAL) {
   if (html !== legalPageHTML(name)) problems.push('out of date: run node scripts/build-menu.mjs');
   const gaps = (html.match(/class="legal-gap"/g) || []).length;
   report(!problems.length, `${name}/ (policy)`, gaps ? `${gaps} gaps for the clinic to fill in` : 'complete', problems);
+}
+
+// The studies: up to date, every citation points at a source, every source is cited.
+{
+  const check = (file, expected, extra = []) => {
+    const html = existsSync(at(file)) ? read(file) : '';
+    const problems = [...extra];
+    if (html !== expected) problems.push('out of date: run node scripts/build-menu.mjs');
+    return problems;
+  };
+  report(!check('studies/index.html', studiesIndexHTML()).length, 'studies/ (all studies)', `${STUDIES.length} studies`, check('studies/index.html', studiesIndexHTML()));
+  for (const st of STUDIES) {
+    const cited = new Set([...st.body.matchAll(/href="#source-(\d+)"/g)].map((m) => m[1]));
+    const listed = new Set([...st.body.matchAll(/<li id="source-(\d+)"/g)].map((m) => m[1]));
+    const extra = [];
+    for (const n of cited) if (!listed.has(n)) extra.push(`cites source ${n}, which isn't in its list`);
+    for (const n of listed) if (!cited.has(n)) extra.push(`lists source ${n}, which it never cites`);
+    if (!listed.size) extra.push('has no sources');
+    const problems = check(`studies/${st.slug}/index.html`, studyPageHTML(st), extra);
+    report(!problems.length, `studies/${st.slug}/`, `${listed.size} sources`, problems);
+  }
+  const p404 = check('404.html', notFoundHTML());
+  report(!p404.length, '404.html (page not found)', SITE_URL ? `links from ${new URL(SITE_URL).pathname}` : 'links from /', p404);
+  if (USE_LINES) {
+    const pIcons = check(ICON_FILE, iconFileSVG());
+    report(!pIcons.length, `${ICON_FILE} (the menu's drawings)`, `${(iconFileSVG().match(/<symbol /g) || []).length} drawings`, pIcons);
+  }
 }
 
 /* The home page is built by script.js, so it is checked as script.js renders

@@ -41,7 +41,7 @@
                   from that row of its price table; "Learn more" goes to its
                   entry in the standalone section, which takes this id as
                   its anchor.
-     short        Short label for the bar of names above the featured sections.
+     short        Short label for the side list of the featured treatments' names.
      image        Path to the image, e.g. "images/iron.webp". Leave as null to
                   show the soft placeholder shape instead.
      imageSize    [width, height] of the image in pixels (keeps the layout steady).
@@ -528,7 +528,7 @@ function render() {
   const stageRoot = document.getElementById('stage-root');
   const gridRoot = document.getElementById('treatment-grid');
   const standaloneRoot = document.getElementById('standalone-root');
-  // The featured treatments: the bar of names and a section each.
+  // The featured treatments: the side list of names and a section each.
   if (stageRoot && FEATURED.length) stageRoot.innerHTML = treatmentsHTML(FEATURED);
   if (gridRoot) {
     gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
@@ -549,8 +549,8 @@ function render() {
    Laptops and desktops (a mouse or trackpad, 820px and wider): scrolling
    drives the animation, while the page keeps scrolling continuously (nothing
    is pinned). It starts once the treatment's section fills most of the
-   screen (its top within SCRUB.start of the space below the bar) and is at
-   its end by the time the section's top has gone SCRUB.end above the bar;
+   screen (its top within SCRUB.start of the space below the header) and is at
+   its end by the time the section's top has gone SCRUB.end above the header;
    in between, the scroll sets how far it has got. The video itself plays
    towards that point (playing is smoother than jumping frame to frame),
    faster the further behind it is, gliding to a stop when it gets there
@@ -559,7 +559,7 @@ function render() {
    part-way and it settles where the scroll put it. It only
    ever moves forwards: scrolling back up leaves it where it got to; once
    finished, or once its section has left the screen after it started, it
-   stays finished. Arriving by a jump (the bar, Next, a link), it plays on
+   stays finished. Arriving by a jump (the side list of names, a link), it plays on
    by itself from where it is instead. The video (<id>-scrub.mp4: 30 fps, a
    keyframe every 4 frames) is only moved while its section is on screen.
 
@@ -579,10 +579,9 @@ function render() {
      section shows the finished picture and the button plays it; with
      reduced motion every section shows its finished picture (nothing moves
      with the scroll) and the button plays it on request;
-   - a slim bar of the treatments' short names sticks under the header (like
-     Apple's local nav): it shows where you are, jumps to any treatment, and
-     its Next button goes on to the next one (after the last, to All
-     treatments).
+   - a side list of the treatments' short names shows down the right side
+     while they're on screen (dots on smaller screens): it shows where you
+     are and jumps to any treatment.
    ========================================================================== */
 
 // The site's pictures (site-config.js: pictures): 'lines', the line drawings
@@ -619,8 +618,8 @@ const TREATMENT_VIDEO = {
 // Laptops and desktops: the animation follows the scroll.
 const SCRUB = {
   query: '(min-width: 820px) and (hover: hover) and (pointer: fine)',
-  start: 0.3,    // it starts when the section's top is this share of the visible space below the bar
-  end: 0.2,      // and is at its end when the section's top has gone this share above the bar
+  start: 0.3,    // it starts when the section's top is this share of the visible space below the header
+  end: 0.2,      // and is at its end when the section's top has gone this share above the header
   maxRate: 2,    // the fastest it ever plays: 2 = twice its natural speed
   ease: 0.25,    // how closely it follows the scroll: it catches up over about this many seconds
   minRate: 0.25, // the slowest it plays while catching up (so it glides to a stop)
@@ -637,19 +636,17 @@ const TX_ICON = {
 // standalone item, whose id belongs to its entry in the standalone section.
 const txAnchor = (t) => (t.standalone ? `tx-${t.id}` : t.id);
 
-// The bar of names, then one section per treatment: the video (or, without
-// a video, the treatment's own picture) and the text.
+// The side list of names, then one section per treatment: the video (or,
+// without a video, the treatment's own picture) and the text. The list
+// shows down the right side while the featured treatments are on screen
+// (dots on smaller screens); each name jumps to its treatment.
 function treatmentsHTML(featured) {
   const items = featured.map((t, i) => `
         <li><a class="tx-nav__item" href="#${esc(txAnchor(t))}" data-tx-go="${i}">${esc(t.short)}</a></li>`).join('');
   const nav = `
     <nav class="tx-nav" aria-label="Featured treatments">
-      <div class="tx-nav__inner">
-        <ol class="tx-nav__list">${items}
-          <li><a class="tx-nav__item tx-nav__item--all" href="#treatments">All treatments</a></li>
-        </ol>
-        <a class="tx-nav__next" href="#${esc(txAnchor(featured[0]))}" data-tx-next aria-label="Next treatment">${TX_ICON.next}<span>Next</span></a>
-      </div>
+      <ol class="tx-nav__list">${items}
+      </ol>
     </nav>`;
 
   const sections = featured.map((t, i) => {
@@ -720,7 +717,7 @@ function lineSectionHTML(t, i) {
 // up the line comes down the middle, draws the treatment's picture from the
 // top down, and carries on to the next. It only ever draws forwards: once
 // drawn, a picture stays drawn when you scroll back up. Arriving by a jump
-// (the bar, Next, a link), the picture draws itself. With reduced motion
+// (the side list of names, a link), the picture draws itself. With reduced motion
 // everything is shown already drawn.
 const LINE = {
   pen: 0.66,      // where the pen is, as a share of the screen's height from the top (lower: drawings finish lower down, so they stay in view longer)
@@ -882,8 +879,6 @@ function initTreatments(animated) {
   const html = document.documentElement;
   const nav = root.querySelector('.tx-nav');
   const navItems = [...nav.querySelectorAll('[data-tx-go]')];
-  const next = nav.querySelector('[data-tx-next]');
-  const row = nav.querySelector('.tx-nav__list');
   const items = sections.map((section, i) => ({
     i,
     t: FEATURED[i],
@@ -1004,10 +999,10 @@ function initTreatments(animated) {
     }));
 
     /* Laptops: the video follows the scroll. */
-    let below = 0; // the bottom of the header and the bar: the screen's visible space starts here
+    let below = 0; // the bottom of the header: the screen's visible space starts here
     const header = document.getElementById('site-header');
-    const measure = () => { below = (header ? header.offsetHeight : 0) + nav.offsetHeight; };
-    // 0 until the section fills most of the screen, 1 once it has moved on a little past the bar.
+    const measure = () => { below = header ? header.offsetHeight : 0; };
+    // 0 until the section fills most of the screen, 1 once it has moved on a little past the header.
     const progress = (it) => {
       const top = it.section.getBoundingClientRect().top;
       const space = window.innerHeight - below;
@@ -1015,7 +1010,7 @@ function initTreatments(animated) {
       const to = below - space * SCRUB.end;
       return Math.min(1, Math.max(0, (from - top) / (from - to)));
     };
-    // A jump (the bar, Next, a link) to a treatment that hasn't finished: it
+    // A jump (the side list of names, a link) to a treatment that hasn't finished: it
     // plays on by itself from where it is, rather than leaping to where the
     // scroll would put it.
     document.addEventListener('tx:arrive', (event) => {
@@ -1179,22 +1174,19 @@ function initTreatments(animated) {
       a.classList.toggle('is-active', k === i);
       if (k === i) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
     });
-    // Next: the treatment after this one; after the last, All treatments.
-    const after = items[i + 1];
-    next.setAttribute('href', after ? `#${txAnchor(after.t)}` : '#treatments');
-    next.setAttribute('aria-label', after ? `Next treatment: ${menuItem(after.t).name}` : 'All treatments');
-    // Keep the current name in view in the bar (only the bar scrolls).
-    const a = navItems[i];
-    if (a && row.scrollWidth > row.clientWidth) {
-      const left = a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2;
-      row.scrollTo({ left, behavior: animated ? 'smooth' : 'auto' });
-    }
   };
   const middle = new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) showCurrent(Number(e.target.dataset.tx));
   }, { rootMargin: '-50% 0px -50% 0px' });
   items.forEach((it) => middle.observe(it.section));
   showCurrent(0);
+
+  /* The side list shows only while the featured treatments fill the screen. */
+  const list = root.querySelector('.tx-list');
+  const shown = new IntersectionObserver((entries) => {
+    for (const e of entries) nav.classList.toggle('is-shown', e.isIntersecting);
+  }, { rootMargin: '-45% 0px -45% 0px' });
+  if (list) shown.observe(list);
 
   /* The text rises gently into place as each section arrives. */
   if (animated) {
@@ -1265,7 +1257,7 @@ const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)')
 // half) glides there with the browser's own smooth scrolling; anything
 // further away is a straight jump, so the page never streams through every
 // treatment on the way (as Apple's pages do). The target's scroll-margin
-// and the page's scroll-padding keep it clear of the header and the bar.
+// and the page's scroll-padding keep it clear of the header.
 function goTo(target, { instant = false } = {}) {
   const isEntry = openTarget(target);
   // A featured treatment: on laptops its animation plays on by itself (see section 3).
@@ -1276,8 +1268,8 @@ function goTo(target, { instant = false } = {}) {
   else target.scrollIntoView({ block: 'start', behavior });
 }
 
-// Every in-page link on the home page ("Treatments", "Book now", the bar
-// of names, Next…) goes through goTo. Bare "#" links are booking placeholders.
+// Every in-page link on the home page ("Treatments", "Book now", the side
+// list of names…) goes through goTo. Bare "#" links are booking placeholders.
 function initAnchors() {
   document.documentElement.classList.add('js-jumps');
   document.addEventListener('click', (event) => {
