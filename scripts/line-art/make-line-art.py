@@ -261,7 +261,7 @@ js = """/* =====================================================================
        is drawn as the middle of the screen passes down through it. A path
        is an SVG path string, or { d, transform } for a moved or turned one;
      - alt: what the drawing shows, for screen readers.
-   All drawn with one even, round-ended line in Bluebird Blue (styles.css).
+   All drawn with one even, round-ended line in the main violet (styles.css).
    ========================================================================== */
 
 window.LINE_ART = """ + json.dumps(out, indent=2) + ";\n"

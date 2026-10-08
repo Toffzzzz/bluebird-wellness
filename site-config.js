@@ -36,7 +36,7 @@ window.SITE = {
   // A Google Maps link to the clinic, e.g. 'https://maps.app.goo.gl/…'. "Get directions".
   mapsUrl: '',
 
-  // The site's pictures: 'lines' (the blue line drawings: drawn down the home
+  // The site's pictures: 'lines' (the violet line drawings: drawn down the home
   // page as you scroll, and on the cards and treatment pages) or 'photos'
   // (the animated videos and photographic pictures). Run the generator after
   // changing it.

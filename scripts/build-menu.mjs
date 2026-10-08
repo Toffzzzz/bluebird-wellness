@@ -746,7 +746,9 @@ function jumpsHTML(drip) {
 function pageHTML(drip) {
   const p = `drips.${drip.slug}`;
   const v = VISUALS[drip.slug];
-  const tint = v.tint || '#F7F4EF';
+  // With the line drawings, every treatment page is on the palest violet (the
+  // page's own colour); with the photos, on the tint its pictures were made on.
+  const tint = (!USE_LINES && v.tint) || '#F6F3FE';
   const tagline = drip.tagline ? `
           <p class="drip-tagline"${vb(`${p}.tagline`)}>${esc(drip.tagline)}</p>` : '';
   const badge = v.badge ? `<span class="${v.badge.variant === 'sage' ? 'badge badge--sage' : 'badge'}">${esc(v.badge.text)}</span>` : '';
@@ -877,7 +879,7 @@ ${paras(item.text, '                  ')}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(GLOSSARY_TITLE)} | ${esc(SITE_NAME)}</title>
-  <meta name="theme-color" content="#F7F4EF">
+  <meta name="theme-color" content="#F6F3FE">
   ${headMeta({ title: `${GLOSSARY_TITLE} | ${SITE_NAME}`, description: `What's in ${SITE_NAME}'s IV drips: every ingredient, and the drips it's in.`, path: 'ingredients/' })}
   ${rebase(ICONS, '../')}
 
@@ -1036,7 +1038,7 @@ function legalPageHTML(name) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(page.title)} | ${esc(SITE_NAME)}</title>
   <meta name="description" content="${esc(page.description)}">
-  <meta name="theme-color" content="#F7F4EF">
+  <meta name="theme-color" content="#F6F3FE">
   ${headMeta({ title: `${page.title} | ${SITE_NAME}`, description: page.description, path: `${name}/` })}
   ${rebase(ICONS, '../')}
 
@@ -1098,7 +1100,7 @@ function pageShell({ up, title, description, path, bodyClass, main, current }) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(title)} | ${esc(SITE_NAME)}</title>
   <meta name="description" content="${esc(description)}">
-  <meta name="theme-color" content="#3A1C8C">
+  <meta name="theme-color" content="#4A2696">
   ${headMeta({ title: `${title} | ${SITE_NAME}`, description, path })}
   ${rebase(ICONS, up)}
 

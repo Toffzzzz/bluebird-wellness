@@ -585,7 +585,7 @@ function render() {
    ========================================================================== */
 
 // The site's pictures (site-config.js: pictures): 'lines', the line drawings
-// (data/line-art.js) everywhere: the featured treatments are one blue line
+// (data/line-art.js) everywhere: the featured treatments are one violet line
 // drawn down the middle of the page as you scroll, and the cards (and the
 // treatment pages) show the same drawings; or 'photos': the featured
 // treatments' pre-rendered animations (images/treatment-videos/) and the

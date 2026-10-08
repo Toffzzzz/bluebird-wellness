@@ -7,36 +7,41 @@
 
 :root {
   /* Colors */
-  --color-cream: #F7F4EF;
-  --color-porcelain: #FBFAF7;
+  /* One colour, Violet, in shades (see "Colour" near the end and DESIGN.md).
+     The token names are kept from earlier schemes so nothing else changes:
+     "bluebird" is now the main violet, "cream" the palest violet, and so on.
+     Shades: 50 #F6F3FE, 100 #EDE7FD, 200 #DDD1FB, 300 #C3AEF7, 600 #6A3BD3,
+     700 #5A2DB8, 800 #4A2696, 950 #24124D. */
+  --color-cream: #F6F3FE;                    /* 50: the page */
+  --color-porcelain: #FAF9FE;
   --color-white: #FFFFFF;
-  --color-sand: #EFE9E0;
-  --color-ink: #152238;
-  --color-slate: #5B6472;
-  --color-mist: #D9D4CB;
-  --color-bluebird: #2458C6;
-  --color-bluebird-deep: #1C47A3;
-  --color-sky: #E8EFFB;
-  --color-sage: #4E6B58;
-  --color-pro: #B0216B;                      /* Pro Berry: everything Pro */
-  --color-pro-tint: #FFE3EF;
-  --color-pro-line: rgba(176, 33, 107, 0.4);
+  --color-sand: #EDE7FD;                     /* 100 */
+  --color-ink: #24124D;                      /* 950: headings and text */
+  --color-slate: #514A66;                    /* violet grey: quieter text */
+  --color-mist: #DDD1FB;                     /* 200: lines and borders */
+  --color-bluebird: #6A3BD3;                 /* 600: the main violet (buttons, links, drawings, logo) */
+  --color-bluebird-deep: #5A2DB8;            /* 700: hover and pressed */
+  --color-sky: #EDE7FD;                      /* 100 */
+  --color-pro: #4A2696;                      /* 800: everything Pro */
+  --color-pro-tint: #EDE7FD;
+  --color-pro-line: rgba(74, 38, 150, 0.4);
 
-  /* Berry & Violet: the colour that pops (see "Colour" near the end) */
-  --color-violet-night: #24145F;
-  --color-violet: #4B23A8;
-  --color-violet-bright: #7B3FE4;
-  --color-violet-band: #3A1C8C;
-  --color-lavender: #E4DBFF;
-  --color-pop: #FF5FA2;                      /* Hot pink: the main Book buttons */
-  --color-pop-deep: #FF3D8C;
-  --color-ink-soft: #3E4553;                 /* body text on the colour bands */
-  /* The bands behind the featured treatments and the cards, in turn */
-  --band-1: #FFD9E9;                         /* pink */
-  --band-2: #E7DCFF;                         /* lilac */
-  --band-3: #D6E8FF;                         /* sky */
-  --band-4: #FFDFCF;                         /* peach */
-  --band-5: #FFF0B8;                         /* butter */
+  --color-violet-night: #24124D;             /* 950: the hero's darkest */
+  --color-violet: #4A2696;                   /* 800 */
+  --color-violet-bright: #6A3BD3;            /* 600 */
+  --color-violet-band: #4A2696;              /* 800: "How it works" */
+  --color-lavender: #DDD1FB;                 /* 200: text on the dark violet */
+  --color-violet-soft: #C3AEF7;              /* 300: the hero's ticks and scroll line */
+  --color-pop: #EDE7FD;                      /* 100: the hero's Book now button */
+  --color-pop-deep: #DDD1FB;
+  --color-ink-soft: #4A2696;                 /* 800: body text on the bands */
+  /* The bands behind the featured treatments and the cards, in turn,
+     a shade deeper each time */
+  --band-1: #F6F3FE;
+  --band-2: #EDE7FD;
+  --band-3: #E5DCFC;
+  --band-4: #DDD1FB;
+  --band-5: #D3C3F9;
 
   /* Typography */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -78,8 +83,8 @@
   --radius-pill: 9999px;
 
   /* Elevation */
-  --shadow-card: 0 1px 2px rgba(21, 34, 56, 0.04), 0 8px 24px rgba(21, 34, 56, 0.06);
-  --shadow-float: drop-shadow(0 30px 40px rgba(21, 34, 56, 0.12));
+  --shadow-card: 0 1px 2px rgba(36, 18, 77, 0.04), 0 8px 24px rgba(36, 18, 77, 0.06);
+  --shadow-float: drop-shadow(0 30px 40px rgba(36, 18, 77, 0.12));
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -236,7 +241,7 @@ a { color: inherit; }
   color: var(--color-bluebird);
   font-weight: var(--font-weight-medium);
   text-decoration: underline;
-  text-decoration-color: rgba(36, 88, 198, 0.3);
+  text-decoration-color: rgba(106, 59, 211, 0.3);
   text-underline-offset: 4px;
   transition: color var(--duration-fast) var(--ease-out), text-decoration-color var(--duration-fast) var(--ease-out);
 }
@@ -287,7 +292,7 @@ a { color: inherit; }
 .btn--secondary {
   background: transparent;
   color: var(--color-ink);
-  border-color: rgba(21, 34, 56, 0.2);
+  border-color: rgba(36, 18, 77, 0.2);
 }
 .btn--secondary:hover { background: var(--color-sand); }
 
@@ -306,16 +311,16 @@ a { color: inherit; }
   letter-spacing: -0.005em;
 }
 .badge--sage {
-  background: rgba(78, 107, 88, 0.1);
-  color: var(--color-sage);
+  background: var(--color-sky);
+  color: var(--color-bluebird-deep);
 }
 
 /* ---------- Pro versions ----------
-   Pro has its own colour, berry, so a Pro drip never looks like its standard
+   Pro is the deepest violet, so a Pro drip never looks like its standard
    version: "PRO" beside every Pro drip's name and on its card's picture
-   (White on Pro Berry, 6.3:1), a berry edge round its card, and on every drip
-   that has a Pro version an "Upgrade to Pro" link to it (Pro Berry on Pro
-   Tint, 6.4:1). */
+   (White on Pro Violet, 10.4:1), a deep violet edge round its card, and on
+   every drip that has a Pro version an "Upgrade to Pro" link to it (Pro
+   Violet on Pro Tint, 8.7:1). */
 
 .pro-badge {
   display: inline-flex;
@@ -353,8 +358,8 @@ a { color: inherit; }
 }
 .pro-chip svg { width: 14px; height: 14px; flex: none; }
 .pro-chip:hover {
-  background: #D9EEE1;
-  border-color: rgba(29, 107, 71, 0.6);
+  background: var(--color-mist);
+  border-color: var(--color-pro);
 }
 
 /* A price and its "Upgrade to Pro" link stay together. */
@@ -426,7 +431,7 @@ a { color: inherit; }
   .site-nav a { font-size: var(--text-caption); }
 }
 
-/* The logo (the bird, inline SVG in Bluebird Blue) and the wordmark: one link home. */
+/* The logo (the bird, inline SVG in the main violet) and the wordmark: one link home. */
 .brand {
   display: inline-flex;
   flex: none;
@@ -807,14 +812,14 @@ html.is-locked body { overflow: hidden; }
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(21, 34, 56, 0.08);
+  background: rgba(36, 18, 77, 0.08);
   color: var(--color-ink);
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-out);
 }
 .tx-control svg { width: 16px; height: 16px; fill: currentColor; }
 .tx-control[data-state="replay"] svg { fill: none; }
-.tx-control:hover { background: rgba(21, 34, 56, 0.14); }
+.tx-control:hover { background: rgba(36, 18, 77, 0.14); }
 
 /* The text rises gently into place as its section arrives. */
 .tx-rise {
@@ -1019,7 +1024,7 @@ html.is-locked body { overflow: hidden; }
   width: var(--shadow-w, 50%);
   height: 7%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(21, 34, 56, 0.14), rgba(21, 34, 56, 0));
+  background: radial-gradient(closest-side, rgba(36, 18, 77, 0.14), rgba(36, 18, 77, 0));
   transform: translateX(-50%);
 }
 
@@ -1056,7 +1061,7 @@ html.is-locked body { overflow: hidden; }
 .card__upgrade { align-self: flex-start; margin-top: var(--space-8); }
 
 /* A Pro card follows its standard version: "PRO" on its picture, a soft
-   berry well and a berry edge, so the two never look alike. */
+   violet well and a deep violet edge, so the two never look alike. */
 .card--pro {
   border-color: var(--color-pro-line);
   box-shadow: inset 0 0 0 1px var(--color-pro-line);
@@ -1546,7 +1551,8 @@ html.is-locked body { overflow: hidden; }
 }
 
 /* ---------- Treatment pages (treatments/<slug>/) ----------
-   The page background is the treatment's stage tint (--page-tint on <html>). */
+   The page background is --page-tint on <html>: the palest violet with the
+   line drawings, or the treatment's stage tint with the photos. */
 
 .drip-intro { padding: calc(var(--header-h) + var(--space-48)) 0 var(--space-64); }
 
@@ -1672,7 +1678,7 @@ html.is-locked body { overflow: hidden; }
 }
 .variant-link > span:first-child {
   text-decoration: underline;
-  text-decoration-color: rgba(36, 88, 198, 0.3);
+  text-decoration-color: rgba(106, 59, 211, 0.3);
   text-underline-offset: 4px;
   transition: text-decoration-color var(--duration-fast) var(--ease-out);
 }
@@ -1773,7 +1779,7 @@ html.is-locked body { overflow: hidden; }
   border-radius: 4px;
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: rgba(36, 88, 198, 0.35);
+  text-decoration-color: rgba(106, 59, 211, 0.35);
   text-underline-offset: 3px;
   transition: color var(--duration-fast) var(--ease-out), text-decoration-color var(--duration-fast) var(--ease-out);
 }
@@ -1804,7 +1810,7 @@ html.is-locked body { overflow: hidden; }
   width: 100%;
   max-width: 28rem;
   padding: var(--space-24);
-  background: #F7FBF8;
+  background: var(--color-porcelain);
   border: 1px solid var(--color-pro-line);
   border-radius: var(--radius-card);
 }
@@ -1917,7 +1923,7 @@ html.is-locked body { overflow: hidden; }
 .glossary-cats__link {
   display: inline-flex;
   padding: 6px 14px;
-  border: 1px solid rgba(21, 34, 56, 0.2);
+  border: 1px solid rgba(36, 18, 77, 0.2);
   border-radius: var(--radius-pill);
   font-size: var(--text-caption);
   font-weight: var(--font-weight-medium);
@@ -1982,7 +1988,7 @@ html.is-locked body { overflow: hidden; }
   text-decoration: none;
   transition: background-color var(--duration-fast) var(--ease-out);
 }
-.used-in__link:hover { background: #DCE6F8; }
+.used-in__link:hover { background: var(--color-mist); }
 
 .drip-prose + .price-table-wrap { margin-top: var(--space-32); }
 
@@ -2101,7 +2107,7 @@ html.is-locked body { overflow: hidden; }
   /* All treatments: a compact list. Each row is one link: a small picture,
      the name (with PRO), the price, "Upgrade to Pro" where there is one,
      and a chevron; a Pro row sits just under its standard version, slightly
-     indented, with a berry edge. */
+     indented, with a deep violet edge. */
   .card-grid {
     display: block;
     overflow: hidden;
@@ -2173,7 +2179,7 @@ html.is-locked body { overflow: hidden; }
     margin-left: 20px;
     padding-left: 12px;
     border-left: 3px solid var(--color-pro);
-    background: #F7FBF8;
+    background: var(--color-porcelain);
     box-shadow: none;
   }
   .card__pro { display: none; }
@@ -2227,7 +2233,7 @@ html.is-locked body { overflow: hidden; }
     align-items: center;
     min-height: 44px;
     padding: 0 16px;
-    border: 1px solid rgba(21, 34, 56, 0.2);
+    border: 1px solid rgba(36, 18, 77, 0.2);
     border-radius: var(--radius-pill);
     color: var(--color-ink);
     font-size: var(--text-caption);
@@ -2323,7 +2329,7 @@ html.is-locked body { overflow: hidden; }
     min-height: 44px;
     padding: 0 16px;
     border-radius: var(--radius-pill);
-    background: rgba(21, 34, 56, 0.9);
+    background: rgba(36, 18, 77, 0.9);
     color: var(--color-porcelain);
     font-size: var(--text-caption);
     font-weight: var(--font-weight-medium);
@@ -2370,7 +2376,7 @@ html.is-locked body { overflow: hidden; }
   align-items: center;
   justify-content: center;
   padding: var(--space-24);
-  background: rgba(21, 34, 56, 0.42);
+  background: rgba(36, 18, 77, 0.42);
   opacity: 0;
   transition: opacity var(--duration-base) var(--ease-out);
 }
@@ -2384,7 +2390,7 @@ html.is-locked body { overflow: hidden; }
   overflow: hidden;
   border-radius: var(--radius-card);
   background: var(--color-porcelain);
-  box-shadow: 0 24px 64px rgba(21, 34, 56, 0.22);
+  box-shadow: 0 24px 64px rgba(36, 18, 77, 0.22);
   color: var(--color-ink);
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -2530,7 +2536,7 @@ html.is-locked body { overflow: hidden; }
   gap: var(--space-12);
   min-height: 64px;
   padding: var(--space-12) var(--space-16);
-  border: 1px solid rgba(21, 34, 56, 0.16);
+  border: 1px solid rgba(36, 18, 77, 0.16);
   border-radius: var(--radius-tile);
   background: var(--color-white);
   color: var(--color-ink);
@@ -2539,7 +2545,7 @@ html.is-locked body { overflow: hidden; }
   cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
 }
-.booking__choice:hover { border-color: rgba(36, 88, 198, 0.5); }
+.booking__choice:hover { border-color: rgba(106, 59, 211, 0.5); }
 .booking__choice[aria-pressed="true"] {
   border-color: var(--color-bluebird);
   background: var(--color-sky);
@@ -2573,7 +2579,7 @@ html.is-locked body { overflow: hidden; }
 
 .booking__calendar {
   padding: var(--space-16);
-  border: 1px solid rgba(21, 34, 56, 0.12);
+  border: 1px solid rgba(36, 18, 77, 0.12);
   border-radius: var(--radius-tile);
   background: var(--color-white);
 }
@@ -2625,7 +2631,7 @@ html.is-locked body { overflow: hidden; }
   cursor: pointer;
 }
 .booking__day:hover:not(:disabled):not(.is-chosen) { background: var(--color-sky); }
-.booking__day:disabled { color: rgba(21, 34, 56, 0.28); cursor: default; }
+.booking__day:disabled { color: rgba(36, 18, 77, 0.28); cursor: default; }
 .booking__day.is-today::after {
   content: '';
   position: absolute;
@@ -2649,7 +2655,7 @@ html.is-locked body { overflow: hidden; }
 .booking__time {
   min-height: 44px;
   padding: 0 8px;
-  border: 1px solid rgba(21, 34, 56, 0.16);
+  border: 1px solid rgba(36, 18, 77, 0.16);
   border-radius: var(--radius-pill);
   background: var(--color-white);
   color: var(--color-ink);
@@ -2662,7 +2668,7 @@ html.is-locked body { overflow: hidden; }
 .booking__time:disabled {
   border-color: transparent;
   background: transparent;
-  color: rgba(21, 34, 56, 0.3);
+  color: rgba(36, 18, 77, 0.3);
   text-decoration: line-through;
   cursor: default;
 }
@@ -2789,7 +2795,7 @@ html.is-locked body { overflow: hidden; }
   padding: 0 22px 0 18px;
   border: 0;
   border-radius: var(--radius-pill);
-  box-shadow: 0 6px 20px rgba(21, 34, 56, 0.2);
+  box-shadow: 0 6px 20px rgba(36, 18, 77, 0.2);
   color: var(--color-white);
   font: inherit;
   font-size: var(--text-label);
@@ -2866,7 +2872,7 @@ html.is-locked body { overflow: hidden; }
   align-items: flex-end;
   justify-content: flex-end;
   padding: var(--space-24);
-  background: rgba(21, 34, 56, 0.24);
+  background: rgba(36, 18, 77, 0.24);
   opacity: 0;
   transition: opacity var(--duration-base) var(--ease-out);
 }
@@ -2880,7 +2886,7 @@ html.is-locked body { overflow: hidden; }
   overflow: hidden;
   border-radius: var(--radius-card);
   background: var(--color-porcelain);
-  box-shadow: 0 24px 64px rgba(21, 34, 56, 0.24);
+  box-shadow: 0 24px 64px rgba(36, 18, 77, 0.24);
   color: var(--color-ink);
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -3089,7 +3095,7 @@ html.is-locked body { overflow: hidden; }
 }
 
 /* ---------- Featured treatments as line drawings (script.js: TX_STYLE = 'lines') ----------
-   One Bluebird Blue line comes down the middle of the page, draws each
+   One violet line comes down the middle of the page, draws each
    treatment's picture (data/line-art.js) and carries on to the next. On
    laptops the text sits on one side of the drawing and the summary on the
    other, swapping sides each time; on phones the text is a card under the
@@ -3208,7 +3214,7 @@ html.is-locked body { overflow: hidden; }
 
 /* ---------- Line drawings on the cards and treatment pages ----------
    The same drawings as the home page's line (data/line-art.js), in the same
-   blue, each drawing itself in from the top down as it comes into view
+   violet, each drawing itself in from the top down as it comes into view
    (site.js). The line keeps the same visible thickness at every size. */
 
 .line-art { display: block; overflow: visible; }
@@ -3249,42 +3255,40 @@ html.is-locked body { overflow: hidden; }
 
 
 /* ==========================================================================
-   Colour: Berry & Violet
-   The page in bold blocks of colour: a deep violet hero with hot-pink Book
-   buttons, each featured treatment on its own colour band (pink, lilac,
-   sky, peach, butter, in turn), the cards' pictures on the same colours, a
-   violet "How it works" band, and Pro in berry. The line drawings stay in
-   Bluebird Blue, like the logo.
+   Colour: Violet, one colour in shades
+   Every colour on the page is a shade of one violet, from almost white to
+   almost black: a deep violet hero with a pale Book now button, the featured
+   treatments on bands a shade deeper each time, the cards' pictures on the
+   same shades, a deep violet "How it works" band, and the line drawings,
+   logo, links and buttons in the main violet. The only other colours are
+   WhatsApp's own green, the red of an error and the yellow of a gap to fill.
    ========================================================================== */
 
 .site-header { background: var(--color-white); }
 
 .hero {
-  background-color: var(--color-violet-band);
+  background-color: var(--color-violet);
   background-image: linear-gradient(160deg, var(--color-violet-night) 0%, var(--color-violet) 55%, var(--color-violet-bright) 100%);
   color: var(--color-white);
 }
 .hero .eyebrow, .hero__note, .hero__lead, .hero__cue { color: var(--color-lavender); }
 .hero__title, .hero__points { color: var(--color-white); }
-.hero__points svg { color: #FF8EC0; }
-.hero__cue::after, .tx-lines .hero__cue::after { background: var(--color-pop); }
+.hero__points svg { color: var(--color-violet-soft); }
+.hero__cue::after, .tx-lines .hero__cue::after { background: var(--color-violet-soft); }
 .hero .btn--secondary { color: var(--color-white); border-color: rgba(255, 255, 255, 0.55); }
 .hero .btn--secondary:hover { background: rgba(255, 255, 255, 0.12); }
 
-/* The main Book buttons: hot pink with Ink Navy text (5.6:1). */
-.hero .btn--primary,
-.site-header .btn--primary,
-.site-menu__book.btn--primary {
+/* The hero's Book now: pale violet with the darkest violet text (13.7:1).
+   The header's and the phone menu's Book now are the main violet, with
+   white text (6.6:1), like every other main button. */
+.hero .btn--primary {
   background: var(--color-pop);
   color: var(--color-ink);
-  box-shadow: 0 10px 30px rgba(21, 34, 56, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
-.hero .btn--primary:hover,
-.site-header .btn--primary:hover,
-.site-menu__book.btn--primary:hover { background: var(--color-pop-deep); }
-.site-header .btn--primary { box-shadow: none; }
+.hero .btn--primary:hover { background: var(--color-pop-deep); }
 
-/* Each featured treatment on its own band, in turn. */
+/* The featured treatments on their bands, in turn. */
 .tx-list > .tx--line:nth-child(5n+1) { background: var(--band-1); }
 .tx-list > .tx--line:nth-child(5n+2) { background: var(--band-2); }
 .tx-list > .tx--line:nth-child(5n+3) { background: var(--band-3); }
@@ -3292,7 +3296,7 @@ html.is-locked body { overflow: hidden; }
 .tx-list > .tx--line:nth-child(5n+5) { background: var(--band-5); }
 .tx--line .eyebrow, .tx--line .tx__summary { color: var(--color-ink-soft); }
 
-/* The cards' pictures on the same colours, in turn (a Pro card keeps its berry tint). */
+/* The cards' pictures on the same shades, in turn (a Pro card keeps its tint). */
 #treatments { background: var(--color-white); }
 .card:nth-child(5n+1) .card__media { background: var(--band-1); }
 .card:nth-child(5n+2) .card__media { background: var(--band-2); }
@@ -3300,17 +3304,17 @@ html.is-locked body { overflow: hidden; }
 .card:nth-child(5n+4) .card__media { background: var(--band-4); }
 .card:nth-child(5n+5) .card__media { background: var(--band-5); }
 .card .card__media.card__media--pro { background: var(--color-pro-tint); }
-.badge { background: var(--band-1); color: #9D174D; }
+.badge { background: var(--color-sky); color: var(--color-violet); }
 
-/* How it works: a violet band with white cards. */
+/* How it works: a deep violet band with white cards. */
 #how-it-works { background: var(--color-violet-band); color: var(--color-white); }
 #how-it-works .section-title, #how-it-works .step__title, #how-it-works .step__num { color: var(--color-white); }
 #how-it-works .section-lead, #how-it-works .eyebrow, #how-it-works .step__body { color: var(--color-lavender); }
 #how-it-works .tile { color: var(--color-ink); border-color: transparent; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14); }
 #how-it-works .step { border-color: rgba(255, 255, 255, 0.28); }
 
-/* Booking: a pink panel. */
-#book .book-panel { background: var(--band-1); border-color: transparent; }
+/* Booking: a pale violet panel. */
+#book .book-panel { background: var(--color-sky); border-color: transparent; }
 .tx--line .badge { background: var(--color-white); }
 
 /* ==========================================================================
@@ -3358,7 +3362,7 @@ html.is-locked body { overflow: hidden; }
   border: 1px solid var(--color-mist);
   border-radius: 20px;
   background: var(--color-white);
-  box-shadow: 0 24px 60px rgba(36, 20, 95, 0.18);
+  box-shadow: 0 24px 60px rgba(36, 18, 77, 0.18);
   transform: translateX(-50%);
 }
 .nav-drop__panel--wide { width: min(46rem, calc(100vw - 48px)); }
@@ -3533,7 +3537,7 @@ html.is-locked body { overflow: hidden; }
 .study-card__summary { font-size: var(--text-caption); line-height: 1.6; color: var(--color-ink-soft); }
 .study-card__more { margin-top: auto; font-size: var(--text-caption); font-weight: var(--font-weight-semibold); color: var(--color-violet); }
 @media (hover: hover) {
-  .study-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(36, 20, 95, 0.14); }
+  .study-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(36, 18, 77, 0.14); }
 }
 .studies__all { margin-top: var(--space-48); text-align: center; }
 
