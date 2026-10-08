@@ -75,10 +75,12 @@ DRAWINGS = {
     'hair': {
         'source': 'hair-woman.png',
         'alt': 'A line drawing of a woman with long, wavy hair, her eyes closed',
-        'drop': [23, 29, 31, 33, 34],            # the doubled brow, the eyelashes
+        # the doubled brow, the eyelashes, and the shoulder line (it ran
+        # down at a slant into the page's line)
+        'drop': [18, 23, 29, 31, 33, 34],
         'keep_short': [],
-        'top': ('above', 21, 'bottom'),          # the crown, straight above where the line leaves
-        'bottom': ('left-end', 18),              # the inner end of the shoulder line
+        'top': ('above', 0, 'bottom'),           # the top of her head, straight above where the line leaves
+        'bottom': ('at-x', 11, 790),             # the base of her neck, in the middle
     },
     'muscle-recovery': {
         'source': 'deadlift.png',
