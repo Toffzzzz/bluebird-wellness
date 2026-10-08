@@ -42,6 +42,7 @@
   --band-3: #E5DCFC;
   --band-4: #DDD1FB;
   --band-5: #D3C3F9;
+  --band-6: #CCBAF8;
 
   /* Typography */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -429,6 +430,13 @@ a { color: inherit; }
   .site-header__inner { gap: var(--space-16); }
   .site-nav { gap: var(--space-24); }
   .site-nav a { font-size: var(--text-caption); }
+}
+/* Tablets (820 to 1023px): the bird alone, without the wordmark, so all six
+   links and Book now fit on one line (the link's label still says
+   "Bluebird Wellness, home"). */
+@media (min-width: 820px) and (max-width: 1023.98px) {
+  .site-header .wordmark { display: none; }
+  .site-nav { gap: var(--space-16); }
 }
 
 /* The logo (the bird, inline SVG in the main violet) and the wordmark: one link home. */
@@ -1059,28 +1067,6 @@ html.is-locked body { overflow: hidden; }
 .card .pro-chip { z-index: 2; }
 /* "Upgrade to Pro" on a standard card, under its name. */
 .card__upgrade { align-self: flex-start; margin-top: var(--space-8); }
-
-/* A Pro card follows its standard version: "PRO" on its picture, a soft
-   violet well and a deep violet edge, so the two never look alike. */
-.card--pro {
-  border-color: var(--color-pro-line);
-  box-shadow: inset 0 0 0 1px var(--color-pro-line);
-}
-.card__media--pro { background: var(--color-pro-tint); }
-.card__pro {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-pro);
-  color: var(--color-white);
-  font-size: 12px;
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.3;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 
 .card .badge { align-self: flex-start; }
 
@@ -2105,9 +2091,8 @@ html.is-locked body { overflow: hidden; }
 
 @media (max-width: 819.98px) {
   /* All treatments: a compact list. Each row is one link: a small picture,
-     the name (with PRO), the price, "Upgrade to Pro" where there is one,
-     and a chevron; a Pro row sits just under its standard version, slightly
-     indented, with a deep violet edge. */
+     the name, the price, "Upgrade to Pro" where there is one, and a
+     chevron. */
   .card-grid {
     display: block;
     overflow: hidden;
@@ -2175,20 +2160,11 @@ html.is-locked body { overflow: hidden; }
     padding: 3px 10px;
     font-size: 12px;
   }
-  .card--pro {
-    margin-left: 20px;
-    padding-left: 12px;
-    border-left: 3px solid var(--color-pro);
-    background: var(--color-porcelain);
-    box-shadow: none;
-  }
-  .card__pro { display: none; }
   .card__upgrade {
     grid-area: upgrade;
     justify-self: start;
     margin-top: 6px;
   }
-  .card--pro + .card { border-top-color: var(--color-mist); }
   @supports selector(:has(*)) {
     .card:has(.card__link:focus-visible) { outline-offset: -3px; }
   }
@@ -3289,21 +3265,21 @@ html.is-locked body { overflow: hidden; }
 .hero .btn--primary:hover { background: var(--color-pop-deep); }
 
 /* The featured treatments on their bands, in turn. */
-.tx-list > .tx--line:nth-child(5n+1) { background: var(--band-1); }
-.tx-list > .tx--line:nth-child(5n+2) { background: var(--band-2); }
-.tx-list > .tx--line:nth-child(5n+3) { background: var(--band-3); }
-.tx-list > .tx--line:nth-child(5n+4) { background: var(--band-4); }
-.tx-list > .tx--line:nth-child(5n+5) { background: var(--band-5); }
+.tx-list > .tx--line:nth-child(6n+1) { background: var(--band-1); }
+.tx-list > .tx--line:nth-child(6n+2) { background: var(--band-2); }
+.tx-list > .tx--line:nth-child(6n+3) { background: var(--band-3); }
+.tx-list > .tx--line:nth-child(6n+4) { background: var(--band-4); }
+.tx-list > .tx--line:nth-child(6n+5) { background: var(--band-5); }
+.tx-list > .tx--line:nth-child(6n+6) { background: var(--band-6); }
 .tx--line .eyebrow, .tx--line .tx__summary { color: var(--color-ink-soft); }
 
-/* The cards' pictures on the same shades, in turn (a Pro card keeps its tint). */
+/* The cards' pictures on the same shades, in turn. */
 #treatments { background: var(--color-white); }
 .card:nth-child(5n+1) .card__media { background: var(--band-1); }
 .card:nth-child(5n+2) .card__media { background: var(--band-2); }
 .card:nth-child(5n+3) .card__media { background: var(--band-3); }
 .card:nth-child(5n+4) .card__media { background: var(--band-4); }
 .card:nth-child(5n+5) .card__media { background: var(--band-5); }
-.card .card__media.card__media--pro { background: var(--color-pro-tint); }
 .badge { background: var(--color-sky); color: var(--color-violet); }
 
 /* How it works: a deep violet band with white cards. */
@@ -3399,7 +3375,6 @@ html.is-locked body { overflow: hidden; }
 .menu-item__text { display: flex; flex-direction: column; min-width: 0; }
 .menu-item__name { font-size: var(--text-caption); font-weight: var(--font-weight-medium); line-height: 1.3; }
 .menu-item__price { font-size: 13px; color: var(--color-ink-soft); }
-.menu-item .pro-badge { margin-left: 4px; vertical-align: 1px; }
 .menu-icon {
   flex: none;
   width: 40px;

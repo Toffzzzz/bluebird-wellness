@@ -49,7 +49,7 @@ window.SITE = {
   // signature. Every drip still has its card under "All treatments" and its
   // own page. Leave the list empty ([]) to show all of them. Run the
   // generator after changing it (it checks the ids).
-  featured: ['iron', 'skin', 'hydration', 'muscle-recovery', 'signature'],
+  featured: ['iron', 'skin', 'hair', 'hydration', 'muscle-recovery', 'signature'],
 
   // The site's address, ending in /. Used for link previews (when the site is
   // shared on WhatsApp, iMessage, social media), the 404 page and, once

@@ -375,7 +375,7 @@ const STUDIES_ON_HOME = 3;   // how many the home page shows (the first, in orde
 /* ---------- The drop-down menus, About us and the page heads ----------
    Written into index.html between its markers, then copied with the header
    onto every page:
-     <!-- menu:treatments --> every drip, with its mini drawing (the line
+     <!-- menu:treatments --> every standard drip (not the Pro versions), with its mini drawing (the line
        drawings as one icon file, images/icons/treatments.svg), name and price;
      <!-- menu:studies --> every study;
      <!-- studies:home --> the first studies, as cards;
@@ -384,12 +384,13 @@ const STUDIES_ON_HOME = 3;   // how many the home page shows (the first, in orde
 
 const ICON_FILE = 'images/icons/treatments.svg';
 const iconHTML = (art) => (art ? `<svg class="menu-icon" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><use href="${ICON_FILE}#art-${esc(art)}"/></svg>` : '<span class="menu-icon menu-icon--none" aria-hidden="true"></span>');
+// Every standard drip, like the cards: a Pro version is reached from its
+// standard version's page and card ("Upgrade to Pro").
 function treatmentsMenuHTML() {
-  return `<ul class="menu-list menu-list--icons">${DRIPS.map((d) => {
+  return `<ul class="menu-list menu-list--icons">${DRIPS.filter((d) => !d.baseVariantSlug).map((d) => {
     const art = USE_LINES ? VISUALS[d.slug].art : null;
-    const pro = d.baseVariantSlug ? ' <span class="pro-badge" aria-hidden="true">Pro</span>' : '';
     return `
-              <li><a class="menu-item" href="treatments/${esc(d.slug)}/">${iconHTML(art)}<span class="menu-item__text"><span class="menu-item__name"><span${vb(`drips.${d.slug}.name`)}>${esc(d.name)}</span>${pro}</span><span class="menu-item__price"${vb(`drips.${d.slug}.priceLabel`)}>${esc(d.priceLabel)}</span></span></a></li>`;
+              <li><a class="menu-item" href="treatments/${esc(d.slug)}/">${iconHTML(art)}<span class="menu-item__text"><span class="menu-item__name"><span${vb(`drips.${d.slug}.name`)}>${esc(d.name)}</span></span><span class="menu-item__price"${vb(`drips.${d.slug}.priceLabel`)}>${esc(d.priceLabel)}</span></span></a></li>`;
   }).join('')}
             </ul>`;
 }
@@ -1355,7 +1356,9 @@ function requiredForGlossary() {
 // The strings the home page must show once script.js has rendered it.
 function requiredForHome() {
   const paths = [];
-  DRIPS.forEach((d) => paths.push(`drips.${d.slug}.name`, `drips.${d.slug}.priceLabel`));
+  // Every standard drip's card (a Pro version has no card: its standard
+  // version's card links to it, which the home page check confirms).
+  DRIPS.filter((d) => !d.baseVariantSlug).forEach((d) => paths.push(`drips.${d.slug}.name`, `drips.${d.slug}.priceLabel`));
   const s = MENU.standalone;
   paths.push('standalone.heading', 'standalone.intro');
   s.priceTable.columns.forEach((_, i) => paths.push(`standalone.priceTable.columns.${i}`));
@@ -1493,6 +1496,10 @@ function renderedHome() {
     const { problems, count } = checkStrings(html, requiredForHome());
     if (/\bFrom\s*£/.test(textOf(html))) problems.push('a price still has "From" in front of it');
     if (!/<details[^>]*\sid="vitamin-d"/.test(html)) problems.push('no #vitamin-d entry in the standalone section');
+    for (const d of DRIPS.filter((x) => x.baseVariantSlug)) {
+      if (!html.includes(`class="pro-chip card__upgrade" href="treatments/${d.slug}/"`)) problems.push(`${d.slug}: no "Upgrade to Pro" link to it on its standard version's card`);
+      if (html.includes(`class="card__link" href="treatments/${d.slug}/"`)) problems.push(`${d.slug}: has a card of its own (Pro versions are reached by "Upgrade to Pro")`);
+    }
     report(!problems.length, label, `${count} strings`, problems);
   } catch (error) {
     report(false, label, 'could not render', [error.message]);

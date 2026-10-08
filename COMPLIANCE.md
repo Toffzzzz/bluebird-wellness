@@ -46,6 +46,8 @@ Last reviewed: 6 October 2026.
 
 **One to fix in the menu wording:** Iron's summary beside its drawing on the home page is the opening of its menu description ("…close to 50% of women have iron levels low enough to confirm iron deficiency"), and it sits next to the Book button. That's the pattern the ASA warns about (a deficiency statistic beside a drip). Consider changing the opening of Iron's description in `data/drips.json`, or leaving Iron off the scrolling line until the wording is reviewed.
 
+**And one to review:** Hair & Scalp is now on the scrolling line too, and its summary beside the Book button is the opening of its menu description ("…vitamins, minerals and amino acids involved in the growth and maintenance of healthy hair"). The ASA's rules for IV drips warn against implying a drip grows hair. The wording describes what the ingredients are involved in rather than promising growth, but have the doctors (or a CAP advice request) confirm it, or change the opening of its description in `data/drips.json`.
+
 ## What the clinic needs to provide
 
 Fill these in in `site-config.js`, then run `node scripts/build-menu.mjs`. The policy pages show a highlighted gap for each one until then.

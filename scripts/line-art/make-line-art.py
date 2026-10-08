@@ -41,34 +41,15 @@ def polar(cx, cy, r, deg):
     a = math.radians(deg)
     return cx + r * math.cos(a), cy + r * math.sin(a)
 
-# Four drawings are traced from line art drawn in ChatGPT (Energy, Muscle &
-# Fitness, Beauty & Glow, Hair & Scalp): scripts/line-art/trace-drawings.py
+# Five drawings are traced from line art drawn in ChatGPT (Hydration, Energy,
+# Muscle & Fitness, Beauty & Glow, Hair & Scalp): scripts/line-art/trace-drawings.py
 # turns scripts/line-art/sources/*.png into traced.json, read here.
 TRACED = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'traced.json')))
 
 ART = {}
 
-# 1. Hydration: a coconut cut open, with a straw, and a drop of water
-zig = [(104, 196)]
-x = 104
-up = True
-while x < 290:
-    x += 16
-    zig.append((min(x, 296), 186 if up else 198))
-    up = not up
-zig[-1] = (296, 196)
-ART['hydration'] = {
-    'alt': 'A line drawing of a coconut cut open, with a straw and a drop of water',
-    'top': 34, 'bottom': 312,
-    'paths': [
-        "M200 34 C200 34 172 74 172 94 A28 28 0 0 0 228 94 C228 74 200 34 200 34",
-        "M290 92 L262 102 L234 186",
-        "M" + " L".join(P(a, b) for a, b in zig),
-        "M118 212 Q200 238 282 212",
-        "M104 196 C104 264 146 312 200 312",
-        "M296 196 C296 264 254 312 200 312",
-    ],
-}
+# 1. Hydration: a coconut cut open, with a straw, a cocktail umbrella, a leaf and a flower (traced)
+ART['hydration'] = TRACED['hydration']
 
 # 2. Energy: a woman running at full stride, side on (traced)
 ART['energy'] = TRACED['energy']

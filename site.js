@@ -12,6 +12,9 @@
      (the treatment cards, a treatment page's picture) draws itself, from
      the top down, once it comes into view. Ones already on the page are
      watched straight away. With reduced motion they're simply shown.
+     Coming back to a page with Back or Forward (the browser showing it as
+     it was), they start afresh and draw themselves again as they come
+     into view.
    ========================================================================== */
 
 (() => {
@@ -104,8 +107,10 @@
       seen.unobserve(entry.target);
       const { parts, set } = entry.target.__draw;
       const start = performance.now();
+      const run = entry.target.__run = (entry.target.__run || 0) + 1;
       const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
       const frame = (now) => {
+        if (entry.target.__run !== run) return; // started afresh since
         const t = (now - start) / 1000;
         let more = false;
         for (const p of parts) {
@@ -130,6 +135,18 @@
   };
   window.SiteDraw = { watch };
   watch(document);
+  // Back on the page from the browser's memory: every drawing starts afresh.
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted || still) return;
+    for (const svg of document.querySelectorAll('svg[data-draw]')) {
+      if (!svg.__draw) continue;
+      svg.__run = (svg.__run || 0) + 1;
+      svg.classList.remove('is-drawn');
+      svg.__draw.parts.forEach((p) => svg.__draw.set(p, 0));
+      seen.unobserve(svg);
+      seen.observe(svg);
+    }
+  });
 
   // The header's drop-down menus (Treatments, Studies), on laptops: the
   // button opens its panel (a mouse can also just hover); Escape, a click

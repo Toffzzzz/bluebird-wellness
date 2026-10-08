@@ -390,9 +390,6 @@ const learnMoreHTML = (m) =>
 // A drip's Pro version, if it has one.
 const proOf = (drip) => (drip && drip.proVariantSlug ? dripBySlug(drip.proVariantSlug) : null);
 
-// "PRO" beside a Pro drip's name. The name already says Pro, so screen readers skip it.
-const PRO_BADGE = '<span class="pro-badge" aria-hidden="true">Pro</span>';
-
 // "Upgrade to Pro" beside a standard drip's price, linking to its Pro version.
 const UPGRADE_ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg>';
 const proChipHTML = (pro, extra = '') => (pro
@@ -426,19 +423,17 @@ function textHTML(t, titleId) {
 const CARD_FILL = 0.76;
 
 // The card is one link that already carries the drip's name, so its picture
-// is decorative. A Pro drip's picture says "PRO" in its corner.
-function cardMediaHTML(v, isPro, slug) {
-  const pro = isPro ? '<span class="card__pro" aria-hidden="true">Pro</span>' : '';
-  const cls = isPro ? ' card__media--pro' : '';
-  // The line drawing (a Pro drip shows its standard version's), drawn as the card comes into view.
+// is decorative.
+function cardMediaHTML(v, slug) {
+  // The line drawing, drawn as the card comes into view.
   const art = LINES && v.art && window.LINE_ART[v.art];
-  if (art) return `<div class="card__media card__media--art${cls}" aria-hidden="true">${lineArtSVG(art, `card-clip-${esc(slug)}`, ' class="line-art" data-draw focusable="false"')}${pro}</div>`;
-  if (!v.image) return `<div class="card__media${cls}" aria-hidden="true">${placeholderHTML(v)}${pro}</div>`;
+  if (art) return `<div class="card__media card__media--art" aria-hidden="true">${lineArtSVG(art, `card-clip-${esc(slug)}`, ' class="line-art" data-draw focusable="false"')}</div>`;
+  if (!v.image) return `<div class="card__media" aria-hidden="true">${placeholderHTML(v)}</div>`;
   const [w, h] = v.imageSize;
   const img = `<img src="${esc(v.image)}" alt="" width="${w}" height="${h}" loading="lazy" decoding="async">`;
 
   // A full photo fills the well; it scales inside its rounded frame on hover.
-  if (v.imageFit === 'cover') return `<div class="card__media card__media--photo${cls}">${img}${pro}</div>`;
+  if (v.imageFit === 'cover') return `<div class="card__media card__media--photo">${img}</div>`;
 
   // A cut-out is contained in the padded area, with a soft ellipse shadow just
   // below where the image actually ends (tall, wide and square images differ).
@@ -446,22 +441,21 @@ function cardMediaHTML(v, isPro, slug) {
   const shownH = CARD_FILL * Math.min(1, h / w);
   const bottom = ((1 - shownH) / 2) * 100;
   const shadow = `--shadow-w: ${(shownW * 70).toFixed(1)}%; --shadow-bottom: ${(bottom - 3).toFixed(1)}%`;
-  return `<div class="card__media${cls}"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}${pro}</div>`;
+  return `<div class="card__media"><span class="card__shadow" style="${shadow}" aria-hidden="true"></span>${img}</div>`;
 }
 
-// One card per drip, in menu order (each Pro card straight after its
-// standard version). The whole card links to the drip's page: its title's
-// link covers the card, and the "Upgrade to Pro" link sits above that. A
-// Pro card also says "PRO" on its picture, so it never looks like its
-// standard version.
+// One card per standard drip, in menu order. A Pro version has no card of its
+// own: its standard version's card links to it with "Upgrade to Pro". The
+// whole card links to the drip's page: its title's link covers the card, and
+// the "Upgrade to Pro" link sits above that.
+const STANDARD = (drip) => !drip.baseVariantSlug;
 function cardHTML(drip) {
   const v = MENU_VISUALS[drip.slug] || {};
   const at = `drips.${drip.slug}`;
-  const isPro = !!drip.baseVariantSlug;
   return `
-    <article class="card${isPro ? ' card--pro' : ''}" data-card>
-      ${cardMediaHTML(v, isPro, drip.slug)}
-      <h3 class="card__title"><a class="card__link" href="treatments/${esc(drip.slug)}/"><span data-verbatim="${esc(at)}.name">${esc(drip.name)}</span></a>${isPro ? ` ${PRO_BADGE}` : ''}</h3>
+    <article class="card" data-card>
+      ${cardMediaHTML(v, drip.slug)}
+      <h3 class="card__title"><a class="card__link" href="treatments/${esc(drip.slug)}/"><span data-verbatim="${esc(at)}.name">${esc(drip.name)}</span></a></h3>
       ${badgeHTML(v.badge)}
       ${proChipHTML(proOf(drip), ' card__upgrade')}
       <div class="card__action">
@@ -531,7 +525,7 @@ function render() {
   // The featured treatments: the side list of names and a section each.
   if (stageRoot && FEATURED.length) stageRoot.innerHTML = treatmentsHTML(FEATURED);
   if (gridRoot) {
-    gridRoot.innerHTML = MENU.drips.map(cardHTML).join('');
+    gridRoot.innerHTML = MENU.drips.filter(STANDARD).map(cardHTML).join('');
     // The cards' line drawings draw themselves as they come into view (site.js).
     if (window.SiteDraw) window.SiteDraw.watch(gridRoot);
   }
@@ -719,6 +713,11 @@ function lineSectionHTML(t, i) {
 // drawn, a picture stays drawn when you scroll back up. Arriving by a jump
 // (the side list of names, a link), the picture draws itself. With reduced motion
 // everything is shown already drawn.
+// Coming back to the home page (Back from another page, or a link to one of
+// its sections) starts every drawing afresh: you stay where you were, the
+// drawing on the screen draws itself again, the ones below draw as you
+// scroll down to them, and the ones above draw themselves as you scroll back
+// up to them.
 const LINE = {
   pen: 0.66,      // where the pen is, as a share of the screen's height from the top (lower: drawings finish lower down, so they stay in view longer)
   follow: 0.1,    // seconds: how closely the drawing follows the scroll (a little smoothing)
@@ -745,7 +744,7 @@ function initLines(items, animated) {
       len: 0, y0: 0, y1: 0, reached: 0, shown: -1,
     }));
     const segs = [...overlay.querySelectorAll('[data-seg]')].map((el) => ({ el, seg: true, len: 0, y0: 0, y1: 0, reached: 0, shown: -1 }));
-    return { it, section, overlay, art, g, text: section.querySelector('.tx__text'), top: Number(g.dataset.top), bottom: Number(g.dataset.bottom), parts: [...segs, ...strokes], auto: null, done: false };
+    return { it, section, overlay, art, g, text: section.querySelector('.tx__text'), top: Number(g.dataset.top), bottom: Number(g.dataset.bottom), parts: [...segs, ...strokes], auto: null, replay: null, done: false };
   });
 
   // Where everything is, in each section's own coordinates (redone on resize).
@@ -809,13 +808,27 @@ function initLines(items, animated) {
   // A jump to a treatment: its picture draws itself.
   document.addEventListener('tx:arrive', (event) => {
     const sec = secs.find((x) => x.section === event.detail);
-    if (sec && !sec.done) sec.auto = { start: performance.now(), from: null };
+    if (sec && !sec.done) { sec.replay = null; sec.auto = { start: performance.now(), from: null }; }
   });
+
+  // Arriving on the page (or coming back to it): every drawing the pen is
+  // already past waits, undrawn, and draws itself once its picture is on the
+  // screen (straight away for the one you're looking at).
+  let arriving = true;
+  const arrive = () => {
+    arriving = false;
+    const pen = window.innerHeight * LINE.pen;
+    for (const sec of secs) {
+      if (sec.done) continue;
+      if (pen - sec.section.getBoundingClientRect().top > 0) sec.replay = { start: null };
+    }
+  };
 
   let ticking = false;
   let last = 0;
   const tick = (now) => {
     ticking = false;
+    if (arriving) arrive();
     const dt = last ? Math.min(now - last, 50) / 1000 : 1 / 60;
     last = now;
     const k = 1 - Math.exp(-dt / LINE.follow);
@@ -824,6 +837,23 @@ function initLines(items, animated) {
     for (const sec of secs) {
       if (sec.done) continue;
       const box = sec.section.getBoundingClientRect();
+      if (sec.replay) {
+        // Waiting for its picture to come onto the screen, then drawing itself.
+        if (sec.replay.start === null) {
+          const a = sec.art.getBoundingClientRect();
+          if (a.bottom <= 0 || a.top >= window.innerHeight) continue;
+          sec.replay.start = now;
+        }
+        const u = Math.min(1, (now - sec.replay.start) / (LINE.jump * 1000));
+        const at = box.height * ease(u);
+        for (const p of sec.parts) {
+          p.reached = clamp((at - p.y0) / (p.y1 - p.y0));
+          draw(p, p.reached);
+        }
+        if (u < 1) moving = true;
+        else { sec.replay = null; sec.done = true; }
+        continue;
+      }
       // Below the screen: nothing yet.
       if (box.top > window.innerHeight) continue;
       // Gone by above the screen (e.g. after a jump past it): drawn.
@@ -862,6 +892,18 @@ function initLines(items, animated) {
   secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 0)));
   wake();
   window.addEventListener('scroll', wake, { passive: true });
+  // Back to the page from the browser's memory (Back or Forward, with the
+  // page kept as it was): every drawing starts afresh, as on arriving.
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    for (const sec of secs) {
+      sec.done = false; sec.auto = null; sec.replay = null;
+      sec.parts.forEach((p) => { p.reached = 0; p.shown = -1; draw(p, 0); });
+    }
+    arriving = true;
+    last = 0;
+    wake();
+  });
   const relayout = () => {
     layout();
     secs.forEach((sec) => sec.parts.forEach((p) => draw(p, Math.max(0, p.reached === 1 ? 1 : p.reached))));
@@ -1354,6 +1396,11 @@ function initReveals() {
     }
   }, { rootMargin: '0px 0px -12% 0px' });
   targets.forEach((el) => { el.classList.add('reveal'); io.observe(el); });
+  // Back on the page from the browser's memory: they rise into view afresh.
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    targets.forEach((el) => { el.classList.remove('is-in'); el.style.transitionDelay = ''; io.unobserve(el); io.observe(el); });
+  });
 }
 
 /* ---------- Start ---------- */

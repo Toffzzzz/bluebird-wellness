@@ -1,7 +1,8 @@
-"""Traces four of the line drawings from black-on-white pictures.
+"""Traces five of the line drawings from black-on-white pictures.
 
 Beauty & Glow (the face in profile), Hair & Scalp (the woman with wavy hair),
-Muscle & Fitness (the deadlift) and Energy (the runner) were drawn in ChatGPT
+Muscle & Fitness (the deadlift), Energy (the runner) and Hydration (the
+coconut with a straw and a cocktail umbrella) were drawn in ChatGPT
 as black line art (scripts/line-art/sources/, kept as one-bit PNGs) and are
 traced here into the site's strokes:
 
@@ -13,8 +14,8 @@ traced here into the site's strokes:
   4. each one is smoothed, fitted to the 400 x 400 box so that its two
      anchors land on the page's centre line (x = 200): the line comes into
      the drawing at the top anchor and leaves it at the bottom one (a few
-     lines can be added by hand, in 'add', and a stroke shortened, in
-     'cut_below'); and
+     lines can be added by hand, in 'add' (e.g. the coconut's drop of
+     water), and a stroke shortened, in 'cut_below'); and
      written top-down (each stroke starts at its higher end).
 
 The result is scripts/line-art/traced.json, which make-line-art.py reads.
@@ -39,6 +40,25 @@ warnings.filterwarnings('ignore')
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCES = os.path.join(HERE, 'sources')
 MIN_LENGTH = 30  # px in the source picture: anything shorter is a detail
+
+def drop(cx, apex, r, d):
+    """A drop of water, in the picture's pixels: its point at (cx, apex), its
+    round bottom of radius r centred d below the point (the shape of the
+    earlier hand-drawn drop), as one closed line starting at the point."""
+    cy = apex + d
+    pts = []
+    def cubic(p0, p1, p2, p3, n=24):
+        for k in range(n + 1):
+            t = k / n
+            pts.append(tuple((1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t * t * c + t ** 3 * e
+                             for a, b, c, e in zip(p0, p1, p2, p3)))
+    cubic((cx, apex), (cx, apex), (cx - r, cy - d / 3), (cx - r, cy))
+    for k in range(1, 37):                      # round the bottom, left to right
+        a = math.pi - math.pi * k / 36
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    cubic((cx + r, cy), (cx + r, cy - d / 3), (cx, apex), (cx, apex))
+    return pts
+
 
 # For each drawing: its picture, what to leave out, and where the page's line
 # meets it (top: comes in; bottom: leaves), in the picture's pixels, and where
@@ -69,6 +89,17 @@ DRAWINGS = {
         'keep_short': [79, 81],                  # the eye and the mouth
         'top': ('highest', 4),                   # the top of his head
         'bottom': ('below', 2, 'top'),           # the floor, straight below it
+    },
+    'hydration': {
+        'source': 'coconut.png',
+        'alt': 'A line drawing of a drop of water falling into a coconut cut open, with a straw, a cocktail umbrella, a leaf and a flower',
+        'drop': [],
+        'keep_short': [37],                      # the open end of the straw
+        # A drop of water above the opening, between the umbrella and the straw
+        # (drawn here, not in the picture): the line comes into its point.
+        'add': [drop(680, 366, 39, 84)],
+        'top': ('point', 680, 366),              # the drop's point
+        'bottom': ('at-x', 4, 680),              # the ground line, straight below it
     },
     'energy': {
         'source': 'runner.png',
@@ -273,6 +304,8 @@ def simplify(pts, tol):
 
 def anchor(rule, strokes, other=None):
     kind, i = rule[0], rule[1]
+    if kind == 'point':                    # a point in the picture
+        return (rule[1], rule[2])
     e = strokes[i]
     if kind == 'top-end':
         return min(e[0], e[-1], key=lambda p: p[1])
@@ -282,6 +315,10 @@ def anchor(rule, strokes, other=None):
         return min(e[0], e[-1], key=lambda p: p[0])
     if kind == 'highest':
         return min(e, key=lambda p: p[1])
+    if kind == 'at-x':                     # the stroke, at a given x in the picture
+        x = rule[2]
+        p = min(e, key=lambda p: abs(p[0] - x))
+        return (x, p[1])
     if kind in ('above', 'below', 'floor-under'):
         x = other[0]
         if kind == 'floor-under':
