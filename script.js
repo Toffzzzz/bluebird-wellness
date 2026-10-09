@@ -384,8 +384,10 @@ const priceHTML = (label, path) => `<p class="price" data-verbatim="${esc(path)}
 const bookHTML = (name) =>
   `<a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book data-book-item="${esc(name)}">Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
 
+// "Learn more →": a text link with an arrow (the one solid button is Book).
+const TEXT_ARROW = '<svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
 const learnMoreHTML = (m) =>
-  `<a class="btn btn--secondary" href="${esc(m.href)}">Learn more<span class="visually-hidden"> about ${esc(m.name)}</span></a>`;
+  `<a class="text-link" href="${esc(m.href)}"><span>Learn more</span><span class="visually-hidden"> about ${esc(m.name)}</span>${TEXT_ARROW}</a>`;
 
 // A drip's Pro version, if it has one.
 const proOf = (drip) => (drip && drip.proVariantSlug ? dripBySlug(drip.proVariantSlug) : null);
@@ -460,7 +462,7 @@ function cardHTML(drip) {
       ${proChipHTML(proOf(drip), ' card__upgrade')}
       <div class="card__action">
         ${priceHTML(drip.priceLabel, `${at}.priceLabel`)}
-        <span class="btn btn--secondary btn--compact card__more" aria-hidden="true">Learn more</span>
+        <span class="text-link card__more" aria-hidden="true"><span>Learn more</span>${TEXT_ARROW}</span>
       </div>
     </article>`;
 }
@@ -579,7 +581,7 @@ function render() {
    ========================================================================== */
 
 // The site's pictures (site-config.js: pictures): 'lines', the line drawings
-// (data/line-art.js) everywhere: the featured treatments are one violet line
+// (data/line-art.js) everywhere: the featured treatments are one brand-blue line
 // drawn down the middle of the page as you scroll, and the cards (and the
 // treatment pages) show the same drawings; or 'photos': the featured
 // treatments' pre-rendered animations (images/treatment-videos/) and the

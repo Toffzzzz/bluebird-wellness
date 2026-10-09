@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cookies | Bluebird Wellness</title>
   <meta name="description" content="This website doesn&#39;t use cookies or tracking. Here&#39;s exactly what it does and doesn&#39;t do.">
-  <meta name="theme-color" content="#F6F3FE">
+  <meta name="theme-color" content="#F7F5F0">
   <meta name="robots" content="noindex, nofollow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Bluebird Wellness">
@@ -23,6 +23,7 @@
   <link rel="apple-touch-icon" href="../images/logo/apple-touch-icon.png">
 
   <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../fonts/Newsreader-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body class="drip-page legal-page">
@@ -138,7 +139,7 @@
           <li><a href="../ingredients/">Ingredients</a></li>
           <li><a href="../#about">About us</a></li>
           <li><a href="../#how-it-works">How it works</a></li>
-          <li><a href="../faq/">Questions</a></li>
+          <li data-page="faq" hidden><a href="../faq/">Questions</a></li>
           <li><a href="../#book">Contact</a></li>
         </ul>
       </nav>
@@ -151,7 +152,7 @@
     <article class="container legal">
       <h1 class="drip-title">Cookies</h1>
       <p class="legal-updated">Last updated 6 October 2026</p>
-      <p class="legal-draft" role="note"><strong>Draft.</strong> This page is waiting for the clinic's details (highlighted) and a compliance review.</p>
+      <p class="legal-draft" role="note"><strong>Draft.</strong> This page is waiting for a compliance review.</p>
       <div class="legal-body">
 <p class="legal-lead">This website doesn't use cookies. It doesn't use analytics, advertising or any other tracking either, so there's nothing to accept or turn off, and no cookie banner.</p>
       <nav class="legal-toc" aria-labelledby="legal-toc-title">
@@ -191,7 +192,7 @@
         <a href="../studies/">Studies</a>
         <a href="../#about">About us</a>
         <a href="../#how-it-works">How it works</a>
-        <a href="../faq/">Questions</a>
+        <a href="../faq/" data-page="faq" hidden>Questions</a>
         <a href="../#book">Contact</a>
         <a href="../#book" data-book>Book now</a>
       </nav>
@@ -200,21 +201,23 @@
       <p>All treatments are subject to a medical consultation.</p>
       <p>&copy; <span id="year">2026</span> Bluebird Wellness</p>
     </div>
-    <!-- The policy pages, and the business's details (from site-config.js, written in by the generator) -->
+    <!-- The policy pages, and the business's details (from site-config.js, written in by the generator).
+         A policy page's link (data-page) is hidden until the page is finished (no gaps left). -->
     <div class="container site-footer__policies">
       <nav class="site-footer__policy-nav" aria-label="Policies">
-        <a href="../privacy/">Privacy</a>
-        <a href="../terms/">Terms</a>
-        <a href="../cancellations/">Cancellations &amp; refunds</a>
-        <a href="./" aria-current="page">Cookies</a>
-        <a href="../accessibility/">Accessibility</a>
-        <a href="../complaints/">Complaints</a>
+        <a href="../privacy/" data-page="privacy" hidden>Privacy</a>
+        <a href="../terms/" data-page="terms" hidden>Terms</a>
+        <a href="../cancellations/" data-page="cancellations" hidden>Cancellations &amp; refunds</a>
+        <a href="./" aria-current="page" data-page="cookies">Cookies</a>
+        <a href="../accessibility/" data-page="accessibility" hidden>Accessibility</a>
+        <a href="../complaints/" data-page="complaints" hidden>Complaints</a>
       </nav>
       <p class="site-footer__business" data-business hidden></p>
     </div>
   </footer>
 
   <script src="../site-config.js" defer></script>
+  <script src="../data/pages.js" defer></script>
   <script src="../data/book-list.js" defer></script>
   <script src="../site.js" defer></script>
   <script src="../treatment.js" defer></script>

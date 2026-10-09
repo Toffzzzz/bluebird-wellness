@@ -11,10 +11,11 @@
    marked as a preview, that sends nothing). Once bookingUrl is set, they go
    to the real booking page and the preview switches itself off.
 
-   The WhatsApp button in the corner of every page opens a chat with the
-   whatsapp number; until it is set, it says the number is coming soon.
-   "Speak to a doctor" (chat.js) is a chat assistant preview: it asks what
-   they're looking for and their details, and sends nothing.
+   The round contact button in the corner of every page (chat.js) opens a
+   small menu: "WhatsApp us" opens a chat with the whatsapp number (until it
+   is set, it says the number is coming soon), and "Speak to a doctor" opens
+   the chat assistant, a preview that asks what they're looking for and
+   their details, and sends nothing.
    ========================================================================== */
 
 window.SITE = {
@@ -25,10 +26,10 @@ window.SITE = {
   // e.g. 'hello@example.com'. "Email us" and "Ask a question".
   email: '',
   // The WhatsApp number in international form, digits only, e.g. '447700900000'.
-  // "WhatsApp" in the contact section, and the WhatsApp button on every page.
+  // "WhatsApp" in the contact section, and "WhatsApp us" in the contact button's menu.
   whatsapp: '',
-  // Optional: an icon for the WhatsApp button, e.g. 'images/whatsapp-icon.svg'
-  // (the official one from WhatsApp's brand resources). Empty: a chat bubble.
+  // Optional: an icon for "WhatsApp us", e.g. 'images/whatsapp-icon.svg'
+  // (the official one from WhatsApp's brand resources). Empty: a speech bubble.
   whatsappIcon: '',
   // The chat assistant ("Speak to a doctor", a preview that sends nothing).
   // false hides it everywhere (no need to re-run the generator for this one).
@@ -36,7 +37,7 @@ window.SITE = {
   // A Google Maps link to the clinic, e.g. 'https://maps.app.goo.gl/…'. "Get directions".
   mapsUrl: '',
 
-  // The site's pictures: 'lines' (the violet line drawings: drawn down the home
+  // The site's pictures: 'lines' (the line drawings: drawn down the home
   // page as you scroll, and on the cards and treatment pages) or 'photos'
   // (the animated videos and photographic pictures). Run the generator after
   // changing it.
@@ -62,12 +63,20 @@ window.SITE = {
   // writes robots.txt and sitemap.xml.
   launched: false,
 
+  // false (normal): anything still unfinished is hidden. true: show the gaps highlighted, to see what's missing.
+  // Hidden while false: the About section's missing parts (each shows by itself
+  // once filled in below), and every policy page with a gap left in it (privacy/,
+  // terms/, …: its links disappear and its address shows "This page is being
+  // finalised"; it comes back, with its links, once its gaps are filled in).
+  // Run the generator after changing it.
+  showUnfinished: false,
+
   /* ---------- The business and its policies ----------
      Shown in every page's footer and in the policy pages (privacy/, terms/,
-     cancellations/, cookies/, accessibility/). The law says a business
-     website must show who runs it. Until a value is filled in, the policy
-     pages show a highlighted gap where it goes. Run the generator after
-     changing these. */
+     cancellations/, cookies/, accessibility/, complaints/, faq/). The law says
+     a business website must show who runs it. Until a value is filled in, its
+     policy pages stay hidden (or, with showUnfinished: true, show a
+     highlighted gap where it goes). Run the generator after changing these. */
 
   // The business's full legal name, e.g. 'Bluebird Wellness Ltd'.
   legalName: '',
@@ -100,17 +109,35 @@ window.SITE = {
   // true: each policy page says it is a draft awaiting the clinic's details and a compliance review.
   legalDraft: true,
 
-  /* ---------- The doctors and the regulator (About us) ---------- */
+  /* ---------- About us: the clinic's words, the doctors, the photos ----------
+     Written into the home page by the generator: run it after changing these. */
 
-  // Each doctor's GMC (General Medical Council) number, so patients can
-  // check their registration on the medical register. Shown in About us.
-  gmcDrNema: '',
-  gmcDrMahdi: '',
+  // About us: the clinic's own paragraphs, each a string. Empty: only the first (finished) paragraph shows.
+  aboutParagraphs: [],
+
+  // The doctors. role, intro and gmc each show once filled in. The photo shows once its file is in images/team/.
+  // gmc: the doctor's GMC (General Medical Council) number, linked to their
+  // entry on the medical register so patients can check it.
+  // Photos: portrait, 4:5, 800 × 1000 px, JPEG, under 250 KB (see README.md).
+  doctors: [
+    { name: 'Dr Nema', role: '', intro: '', gmc: '', photo: 'images/team/dr-nema.jpg', photoAlt: 'Dr Nema' },
+    { name: 'Dr Mahdi', role: '', intro: '', gmc: '', photo: 'images/team/dr-mahdi.jpg', photoAlt: 'Dr Mahdi' },
+  ],
+
+  // Photos of the clinic: each shows once its file is in images/clinic/. None there yet: the gallery is hidden.
+  // Landscape, 4:3, 1600 × 1200 px, JPEG, under 400 KB each. Real photos only.
+  clinicPhotos: [
+    { file: 'images/clinic/treatment-room.jpg', alt: 'A treatment room at Bluebird Wellness' },
+    { file: 'images/clinic/treatment-chair.jpg', alt: 'The treatment chair' },
+    { file: 'images/clinic/drip-preparation.jpg', alt: 'A drip being prepared' },
+    { file: 'images/clinic/entrance.jpg', alt: 'The entrance to Bluebird Dentists' },
+    { file: 'images/clinic/reception.jpg', alt: 'Reception' },
+  ],
 
   // The Care Quality Commission. Once the clinic is rated, the law requires
   // the rating on the website: fill in the rating (e.g. 'Good'), the date of
   // the report (e.g. '3 March 2027') and the link to the report on cqc.org.uk.
-  // Until then About us shows the registration ID (cqcNumber above), or a gap.
+  // About us shows the CQC line once the rating is filled in.
   cqcRating: '',
   cqcRatingDate: '',
   cqcReportUrl: '',

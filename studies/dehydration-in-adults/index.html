@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dehydration in adults | Bluebird Wellness</title>
   <meta name="description" content="Dehydration happens when the body loses more fluid than it takes in, and older adults, people who are unwell, and people in the heat or exercising hard are more at risk. UK research has found dehydration in about 1 in 5 older people living in care homes.">
-  <meta name="theme-color" content="#4A2696">
+  <meta name="theme-color" content="#F7F5F0">
   <meta name="robots" content="noindex, nofollow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Bluebird Wellness">
@@ -23,6 +23,7 @@
   <link rel="apple-touch-icon" href="../../images/logo/apple-touch-icon.png">
 
   <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../../fonts/Newsreader-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="../../styles.css">
 </head>
 <body class="drip-page studies-page study-page">
@@ -138,7 +139,7 @@
           <li><a href="../../ingredients/">Ingredients</a></li>
           <li><a href="../../#about">About us</a></li>
           <li><a href="../../#how-it-works">How it works</a></li>
-          <li><a href="../../faq/">Questions</a></li>
+          <li data-page="faq" hidden><a href="../../faq/">Questions</a></li>
           <li><a href="../../#book">Contact</a></li>
         </ul>
       </nav>
@@ -247,17 +248,17 @@
           <li class="study-card">
             <h3 class="study-card__title"><a class="study-card__link" href="../../studies/iron-deficiency-in-the-uk/">Iron deficiency in the UK</a></h3>
             <p class="study-card__summary">The UK&#39;s National Diet and Nutrition Survey found that about half of teenage girls and a quarter of women aged 19 to 64 had iron intakes below the lowest UK reference level, and a smaller proportion showed signs of iron deficiency anaemia. Here is what UK guidance says about who is at risk, how it is diagnosed and how it is usually treated.</p>
-            <p class="study-card__more" aria-hidden="true">Read the summary</p>
+            <p class="study-card__more text-link" aria-hidden="true"><span>Read the summary</span><svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></p>
           </li>
           <li class="study-card">
             <h3 class="study-card__title"><a class="study-card__link" href="../../studies/vitamin-d-in-the-uk/">Vitamin D in the UK</a></h3>
             <p class="study-card__summary">The latest UK survey found that 18% of adults aged 19 to 64 had low vitamin D levels, with levels lowest between January and March. Government advice is that everyone should consider a daily 10 microgram supplement in autumn and winter, and some groups should take one all year round.</p>
-            <p class="study-card__more" aria-hidden="true">Read the summary</p>
+            <p class="study-card__more text-link" aria-hidden="true"><span>Read the summary</span><svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></p>
           </li>
           <li class="study-card">
             <h3 class="study-card__title"><a class="study-card__link" href="../../studies/vitamin-b12-deficiency/">Vitamin B12 deficiency</a></h3>
             <p class="study-card__summary">Vitamin B12 deficiency is more common in older people, and NICE estimates it affects more than 1 in 10 people aged 75 and over. In 2024, NICE published a guideline on how B12 deficiency should be recognised, tested for and managed.</p>
-            <p class="study-card__more" aria-hidden="true">Read the summary</p>
+            <p class="study-card__more text-link" aria-hidden="true"><span>Read the summary</span><svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></p>
           </li>
         </ul>
       </section>
@@ -276,7 +277,7 @@
         <a href="../../studies/">Studies</a>
         <a href="../../#about">About us</a>
         <a href="../../#how-it-works">How it works</a>
-        <a href="../../faq/">Questions</a>
+        <a href="../../faq/" data-page="faq" hidden>Questions</a>
         <a href="../../#book">Contact</a>
         <a href="../../#book" data-book>Book now</a>
       </nav>
@@ -285,21 +286,23 @@
       <p>All treatments are subject to a medical consultation.</p>
       <p>&copy; <span id="year">2026</span> Bluebird Wellness</p>
     </div>
-    <!-- The policy pages, and the business's details (from site-config.js, written in by the generator) -->
+    <!-- The policy pages, and the business's details (from site-config.js, written in by the generator).
+         A policy page's link (data-page) is hidden until the page is finished (no gaps left). -->
     <div class="container site-footer__policies">
       <nav class="site-footer__policy-nav" aria-label="Policies">
-        <a href="../../privacy/">Privacy</a>
-        <a href="../../terms/">Terms</a>
-        <a href="../../cancellations/">Cancellations &amp; refunds</a>
-        <a href="../../cookies/">Cookies</a>
-        <a href="../../accessibility/">Accessibility</a>
-        <a href="../../complaints/">Complaints</a>
+        <a href="../../privacy/" data-page="privacy" hidden>Privacy</a>
+        <a href="../../terms/" data-page="terms" hidden>Terms</a>
+        <a href="../../cancellations/" data-page="cancellations" hidden>Cancellations &amp; refunds</a>
+        <a href="../../cookies/" data-page="cookies">Cookies</a>
+        <a href="../../accessibility/" data-page="accessibility" hidden>Accessibility</a>
+        <a href="../../complaints/" data-page="complaints" hidden>Complaints</a>
       </nav>
       <p class="site-footer__business" data-business hidden></p>
     </div>
   </footer>
 
   <script src="../../site-config.js" defer></script>
+  <script src="../../data/pages.js" defer></script>
   <script src="../../data/book-list.js" defer></script>
   <script src="../../site.js" defer></script>
   <script src="../../treatment.js" defer></script>

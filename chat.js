@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Bluebird Wellness: the chat assistant and the WhatsApp button (every page)
+   Bluebird Wellness: the chat assistant and the contact button (every page)
 
    1. Chat assistant ("Speak to a doctor"). A short, friendly chat that asks:
         - that they're 18 or over (site-config.js: minimumAge; if not, it stops
@@ -9,20 +9,30 @@
         - their name, phone, email (optional: the doctor phones) and a good
           time to call,
       then sums up, asks for explicit consent to use the health details
-      (linking to the privacy policy), and says one of the doctors will phone them for a
+      (linking to the privacy policy once it's finished: data/pages.js),
+      and says one of the doctors will phone them for a
       telephone consultation within the next 24 hours. It says at the start
       that it isn't for emergencies (999, or 111 for urgent advice).
       It is a preview: it is marked as one, and nothing is sent or stored
       anywhere. Making it live needs a secure way for the answers to reach
       the clinic. site-config.js: chatAssistant: false hides it.
-   2. WhatsApp. A green "WhatsApp" button in the bottom corner of every page
-      opens a chat with the clinic (site-config.js: whatsapp). Until the
-      number is filled in, it says the number is coming soon. Its icon is a
-      chat bubble until site-config.js: whatsappIcon points at an image.
-
-   Both sit together in the bottom right corner (.contact-dock): WhatsApp
-   above, "Speak to a doctor" below. Anything marked data-chat-open (the home
-   page's "Speak to a doctor" button) opens the chat too.
+   2. The contact button. One small round button in the bottom right corner
+      of every page ("Contact us") opens a small menu just above it:
+        - "WhatsApp us" opens a chat with the clinic (site-config.js:
+          whatsapp); until the number is filled in, the menu says it's coming
+          soon (never a link that does nothing). Its icon is a speech bubble
+          until site-config.js: whatsappIcon points at an image;
+        - "Speak to a doctor" opens the chat assistant (unless
+          chatAssistant is false).
+      Escape, a click or tap elsewhere, or choosing an item closes it
+      (Escape puts the focus back on the button). The button steps aside
+      (fades out, and can't be tapped or focused) over the home page's hero,
+      over the footer, while the phones' menu, the booking preview or the
+      chat is open, and whenever it would cover anything on the page
+      (checked after every scroll and resize); it comes back when the space
+      is clear. On a treatment page on phones it sits above the Book bar.
+   Anything marked data-chat-open (the home page's "Speak to a doctor"
+   button) opens the chat too.
    ========================================================================== */
 
 (() => {
@@ -45,8 +55,8 @@
     bubble: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.2A8 8 0 1 1 20 11.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>',
   };
 
-  const dock = document.createElement('div');
-  dock.className = 'contact-dock';
+  // The privacy policy is linked only once it's finished (shown in full: data/pages.js).
+  const PRIVACY_SHOWN = !!(window.SITE_PAGES && Array.isArray(window.SITE_PAGES.shown) && window.SITE_PAGES.shown.includes('privacy'));
 
   /* ---------- 1. The chat assistant ---------- */
 
@@ -258,7 +268,7 @@
     say([`Shall one of our doctors call you on ${answers.phone}?`]);
     // Explicit consent for the health details, in plain words, before anything would be passed on.
     queue = queue.then(() => {
-      addMessage('note', `<p>By choosing "${esc(CONSENT)}", you agree to ${esc(SITE.legalName || 'Bluebird Wellness')} using these details, including the health information you've given, to arrange your consultation. You can withdraw this at any time. See our <a href="${esc(new URL('privacy/', ROOT).href)}" target="_blank" rel="noopener">privacy policy</a>.</p>`);
+      addMessage('note', `<p>By choosing "${esc(CONSENT)}", you agree to ${esc(SITE.legalName || 'Bluebird Wellness')} using these details, including the health information you've given, to arrange your consultation. You can withdraw this at any time.${PRIVACY_SHOWN ? ` See our <a href="${esc(new URL('privacy/', ROOT).href)}" target="_blank" rel="noopener">privacy policy</a>.` : ''}</p>`);
     });
     offer({ quick: [CONSENT, 'Start again'] });
   }
@@ -341,58 +351,167 @@
     document.querySelectorAll('[data-chat-open][hidden]').forEach((b) => { b.hidden = false; });
   }
 
-  /* ---------- 2. WhatsApp ---------- */
+  /* ---------- 2. The contact button ---------- */
 
   const number = String(SITE.whatsapp || '').replace(/\D/g, '');
-  const icon = SITE.whatsappIcon
-    ? `<img class="contact-dock__icon" src="${esc(new URL(SITE.whatsappIcon, ROOT).href)}" alt="" width="24" height="24">`
-    : ICON.bubble.replace('<svg ', '<svg class="contact-dock__icon" ');
-  const wa = document.createElement('a');
-  wa.className = 'contact-dock__button contact-dock__button--wa';
-  wa.innerHTML = `${icon}<span class="contact-dock__label">WhatsApp</span>`;
-  wa.setAttribute('aria-label', 'Contact us on WhatsApp');
-  if (number) {
-    wa.href = `https://wa.me/${number}?text=${encodeURIComponent('Hello Bluebird Wellness, I have a question about a treatment.')}`;
-    wa.target = '_blank';
-    wa.rel = 'noopener';
-  } else {
-    // No number yet: a note says so (never a link that does nothing).
-    wa.href = '#';
-    wa.insertAdjacentHTML('beforeend', '<span class="contact-dock__note" role="status"></span>');
-    const note = wa.querySelector('.contact-dock__note');
-    let timer = 0;
-    wa.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      note.textContent = 'Our WhatsApp number is coming soon';
-      wa.classList.add('is-noting');
-      clearTimeout(timer);
-      timer = setTimeout(() => { wa.classList.remove('is-noting'); note.textContent = ''; }, 2600);
+  const icon = (svg) => svg.replace('<svg ', '<svg class="contact-fab__icon" ');
+  const waIcon = SITE.whatsappIcon
+    ? `<img class="contact-fab__icon" src="${esc(new URL(SITE.whatsappIcon, ROOT).href)}" alt="" width="22" height="22">`
+    : icon(ICON.bubble);
+  const waItem = number
+    ? `<a class="contact-fab__item" data-fab-wa href="https://wa.me/${number}?text=${encodeURIComponent('Hello Bluebird Wellness, I have a question about a treatment.')}" target="_blank" rel="noopener">${waIcon}<span>WhatsApp us</span></a>`
+    // No number yet: it says so here (never a link that does nothing).
+    : `<button type="button" class="contact-fab__item" data-fab-wa aria-describedby="contact-fab-status">${waIcon}<span>WhatsApp us</span></button><div class="contact-fab__note" id="contact-fab-status" role="status"></div>`;
+  const chatItem = CHAT_ON
+    ? `<li><button type="button" class="contact-fab__item" data-fab-chat>${icon(ICON.doctor)}<span>Speak to a doctor</span></button></li>`
+    : '';
+  const fab = document.createElement('div');
+  fab.className = 'contact-fab is-away';
+  fab.inert = true;
+  // The menu follows the button, so Tab goes from the button into it.
+  fab.innerHTML = `
+    <button type="button" class="contact-fab__button" aria-label="Contact us" aria-expanded="false" aria-controls="contact-fab-menu">${ICON.bubble}</button>
+    <div class="contact-fab__menu" id="contact-fab-menu" role="group" aria-label="Contact us" hidden>
+      <ul class="contact-fab__list">
+        <li>${waItem}</li>
+        ${chatItem}
+      </ul>
+    </div>`;
+  // Early in the tab order (just after "Skip to content"), so Tab reaches it
+  // wherever it's showing: at the end of the page it would come after the
+  // footer, where it steps aside.
+  const skip = document.querySelector('.skip-link');
+  if (skip) skip.after(fab); else document.body.prepend(fab);
+  document.documentElement.classList.add('has-fab');
+
+  const button = fab.querySelector('.contact-fab__button');
+  const menu = fab.querySelector('.contact-fab__menu');
+  const status = fab.querySelector('#contact-fab-status');
+  const setMenu = (open) => {
+    menu.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    if (!open && status) status.textContent = '';
+    queueCheck();
+  };
+  button.addEventListener('click', () => setMenu(menu.hidden));
+  fab.querySelector('[data-fab-wa]').addEventListener('click', (event) => {
+    if (number) { setMenu(false); return; }
+    event.preventDefault();
+    status.textContent = 'Our WhatsApp number is coming soon';
+  });
+  if (CHAT_ON) {
+    fab.querySelector('[data-fab-chat]').addEventListener('click', () => {
+      setMenu(false);
+      openChat(button);
     });
   }
-  dock.appendChild(wa);
+  // Escape closes it and puts the focus back on the button; so does a click
+  // or tap elsewhere, or tabbing out of it.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || menu.hidden) return;
+    event.preventDefault();
+    setMenu(false);
+    button.focus();
+  });
+  document.addEventListener('click', (event) => {
+    if (!menu.hidden && !fab.contains(event.target)) setMenu(false);
+  });
+  fab.addEventListener('focusout', (event) => {
+    if (!menu.hidden && event.relatedTarget && !fab.contains(event.relatedTarget)) setMenu(false);
+  });
 
-  if (CHAT_ON) {
-    const launch = document.createElement('button');
-    launch.type = 'button';
-    launch.className = 'contact-dock__button contact-dock__button--chat';
-    launch.setAttribute('data-chat-open', '');
-    launch.setAttribute('aria-label', 'Speak to a doctor: chat with us');
-    launch.innerHTML = `${ICON.doctor.replace('<svg ', '<svg class="contact-dock__icon" ')}<span class="contact-dock__label">Speak to a doctor</span>`;
-    dock.appendChild(launch);
-  }
-
-  document.body.appendChild(dock);
-  document.documentElement.classList.add('has-dock');
-
-  // Phones, on the home page: tucked away while the hero (with its own Book
-  // and "Speak to a doctor" buttons) fills the screen; in once you scroll.
+  /* When it shows. It steps aside over the home page's hero and the footer,
+     while a menu or dialog is open (html.is-locked), and whenever its box
+     (plus 8px) would cover anything: text, links, buttons, fields, pictures,
+     line drawings, cards, tiles, prices, badges, any panel with a
+     background… but not the page's or a section's own background, or the
+     central line. Checked after each scroll and resize (once a frame). */
+  const root = document.documentElement;
   const hero = document.querySelector('.hero');
-  if (hero) {
-    const phone = window.matchMedia('(max-width: 819.98px)');
-    const tuck = () => dock.classList.toggle('is-tucked', phone.matches && window.scrollY < window.innerHeight * 0.35);
-    window.addEventListener('scroll', tuck, { passive: true });
-    phone.addEventListener('change', tuck);
-    tuck();
+  const footer = document.querySelector('.site-footer');
+  const bar = document.querySelector('[data-book-bar]');
+  const MARGIN = 8;
+  // Always content, wherever they're touched.
+  const BOX = 'img, svg, video, canvas, picture, iframe, input, select, textarea, button, .btn, .card, .tile, .badge, .pro-chip, .pro-badge, .price, .study-card, .accordion, .price-table-wrap, .ingredients__list, .toc, .upgrade, .legal-details, .legal-toc, .study-notice, .legal-draft, .tx-nav, .book-bar, .to-top, .menu-item, mark, table, .text-link, .used-in__link, .glossary-cats__link, .drip-jumps a';
+  // Text: content where its words are (not the empty end of a line).
+  const TEXT = 'p, h1, h2, h3, h4, h5, h6, li, dt, dd, td, th, label, summary, figcaption, blockquote, a, span, strong, em, small, b, i, sup, sub, time, address, caption';
+  const meets = (r, box) => r.width > 0 && r.height > 0 && r.right > box.left && r.left < box.right && r.bottom > box.top && r.top < box.bottom;
+  const textMeets = (el, box, deep) => {
+    const nodes = [];
+    if (deep) {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+    } else nodes.push(...[...el.childNodes].filter((n) => n.nodeType === 3));
+    const range = document.createRange();
+    return nodes.some((n) => {
+      if (!n.textContent.trim()) return false;
+      range.selectNodeContents(n);
+      return [...range.getClientRects()].some((r) => meets(r, box));
+    });
+  };
+  const isContent = (el, box) => {
+    if (fab.contains(el) || el === document.body || el === root) return false;
+    if (el.closest('.tx-line__svg')) return false; // the central line
+    if (el.closest(BOX)) return true;
+    const cs = getComputedStyle(el);
+    // A panel with its own background (narrower than the screen: not a section's).
+    const bg = cs.backgroundColor.match(/[\d.]+/g);
+    if (bg && (bg.length < 4 || Number(bg[3]) > 0) && el.getBoundingClientRect().width < window.innerWidth - 2 && !/^(MAIN|SECTION|HEADER|FOOTER|NAV|ARTICLE|BODY)$/.test(el.tagName)) return true;
+    return textMeets(el, box, el.matches(TEXT));
+  };
+  const covers = (box) => {
+    const seen = new Set();
+    const N = 6;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const x = box.left + ((box.right - box.left) * i) / (N - 1);
+        const y = box.top + ((box.bottom - box.top) * j) / (N - 1);
+        if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue;
+        for (const el of document.elementsFromPoint(x, y)) {
+          if (seen.has(el)) continue;
+          seen.add(el);
+          if (isContent(el, box)) return true;
+        }
+      }
+    }
+    return false;
+  };
+  const check = () => {
+    // On a treatment page on phones, above the Book bar while it shows.
+    const lift = bar && bar.classList.contains('is-shown') && getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0;
+    fab.style.setProperty('--fab-lift', `${lift}px`);
+    let away = false;
+    if (menu.hidden) {
+      // Where it sits, ignoring its own fade (offsetTop ignores transforms).
+      const box = { left: fab.offsetLeft - MARGIN, top: fab.offsetTop - lift - MARGIN, right: fab.offsetLeft + fab.offsetWidth + MARGIN, bottom: fab.offsetTop - lift + fab.offsetHeight + MARGIN };
+      away = root.classList.contains('is-locked')
+        || (hero && hero.getBoundingClientRect().bottom > 0)
+        || (footer && footer.getBoundingClientRect().top < window.innerHeight)
+        || covers(box);
+    }
+    fab.classList.toggle('is-away', away);
+    fab.inert = away;
+  };
+  let queued = false;
+  function queueCheck() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; check(); });
   }
+  window.addEventListener('scroll', () => {
+    // Scrolling closes its menu.
+    if (!menu.hidden) setMenu(false);
+    queueCheck();
+  }, { passive: true });
+  window.addEventListener('resize', queueCheck, { passive: true });
+  window.addEventListener('load', queueCheck);
+  window.addEventListener('pageshow', queueCheck);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueCheck);
+  // Things that move without a scroll: an entry opened, a block risen into
+  // place, the Book bar sliding in, a dialog opening or closing.
+  ['toggle', 'transitionend', 'animationend'].forEach((e) => document.addEventListener(e, queueCheck, true));
+  new MutationObserver(queueCheck).observe(root, { attributes: true, attributeFilter: ['class'] });
+  if (bar) new MutationObserver(queueCheck).observe(bar, { attributes: true, attributeFilter: ['class'] });
+  if ('ResizeObserver' in window) new ResizeObserver(queueCheck).observe(document.body);
+  queueCheck();
 })();

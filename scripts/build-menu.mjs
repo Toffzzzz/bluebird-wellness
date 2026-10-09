@@ -11,14 +11,22 @@
                                    offers, on every page
      treatments/<slug>/index.html  one static page per drip, with all its
                                    text in the HTML
-     privacy/, terms/, cancellations/, cookies/, accessibility/
-                                   the policy pages, from content/legal/
+     privacy/, terms/, cancellations/, cookies/, accessibility/,
+     complaints/, faq/             the policy pages, from content/legal/
                                    and the business's details in
-                                   site-config.js
+                                   site-config.js (a page with a gap left
+                                   in it is written as a short "being
+                                   finalised" notice until it's filled in,
+                                   unless showUnfinished is true)
+     data/pages.js                 window.SITE_PAGES: which policy pages are
+                                   shown in full, for booking.js and chat.js
+                                   (their privacy policy links)
      ingredients/index.html        the ingredient glossary (the menu's
                                    glossary), with where each one is used
      index.html                    only its Book and contact links (from
-                                   site-config.js) and the inlined logo
+                                   site-config.js), About us, the menus,
+                                   the policy links and the inlined logo
+                                   (in the header and the hero's bird)
      data/menu-check.txt           the check report (also printed)
 
    Run it after editing data/drips.json, site-config.js (the booking link
@@ -92,7 +100,10 @@ const MENU = JSON.parse(read('data/drips.json'));
 
 // The booking link and contact details (site-config.js, shared with script.js).
 // FEATURED_IDS: its featured list (the treatments the home page's line draws).
+// LISTS: its lists (aboutParagraphs, doctors, clinicPhotos), as they are.
 let FEATURED_IDS = [];
+const LIST_KEYS = ['featured', 'aboutParagraphs', 'doctors', 'clinicPhotos'];
+const LISTS = {};
 const SITE = (() => {
   const window = {};
   try {
@@ -100,13 +111,18 @@ const SITE = (() => {
   } catch (error) {
     fail(`Could not read site-config.js: ${error.message}`);
   }
-  const featured = window.SITE && window.SITE.featured;
-  if (featured !== undefined && !Array.isArray(featured)) fail('featured in site-config.js must be a list, e.g. [\'iron\', \'nad\'].');
-  FEATURED_IDS = (featured || []).map((id) => String(id).trim());
-  return Object.fromEntries(Object.entries(window.SITE || {}).filter(([k]) => k !== 'featured').map(([k, v]) => [k, String(v ?? '').trim()]));
+  for (const key of LIST_KEYS) {
+    const list = window.SITE && window.SITE[key];
+    if (list !== undefined && !Array.isArray(list)) fail(`${key} in site-config.js must be a list, e.g. ${key === 'featured' ? "['iron', 'nad']" : '[ … ]'}.`);
+    LISTS[key] = list || [];
+  }
+  FEATURED_IDS = LISTS.featured.map((id) => String(id).trim());
+  return Object.fromEntries(Object.entries(window.SITE || {}).filter(([k]) => !LIST_KEYS.includes(k)).map(([k, v]) => [k, String(v ?? '').trim()]));
 })();
 // A true/false setting in site-config.js.
 const isOn = (key) => SITE[key] === 'true';
+// true: everything unfinished shows as a highlighted gap; false: it's hidden.
+const SHOW_UNFINISHED = isOn('showUnfinished');
 const SITE_URL = SITE.siteUrl ? SITE.siteUrl.replace(/\/?$/, '/') : '';
 if (SITE_URL && !/^https?:\/\//.test(SITE_URL)) fail('siteUrl in site-config.js must start with https://.');
 
@@ -227,6 +243,9 @@ const esc = (value) =>
 // data-verbatim: the path of the string in data/drips.json.
 const vb = (path) => ` data-verbatim="${esc(path)}"`;
 
+// "Learn more →" and the other secondary actions: text links with this arrow.
+const TEXT_ARROW = '<svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
+
 // "\n\n" in a menu string is a paragraph break.
 const paras = (text, indent = '') => String(text).split('\n\n').map((p) => `${indent}<p>${esc(p)}</p>`).join('\n');
 
@@ -341,15 +360,32 @@ const withSite = (html) => html
 
 // The logo, inline so it takes the colour of its text (currentColor) and
 // stays sharp at every size: every <svg class="brand__mark" data-logo> gets
-// the drawing in images/logo/bluebird-mark.svg.
-const LOGO = (() => {
-  const svg = read('images/logo/bluebird-mark.svg');
-  const viewBox = (svg.match(/viewBox="([^"]+)"/) || [])[1];
-  const inner = (svg.match(/<svg\b[^>]*>([\s\S]*)<\/svg>/) || [])[1];
-  if (!viewBox || !inner) fail('Could not read images/logo/bluebird-mark.svg.');
-  return `<svg class="brand__mark" data-logo viewBox="${viewBox}" fill="currentColor" aria-hidden="true" focusable="false">${inner.trim()}</svg>`;
+// the drawing in images/logo/bluebird-mark.svg. The hero's bird (<svg
+// data-logo-draw>, which draws itself) gets the same path twice: its outline
+// (pathLength 1, so styles.css can draw it as one line) and, over it, the
+// filled bird. Its wrapper (.hero__bird) gets where the tip of the tail is
+// (the lowest point of the first part of the path), as shares of the
+// drawing's width and height, so the tip sits on the page's centre line and
+// the line below starts there.
+const LOGO_SVG = read('images/logo/bluebird-mark.svg');
+const LOGO_VIEWBOX = (LOGO_SVG.match(/viewBox="([^"]+)"/) || [])[1];
+const LOGO_INNER = ((LOGO_SVG.match(/<svg\b[^>]*>([\s\S]*)<\/svg>/) || [])[1] || '').trim();
+const LOGO_D = (LOGO_INNER.match(/\sd="([^"]+)"/) || [])[1];
+if (!LOGO_VIEWBOX || !LOGO_INNER || !LOGO_D) fail('Could not read images/logo/bluebird-mark.svg.');
+const LOGO = `<svg class="brand__mark" data-logo viewBox="${LOGO_VIEWBOX}" fill="currentColor" aria-hidden="true" focusable="false">${LOGO_INNER}</svg>`;
+const TAIL_TIP = (() => {
+  const [, , w, h] = LOGO_VIEWBOX.split(/[\s,]+/).map(Number);
+  const first = LOGO_D.split(/Z/i)[0];
+  const points = [...first.matchAll(/(-?[\d.]+)[\s,]+(-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  if (!points.length || !w || !h) fail('Could not find the tip of the tail in images/logo/bluebird-mark.svg.');
+  const [x, y] = points.reduce((low, p) => (p[1] > low[1] ? p : low));
+  return { x: x / w, y: y / h };
 })();
-const withLogo = (html) => html.replace(/<svg class="brand__mark" data-logo[^>]*>[\s\S]*?<\/svg>/g, LOGO);
+const HERO_BIRD = `<svg class="hero__bird-mark" data-logo-draw viewBox="${LOGO_VIEWBOX}" focusable="false"><path class="hero__bird-outline" d="${LOGO_D}" pathLength="1"/><path class="hero__bird-fill" d="${LOGO_D}"/></svg>`;
+const withLogo = (html) => html
+  .replace(/<svg class="brand__mark" data-logo[^>]*>[\s\S]*?<\/svg>/g, LOGO)
+  .replace(/<svg class="hero__bird-mark" data-logo-draw[^>]*>[\s\S]*?<\/svg>/g, HERO_BIRD)
+  .replace(/<div class="hero__bird"[^>]*>/g, `<div class="hero__bird" style="--tip-x: ${TAIL_TIP.x.toFixed(4)}; --tip-y: ${TAIL_TIP.y.toFixed(4)}" aria-hidden="true">`);
 
 /* ---------- Studies (content/studies/) ----------
    One HTML file per study: a comment with its title, a short summary (for
@@ -372,6 +408,93 @@ const STUDIES = (existsSync(at('content/studies')) ? readdirSync(at('content/stu
   .sort((a, b) => a.order - b.order);
 const STUDIES_ON_HOME = 3;   // how many the home page shows (the first, in order)
 
+/* ---------- Policy pages ----------
+   privacy/, terms/, cancellations/, cookies/ and accessibility/, written from
+   content/legal/<name>.html (a comment with the title and description, then
+   the page's text). In the text, {{name}} is a value from site-config.js
+   (a highlighted gap until it's filled in), {{businessDetails}} is the list
+   of the business's details, and [[text]] is a highlighted gap for something
+   the clinic still has to decide. */
+
+const LEGAL = ['privacy', 'terms', 'cancellations', 'cookies', 'accessibility', 'complaints', 'faq'];
+const LEGAL_GAPS = {
+  legalName: "the business's legal name",
+  companyNumber: 'company number, if a limited company',
+  registeredIn: 'where the company is registered',
+  registeredOffice: 'registered office address',
+  clinicAddress: "the clinic's full address",
+  vatNumber: 'VAT number, if VAT-registered',
+  icoNumber: 'ICO registration number',
+  cqcNumber: 'Care Quality Commission ID, if registered',
+  bookingProvider: "the booking system's provider",
+  callOutFee: 'the call-out charge, or "none"',
+  cancellationNotice: 'how much notice, e.g. 24 hours',
+  cancellationFee: 'the charge, e.g. 50% of the treatment price',
+  minimumAge: 'the minimum age',
+  policiesUpdated: 'the date',
+  email: "the clinic's email address",
+  phone: "the clinic's phone number",
+};
+const LEGAL_DEFAULTS = { clinicAddress: 'Bluebird Dentists, near Westfield, London' };
+const legalGap = (text) => `<mark class="legal-gap">[${esc(text)}]</mark>`;
+const legalValue = (key) => SITE[key] || LEGAL_DEFAULTS[key] || '';
+function legalField(key) {
+  if (key === 'businessDetails') return businessDetailsHTML();
+  if (!(key in LEGAL_GAPS)) fail(`content/legal: unknown {{${key}}}.`);
+  const value = legalValue(key);
+  if (!value) return legalGap(LEGAL_GAPS[key]);
+  if (key === 'email') return `<a href="mailto:${esc(value)}">${esc(value)}</a>`;
+  if (key === 'phone') return `<a href="${esc(contactHref.phone(value))}">${esc(value)}</a>`;
+  return esc(value);
+}
+function businessDetailsHTML() {
+  const rows = [
+    ['Business', 'legalName'],
+    ['Company number', 'companyNumber'],
+    ['Registered in', 'registeredIn'],
+    ['Registered office', 'registeredOffice'],
+    ['Clinic', 'clinicAddress'],
+    ['VAT number', 'vatNumber'],
+    ['ICO registration', 'icoNumber'],
+    ['Care Quality Commission', 'cqcNumber'],
+    ['Phone', 'phone'],
+    ['Email', 'email'],
+  ];
+  return `<dl class="legal-details">${rows.map(([label, key]) => `
+  <div><dt>${esc(label)}</dt><dd>${legalField(key)}</dd></div>`).join('')}
+</dl>`;
+}
+function legalSource(name) {
+  const text = read(`content/legal/${name}.html`);
+  const head = text.match(/^<!--([\s\S]*?)-->/);
+  const meta = Object.fromEntries((head ? head[1] : '').split('\n').map((l) => l.match(/^\s*(\w+):\s*(.+?)\s*$/)).filter(Boolean).map((m) => [m[1], m[2]]));
+  if (!meta.title) fail(`content/legal/${name}.html: no title.`);
+  const body = text.slice(head ? head[0].length : 0).trim()
+    .replace(/\{\{(\w+)\}\}/g, (m, key) => legalField(key))
+    .replace(/\[\[([^\]]+)\]\]/g, (m, gapText) => legalGap(gapText));
+  return { name, title: meta.title, description: meta.description || '', body };
+}
+// Which policy pages are shown in full: each one with no gap left in it
+// (with showUnfinished: true, all of them, gaps highlighted). The others are
+// written as a short "being finalised" notice, and every link to them is
+// hidden, until their gaps are filled in.
+const legalDone = (name) => !legalSource(name).body.includes('class="legal-gap"') && !!legalValue('policiesUpdated');
+const LEGAL_SHOWN = LEGAL.filter((name) => SHOW_UNFINISHED || legalDone(name));
+const isShown = (name) => LEGAL_SHOWN.includes(name);
+
+// Every link to a policy page (marked data-page="privacy" in index.html, on
+// the link or its list item) is hidden while that page isn't shown, and the
+// footer's list of policies while none of them is.
+const withPages = (html) => html
+  .replace(/<(a|li)\b([^>]*?)\sdata-page="([a-z]+)"([^>]*)>/g, (tag, el, before, name, after) => {
+    if (!LEGAL.includes(name)) fail(`index.html: data-page="${name}" isn't one of the policy pages (${LEGAL.join(', ')}).`);
+    const attrs = `${before} data-page="${name}"${after}`.replace(/\shidden(?=\s|$)/g, '');
+    return `<${el}${attrs}${isShown(name) ? '' : ' hidden'}>`;
+  })
+  .replace(/<nav class="site-footer__policy-nav"[^>]*>/g, `<nav class="site-footer__policy-nav" aria-label="Policies"${LEGAL_SHOWN.some((n) => n !== 'faq') ? '' : ' hidden'}>`);
+// In a policy page's text, a link to one that isn't shown becomes plain text.
+const unlinkHidden = (html) => html.replace(/<a href="\.\.\/([a-z]+)\/(?:#[^"]*)?">([\s\S]*?)<\/a>/g, (m, name, text) => (LEGAL.includes(name) && !isShown(name) ? text : m));
+
 /* ---------- The drop-down menus, About us and the page heads ----------
    Written into index.html between its markers, then copied with the header
    onto every page:
@@ -380,7 +503,7 @@ const STUDIES_ON_HOME = 3;   // how many the home page shows (the first, in orde
      <!-- menu:studies --> every study;
      <!-- studies:home --> the first studies, as cards;
      <!-- head:meta --> the robots, link-preview and search details;
-     data-gmc / data-cqc: the doctors' GMC numbers and the CQC line. */
+     <!-- about:content --> About us (below). */
 
 const ICON_FILE = 'images/icons/treatments.svg';
 const iconHTML = (art) => (art ? `<svg class="menu-icon" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><use href="${ICON_FILE}#art-${esc(art)}"/></svg>` : '<span class="menu-icon menu-icon--none" aria-hidden="true"></span>');
@@ -403,7 +526,7 @@ const studyCardHTML = (st, up, h) => `
           <li class="study-card">
             <h${h} class="study-card__title"><a class="study-card__link" href="${up}studies/${esc(st.slug)}/">${esc(st.title)}</a></h${h}>
             <p class="study-card__summary">${esc(st.summary)}</p>
-            <p class="study-card__more" aria-hidden="true">Read the summary</p>
+            <p class="study-card__more text-link" aria-hidden="true"><span>Read the summary</span>${TEXT_ARROW}</p>
           </li>`;
 // h: the cards' heading level (3 under a section's h2; 2 on the studies page).
 const studyCardsHTML = (list, up, h = 3) => `<ul class="study-grid">${list.map((st) => studyCardHTML(st, up, h)).join('')}
@@ -411,9 +534,11 @@ const studyCardsHTML = (list, up, h = 3) => `<ul class="study-grid">${list.map((
 
 // The robots line (until launch), the link preview and, on the home page, the
 // clinic's details for search engines.
-function headMeta({ title, description, path = '', home = false }) {
+// hide: a page that's being finalised, kept out of search engines even once launched.
+function headMeta({ title, description, path = '', home = false, hide = false }) {
   const lines = [];
   if (!isOn('launched')) lines.push('<meta name="robots" content="noindex, nofollow">');
+  else if (hide) lines.push('<meta name="robots" content="noindex">');
   else if (SITE_URL) lines.push(`<link rel="canonical" href="${esc(SITE_URL + path)}">`);
   lines.push('<meta property="og:type" content="website">');
   lines.push(`<meta property="og:site_name" content="${esc(SITE_NAME)}">`);
@@ -442,19 +567,108 @@ function headMeta({ title, description, path = '', home = false }) {
   return lines.join('\n  ');
 }
 
-// The doctors' GMC numbers and the CQC line in About us.
-function gmcHTML(key) {
-  const n = SITE[key];
-  return n ? `GMC number: <a href="https://www.gmc-uk.org/registrants/${esc(n)}">${esc(n)}</a>` : 'GMC number: <mark class="legal-gap">[GMC number]</mark>';
+/* ---------- About us (index.html, between <!-- about:content --> markers) ----------
+   From site-config.js: the first paragraph (always), then aboutParagraphs;
+   each doctor with their name, and their role, GMC number (linked to the
+   medical register), introduction and photo (once its file is in the repo)
+   only when filled in; the Care Quality Commission line once rated; and
+   "Inside the clinic", the clinic's photos whose files are in the repo
+   (hidden while there are none). With showUnfinished: true, each missing
+   piece shows as a highlighted gap instead. */
+
+const ABOUT_FIRST = 'Bluebird Wellness is an IV drip clinic led by two doctors, Dr Nema and Dr Mahdi. We see patients at Bluebird Dentists near Westfield, London, and visit people at home, in hotels and at work across London.';
+// The sizes the photos should be (README.md): used for a file whose size can't be read.
+const PHOTO_SIZE = { doctor: [800, 1000], clinic: [1600, 1200] };
+
+// Width and height of a JPEG, PNG or WebP file, from its header.
+function imageSize(file) {
+  const b = readFileSync(at(file));
+  if (b.toString('ascii', 1, 4) === 'PNG') return [b.readUInt32BE(16), b.readUInt32BE(20)];
+  if (b.toString('ascii', 0, 4) === 'RIFF') return webpSize(file);
+  if (b[0] === 0xff && b[1] === 0xd8) {
+    for (let o = 2; o + 9 < b.length;) {
+      if (b[o] !== 0xff) return null;
+      const marker = b[o + 1];
+      const len = b.readUInt16BE(o + 2);
+      // A start-of-frame marker (SOF0 to SOF15, not DHT, JPG or DAC) holds the size.
+      if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) return [b.readUInt16BE(o + 7), b.readUInt16BE(o + 5)];
+      o += 2 + len;
+    }
+  }
+  return null;
 }
+const text = (value) => String(value ?? '').trim();
+// A photo listed in site-config.js: shown once its file is in the repo.
+const photoFile = (file) => text(file) && existsSync(at(text(file))) ? text(file) : '';
+const photoGap = (cls, file, size) => (SHOW_UNFINISHED ? `<span class="${cls} photo-gap"><span>[Photo: ${esc(file || 'not listed yet')}, ${size[0]} × ${size[1]} px]</span></span>` : '');
+// A line of a doctor's details: shown once filled in (or, with showUnfinished: true, as a gap).
+const detailHTML = (cls, value, html, gapText) => (value || SHOW_UNFINISHED ? `<p class="${cls}">${value ? html : legalGap(gapText)}</p>` : '');
+
+function doctorHTML(d) {
+  const name = text(d.name);
+  const role = text(d.role);
+  const intro = text(d.intro);
+  const gmc = text(d.gmc);
+  const file = photoFile(d.photo);
+  let photo = '';
+  if (file) {
+    const [w, h] = imageSize(file) || PHOTO_SIZE.doctor;
+    photo = `<img class="doctor__photo" src="${esc(file)}" alt="${esc(text(d.photoAlt))}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+  } else photo = photoGap('doctor__photo', text(d.photo), PHOTO_SIZE.doctor);
+  const lines = [
+    detailHTML('doctor__role', role, esc(role), 'Role and area of medicine'),
+    detailHTML('doctor__gmc', gmc, `GMC number: <a href="https://www.gmc-uk.org/registrants/${esc(gmc)}">${esc(gmc)}</a>`, 'GMC number'),
+    detailHTML('doctor__bio', intro, esc(intro), 'A short introduction: training and experience'),
+  ].filter(Boolean);
+  return `
+                <article class="doctor${photo ? ' doctor--photo' : ''}" data-fade>${photo ? `
+                  ${photo}` : ''}
+                  <div>
+                    <h3 class="doctor__name">${esc(name)}</h3>${lines.map((l) => `
+                    ${l}`).join('')}
+                  </div>
+                </article>`;
+}
+
 function cqcHTML() {
   if (SITE.cqcRating) {
     const date = SITE.cqcRatingDate ? ` (report published ${esc(SITE.cqcRatingDate)})` : '';
     const link = SITE.cqcReportUrl ? ` <a href="${esc(SITE.cqcReportUrl)}">Read the report on the CQC website</a>.` : '';
-    return `Rated <strong>${esc(SITE.cqcRating)}</strong> by the Care Quality Commission${date}.${link}`;
+    return `
+            <p class="about__regulator">Rated <strong>${esc(SITE.cqcRating)}</strong> by the Care Quality Commission${date}.${link}</p>`;
   }
-  if (SITE.cqcNumber) return `Registered with the Care Quality Commission (ID ${esc(SITE.cqcNumber)}).`;
-  return 'Care Quality Commission: <mark class="legal-gap">[registration, and the clinic\'s latest rating once inspected]</mark>';
+  return SHOW_UNFINISHED ? `
+            <p class="about__regulator">Care Quality Commission: ${legalGap("the clinic's rating, once inspected (cqcRating, cqcRatingDate and cqcReportUrl)")}</p>` : '';
+}
+
+function galleryHTML() {
+  const items = LISTS.clinicPhotos.map((ph) => {
+    const file = photoFile(ph.file);
+    if (!file) return photoGap('about__photo', text(ph.file), PHOTO_SIZE.clinic);
+    const [w, h] = imageSize(file) || PHOTO_SIZE.clinic;
+    return `<img class="about__photo" src="${esc(file)}" alt="${esc(text(ph.alt))}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+  }).filter(Boolean);
+  if (!items.length) return '';
+  return `
+            <div class="about__gallery" data-fade>
+              <h3 class="about__gallery-title">Inside the clinic</h3>
+              <ul class="about__photos">${items.map((item) => `
+                <li>${item}</li>`).join('')}
+              </ul>
+            </div>`;
+}
+
+function aboutHTML() {
+  const paragraphs = [ABOUT_FIRST, ...LISTS.aboutParagraphs.map(text).filter(Boolean)].map((t) => `
+                <p>${esc(t)}</p>`).join('');
+  const gap = !LISTS.aboutParagraphs.some((t) => text(t)) && SHOW_UNFINISHED ? `
+                <p>${legalGap("The clinic's own words (aboutParagraphs): why the clinic was set up, what matters to the doctors, and how a visit works, from the first consultation to aftercare")}</p>` : '';
+  return `<div class="about__grid">
+              <div class="about__copy" data-fade>${paragraphs}${gap}
+              </div>
+              <div class="about__doctors">${LISTS.doctors.map(doctorHTML).join('')}
+              </div>
+            </div>${cqcHTML()}${galleryHTML()}`;
 }
 
 const region = (html, name, content) => {
@@ -471,14 +685,13 @@ const withContent = (html) => {
     description: 'Doctor-led IV drips at Bluebird Dentists near Westfield, London, or as a mobile call-out to your home, hotel or office.',
     home: true,
   })}\n  ${close}`);
-  out = out.replace(/(<p class="doctor__gmc" data-gmc="(\w+)">)[\s\S]*?(<\/p>)/g, (m, open, key, close) => `${open}${gmcHTML(key)}${close}`);
-  out = out.replace(/(<p class="about__regulator" data-cqc>)[\s\S]*?(<\/p>)/, (m, open, close) => `${open}${cqcHTML()}${close}`);
+  out = region(out, 'about:content', aboutHTML());
   return out;
 };
 
 /* ---------- Header and footer: the home page's, pointed back at it ---------- */
 
-const INDEX = withLogo(withSite(withContent(read('index.html'))));
+const INDEX = withLogo(withSite(withPages(withContent(read('index.html')))));
 
 function slice(html, open, close) {
   const start = html.indexOf(open);
@@ -571,7 +784,7 @@ ${adds.map((a) => `              <li${vb(`${q}.ingredients.${a.i}`)}>${esc(a.lin
             <p class="eyebrow">Upgrade to Pro</p>
             <h2 class="upgrade__title" id="upgrade-title"><span${vb(`${q}.name`)}>${esc(pro.name)}</span> ${PRO_BADGE}</h2>
             <p class="upgrade__price"${vb(`${q}.priceLabel`)}>${esc(pro.priceLabel)}</p>${list}
-            <a class="btn btn--secondary btn--compact" href="../${esc(pro.slug)}/">Learn more<span class="visually-hidden"> about ${esc(pro.name)}</span></a>
+            <a class="text-link" href="../${esc(pro.slug)}/"><span>Learn more</span><span class="visually-hidden"> about ${esc(pro.name)}</span>${TEXT_ARROW}</a>
           </aside>`;
 }
 
@@ -648,7 +861,7 @@ ${I}</li>`);
   const hasDetails = rows.some((r) => r.desc) || unmatched.length;
   const toggle = hasDetails
     ? `
-            <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="ingredient-list" hidden>Expand all</button>` : '';
+            <button type="button" class="text-link" data-expand-all aria-controls="ingredient-list" hidden>Expand all</button>` : '';
   const small = notes.map((n) => `
           <p class="ingredients__note"${vb(`${p}.ingredients.${n.i}`)}>${esc(n.line)}</p>`).join('');
   return `
@@ -747,9 +960,9 @@ function jumpsHTML(drip) {
 function pageHTML(drip) {
   const p = `drips.${drip.slug}`;
   const v = VISUALS[drip.slug];
-  // With the line drawings, every treatment page is on the palest violet (the
-  // page's own colour); with the photos, on the tint its pictures were made on.
-  const tint = (!USE_LINES && v.tint) || '#F6F3FE';
+  // With the line drawings, every treatment page is on the page's own
+  // off-white; with the photos, on the tint its pictures were made on.
+  const tint = (!USE_LINES && v.tint) || THEME;
   const tagline = drip.tagline ? `
           <p class="drip-tagline"${vb(`${p}.tagline`)}>${esc(drip.tagline)}</p>` : '';
   const badge = v.badge ? `<span class="${v.badge.variant === 'sage' ? 'badge badge--sage' : 'badge'}">${esc(v.badge.text)}</span>` : '';
@@ -765,10 +978,10 @@ function pageHTML(drip) {
   ${headMeta({ title: `${drip.name} | ${SITE_NAME}`, description: `${drip.name}, ${drip.priceLabel}: a doctor-led IV drip at ${SITE_NAME}, London. Every treatment is subject to a medical consultation.`, path: `treatments/${drip.slug}/` })}
   ${rebase(ICONS, '../../')}
 
-  <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  ${preloads('../../')}
   <link rel="stylesheet" href="../../styles.css">
 </head>
-<body class="drip-page" data-book-item="${esc(drip.name)}">
+<body class="drip-page${drip.baseVariantSlug ? ' drip-page--pro' : ''}" data-book-item="${esc(drip.name)}">
   <a class="skip-link" href="#main">Skip to content</a>
 
   ${HEADER}
@@ -815,12 +1028,7 @@ ${longFormHTML(drip, p)}${ingredientsHTML(drip, p)}${pricesHTML(drip, p)}${footn
 
   ${FOOTER}
 
-  <script src="../../site-config.js" defer></script>
-  <script src="../../data/book-list.js" defer></script>
-  <script src="../../site.js" defer></script>
-  <script src="../../treatment.js" defer></script>
-  <script src="../../booking.js" defer></script>
-  <script src="../../chat.js" defer></script>
+  ${scripts('../../')}
 </body>
 </html>
 `;
@@ -880,11 +1088,11 @@ ${paras(item.text, '                  ')}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(GLOSSARY_TITLE)} | ${esc(SITE_NAME)}</title>
-  <meta name="theme-color" content="#F6F3FE">
+  <meta name="theme-color" content="${THEME}">
   ${headMeta({ title: `${GLOSSARY_TITLE} | ${SITE_NAME}`, description: `What's in ${SITE_NAME}'s IV drips: every ingredient, and the drips it's in.`, path: 'ingredients/' })}
   ${rebase(ICONS, '../')}
 
-  <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  ${preloads('../')}
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body class="drip-page glossary-page">
@@ -914,7 +1122,7 @@ ${paras(item.text, '                  ')}
     </div>
     <div class="glossary-tools-row">
       <div class="container glossary glossary-tools">
-        <button type="button" class="btn btn--secondary btn--compact" data-expand-all aria-controls="glossary-entries" hidden>Expand all</button>
+        <button type="button" class="text-link" data-expand-all aria-controls="glossary-entries" hidden>Expand all</button>
       </div>
     </div>
 
@@ -940,88 +1148,32 @@ ${paras(item.text, '                  ')}
 
   ${GLOSSARY_FOOTER}
 
-  <script src="../site-config.js" defer></script>
-  <script src="../data/book-list.js" defer></script>
-  <script src="../site.js" defer></script>
-  <script src="../treatment.js" defer></script>
-  <script src="../booking.js" defer></script>
-  <script src="../chat.js" defer></script>
+  ${scripts('../')}
 </body>
 </html>
 `;
 }
 
-/* ---------- Policy pages ----------
-   privacy/, terms/, cancellations/, cookies/ and accessibility/, written from
-   content/legal/<name>.html (a comment with the title and description, then
-   the page's text). In the text, {{name}} is a value from site-config.js
-   (a highlighted gap until it's filled in), {{businessDetails}} is the list
-   of the business's details, and [[text]] is a highlighted gap for something
-   the clinic still has to decide. */
+// The fonts every page preloads, and the scripts every page other than the
+// home page loads (data/pages.js before booking.js and chat.js, for their
+// privacy policy links).
+const preloads = (up) => `<link rel="preload" href="${up}fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="${up}fonts/Newsreader-Variable.woff2" as="font" type="font/woff2" crossorigin>`;
+const scripts = (up) => ['site-config.js', 'data/pages.js', 'data/book-list.js', 'site.js', 'treatment.js', 'booking.js', 'chat.js']
+  .map((f) => `<script src="${up}${f}" defer></script>`).join('\n  ');
+// The page's own colour, for the browser's bar (theme-color).
+const THEME = '#F7F5F0';
 
-const LEGAL = ['privacy', 'terms', 'cancellations', 'cookies', 'accessibility', 'complaints', 'faq'];
-const LEGAL_GAPS = {
-  legalName: "the business's legal name",
-  companyNumber: 'company number, if a limited company',
-  registeredIn: 'where the company is registered',
-  registeredOffice: 'registered office address',
-  clinicAddress: "the clinic's full address",
-  vatNumber: 'VAT number, if VAT-registered',
-  icoNumber: 'ICO registration number',
-  cqcNumber: 'Care Quality Commission ID, if registered',
-  bookingProvider: "the booking system's provider",
-  callOutFee: 'the call-out charge, or "none"',
-  cancellationNotice: 'how much notice, e.g. 24 hours',
-  cancellationFee: 'the charge, e.g. 50% of the treatment price',
-  minimumAge: 'the minimum age',
-  policiesUpdated: 'the date',
-  email: "the clinic's email address",
-  phone: "the clinic's phone number",
-};
-const LEGAL_DEFAULTS = { clinicAddress: 'Bluebird Dentists, near Westfield, London' };
-const legalGap = (text) => `<mark class="legal-gap">[${esc(text)}]</mark>`;
-const legalValue = (key) => SITE[key] || LEGAL_DEFAULTS[key] || '';
-function legalField(key) {
-  if (key === 'businessDetails') return businessDetailsHTML();
-  if (!(key in LEGAL_GAPS)) fail(`content/legal: unknown {{${key}}}.`);
-  const value = legalValue(key);
-  if (!value) return legalGap(LEGAL_GAPS[key]);
-  if (key === 'email') return `<a href="mailto:${esc(value)}">${esc(value)}</a>`;
-  if (key === 'phone') return `<a href="${esc(contactHref.phone(value))}">${esc(value)}</a>`;
-  return esc(value);
-}
-function businessDetailsHTML() {
-  const rows = [
-    ['Business', 'legalName'],
-    ['Company number', 'companyNumber'],
-    ['Registered in', 'registeredIn'],
-    ['Registered office', 'registeredOffice'],
-    ['Clinic', 'clinicAddress'],
-    ['VAT number', 'vatNumber'],
-    ['ICO registration', 'icoNumber'],
-    ['Care Quality Commission', 'cqcNumber'],
-    ['Phone', 'phone'],
-    ['Email', 'email'],
-  ];
-  return `<dl class="legal-details">${rows.map(([label, key]) => `
-  <div><dt>${esc(label)}</dt><dd>${legalField(key)}</dd></div>`).join('')}
-</dl>`;
-}
-function legalSource(name) {
-  const text = read(`content/legal/${name}.html`);
-  const head = text.match(/^<!--([\s\S]*?)-->/);
-  const meta = Object.fromEntries((head ? head[1] : '').split('\n').map((l) => l.match(/^\s*(\w+):\s*(.+?)\s*$/)).filter(Boolean).map((m) => [m[1], m[2]]));
-  if (!meta.title) fail(`content/legal/${name}.html: no title.`);
-  const body = text.slice(head ? head[0].length : 0).trim()
-    .replace(/\{\{(\w+)\}\}/g, (m, key) => legalField(key))
-    .replace(/\[\[([^\]]+)\]\]/g, (m, gapText) => legalGap(gapText));
-  return { name, title: meta.title, description: meta.description || '', body };
-}
+// A policy page in full, or (while it has a gap left in it, unless
+// showUnfinished is true) a short notice that it's being finalised, kept out
+// of search engines.
 function legalPageHTML(name) {
   const page = legalSource(name);
+  const shown = isShown(name);
   const header = rebase(HEADER_HTML, '../');
-  const footer = rebase(FOOTER_HTML, '../').replace(`<a href="../${name}/">`, '<a href="./" aria-current="page">');
-  const sections = [...page.body.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)];
+  const footer = rebase(FOOTER_HTML, '../').replace(new RegExp(`<a href="\\.\\./${name}/"`, 'g'), '<a href="./" aria-current="page"');
+  const body = unlinkHidden(page.body);
+  const sections = [...body.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)];
   const toc = sections.length > 2 ? `
       <nav class="legal-toc" aria-labelledby="legal-toc-title">
         <p class="legal-toc__title" id="legal-toc-title">On this page</p>
@@ -1029,21 +1181,35 @@ function legalPageHTML(name) {
           <li><a href="#${m[1]}">${m[2]}</a></li>`).join('')}
         </ul>
       </nav>` : '';
+  const gaps = body.includes('class="legal-gap"');
   const draft = SITE.legalDraft !== 'false' ? `
-      <p class="legal-draft" role="note"><strong>Draft.</strong> This page is waiting for the clinic's details (highlighted) and a compliance review.</p>` : '';
+      <p class="legal-draft" role="note"><strong>Draft.</strong> ${gaps ? "This page is waiting for the clinic's details (highlighted) and a compliance review." : 'This page is waiting for a compliance review.'}</p>` : '';
+  const main = shown ? `
+    <article class="container legal">
+      <h1 class="drip-title">${esc(page.title)}</h1>
+      <p class="legal-updated">Last updated ${legalField('policiesUpdated')}</p>${draft}
+      <div class="legal-body">
+${body.replace(/^(<p class="legal-lead">[\s\S]*?<\/p>)/, `$1${toc}`)}
+      </div>
+    </article>` : `
+    <article class="container legal legal--soon">
+      <h1 class="drip-title">${esc(page.title)}</h1>
+      <p class="legal-lead">This page is being finalised and will be here soon.</p>
+      <p class="not-found__links"><a class="text-link" href="../"><span>Go to the home page</span>${TEXT_ARROW}</a></p>
+    </article>`;
   return `<!DOCTYPE html>
-<!-- ${GENERATED} (from content/legal/${name}.html) -->
+<!-- ${GENERATED} (from content/legal/${name}.html${shown ? '' : '; being finalised: shown in full once its gaps are filled in'}) -->
 <html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(page.title)} | ${esc(SITE_NAME)}</title>
   <meta name="description" content="${esc(page.description)}">
-  <meta name="theme-color" content="#F6F3FE">
-  ${headMeta({ title: `${page.title} | ${SITE_NAME}`, description: page.description, path: `${name}/` })}
+  <meta name="theme-color" content="${THEME}">
+  ${headMeta({ title: `${page.title} | ${SITE_NAME}`, description: page.description, path: `${name}/`, hide: !shown })}
   ${rebase(ICONS, '../')}
 
-  <link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  ${preloads('../')}
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body class="drip-page legal-page">
@@ -1051,24 +1217,12 @@ function legalPageHTML(name) {
 
   ${header}
 
-  <main id="main">
-    <article class="container legal">
-      <h1 class="drip-title">${esc(page.title)}</h1>
-      <p class="legal-updated">Last updated ${legalField('policiesUpdated')}</p>${draft}
-      <div class="legal-body">
-${page.body.replace(/^(<p class="legal-lead">[\s\S]*?<\/p>)/, `$1${toc}`)}
-      </div>
-    </article>
+  <main id="main">${main}
   </main>
 
   ${footer}
 
-  <script src="../site-config.js" defer></script>
-  <script src="../data/book-list.js" defer></script>
-  <script src="../site.js" defer></script>
-  <script src="../treatment.js" defer></script>
-  <script src="../booking.js" defer></script>
-  <script src="../chat.js" defer></script>
+  ${scripts('../')}
 </body>
 </html>
 `;
@@ -1101,11 +1255,11 @@ function pageShell({ up, title, description, path, bodyClass, main, current }) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(title)} | ${esc(SITE_NAME)}</title>
   <meta name="description" content="${esc(description)}">
-  <meta name="theme-color" content="#4A2696">
+  <meta name="theme-color" content="${THEME}">
   ${headMeta({ title: `${title} | ${SITE_NAME}`, description, path })}
   ${rebase(ICONS, up)}
 
-  <link rel="preload" href="${up}fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  ${preloads(up)}
   <link rel="stylesheet" href="${up}styles.css">
 </head>
 <body class="drip-page ${bodyClass}">
@@ -1119,12 +1273,7 @@ ${main}
 
   ${footer}
 
-  <script src="${up}site-config.js" defer></script>
-  <script src="${up}data/book-list.js" defer></script>
-  <script src="${up}site.js" defer></script>
-  <script src="${up}treatment.js" defer></script>
-  <script src="${up}booking.js" defer></script>
-  <script src="${up}chat.js" defer></script>
+  ${scripts(up)}
 </body>
 </html>
 `;
@@ -1184,7 +1333,7 @@ function notFoundHTML() {
     main: `    <div class="container legal">
       <h1 class="drip-title">Page not found</h1>
       <p class="legal-lead">Sorry, there's no page at this address. It may have moved, or the link may be mistyped.</p>
-      <p class="not-found__links"><a class="btn btn--primary" href="./">Go to the home page</a> <a class="btn btn--secondary" href="./#treatments">See all treatments</a></p>
+      <p class="not-found__links"><a class="btn btn--primary" href="./">Go to the home page</a> <a class="text-link" href="./#treatments"><span>See all treatments</span>${TEXT_ARROW}</a></p>
     </div>`,
   }).replace('<head>\n', `<head>\n  <base href="${esc(base)}">\n`);
 }
@@ -1239,8 +1388,16 @@ for (const drip of DRIPS) write(`treatments/${drip.slug}/index.html`, pageHTML(d
 // The ingredient glossary.
 if (GLOSSARY.length) write('ingredients/index.html', glossaryPageHTML());
 
-// The policy pages, complaints and questions.
+// The policy pages, complaints and questions (each in full, or for now the
+// "being finalised" notice), and which of them are shown in full.
 for (const name of LEGAL) write(`${name}/index.html`, legalPageHTML(name));
+const PAGES_JS = `/* ${GENERATED} */
+// The policy pages shown in full (the others are being finalised, and
+// nothing links to them): booking.js and chat.js link to the privacy policy
+// only once it's here.
+window.SITE_PAGES = ${JSON.stringify({ shown: LEGAL_SHOWN, finishing: LEGAL.filter((n) => !isShown(n)) })};
+`;
+write('data/pages.js', PAGES_JS);
 
 // The studies: generated folders are replaced; anything else is left alone.
 if (!CHECK_ONLY && existsSync(at('studies'))) {
@@ -1256,7 +1413,7 @@ for (const st of STUDIES) write(`studies/${st.slug}/index.html`, studyPageHTML(s
 // files for search engines (a sitemap only once launched).
 write('404.html', notFoundHTML());
 if (USE_LINES) write(ICON_FILE, iconFileSVG());
-const PAGES = ['', ...DRIPS.map((d) => `treatments/${d.slug}/`), 'ingredients/', ...LEGAL.map((n) => `${n}/`), 'studies/', ...STUDIES.map((st) => `studies/${st.slug}/`)];
+const PAGES = ['', ...DRIPS.map((d) => `treatments/${d.slug}/`), 'ingredients/', ...LEGAL_SHOWN.map((n) => `${n}/`), 'studies/', ...STUDIES.map((st) => `studies/${st.slug}/`)];
 write('robots.txt', isOn('launched')
   ? `User-agent: *\nAllow: /\n${SITE_URL ? `\nSitemap: ${SITE_URL}sitemap.xml\n` : ''}`
   : 'User-agent: *\nDisallow: /\n');
@@ -1388,11 +1545,13 @@ function checkStrings(html, required) {
 }
 
 // Structure: title, robots, one h1, no skipped heading levels, no raw prices in pence.
-function checkPage(html, drip, expectedTitle = `${drip.name} | ${SITE_NAME}`) {
+function checkPage(html, drip, expectedTitle = `${drip.name} | ${SITE_NAME}`, hidden = false) {
   const problems = [];
   const title = (html.match(/<title>([^<]*)<\/title>/) || [])[1];
   if (decode(title || '') !== expectedTitle) problems.push(`title is "${title}"`);
-  if (html.includes('<meta name="robots" content="noindex, nofollow">') === isOn('launched')) problems.push(isOn('launched') ? 'still asks search engines not to list it (launched is true)' : 'robots meta missing (launched is false)');
+  if (hidden) {
+    if (!/<meta name="robots" content="noindex[^"]*">/.test(html)) problems.push('being finalised, but doesn\'t ask search engines not to list it');
+  } else if (html.includes('<meta name="robots" content="noindex, nofollow">') === isOn('launched')) problems.push(isOn('launched') ? 'still asks search engines not to list it (launched is true)' : 'robots meta missing (launched is false)');
   const levels = [...html.matchAll(/<h([1-6])\b/g)].map((m) => Number(m[1]));
   if (levels.filter((l) => l === 1).length !== 1) problems.push(`${levels.filter((l) => l === 1).length} h1 elements`);
   levels.forEach((l, i) => { if (i && l > levels[i - 1] + 1) problems.push(`heading level skips from h${levels[i - 1]} to h${l}`); });
@@ -1427,11 +1586,32 @@ if (GLOSSARY.length) {
 
 for (const name of LEGAL) {
   const html = read(`${name}/index.html`);
-  const problems = checkPage(html, {}, `${legalSource(name).title} | ${SITE_NAME}`);
+  const problems = checkPage(html, {}, `${legalSource(name).title} | ${SITE_NAME}`, !isShown(name));
   if (/\{\{|\[\[/.test(html)) problems.push('a {{value}} or [[gap]] was left unfilled');
   if (html !== legalPageHTML(name)) problems.push('out of date: run node scripts/build-menu.mjs');
-  const gaps = (html.match(/class="legal-gap"/g) || []).length;
-  report(!problems.length, `${name}/ (policy)`, gaps ? `${gaps} gaps for the clinic to fill in` : 'complete', problems);
+  const gaps = (legalSource(name).body.match(/class="legal-gap"/g) || []).length;
+  const state = !gaps ? 'complete' : isShown(name) ? `${gaps} gaps for the clinic to fill in (shown, highlighted)` : `${gaps} gaps to fill in: hidden until then (a "being finalised" notice)`;
+  report(!problems.length, `${name}/ (policy)`, state, problems);
+}
+{
+  const problems = [];
+  if (!existsSync(at('data/pages.js')) || read('data/pages.js') !== PAGES_JS) problems.push('out of date: run node scripts/build-menu.mjs');
+  report(!problems.length, 'data/pages.js (policy pages shown)', LEGAL_SHOWN.length ? LEGAL_SHOWN.join(', ') : 'none yet', problems);
+}
+
+// Every photo listed in site-config.js has its alt text (a plain description of the photo).
+{
+  const problems = [];
+  LISTS.doctors.forEach((d, i) => {
+    if (!text(d.name)) problems.push(`doctors[${i}] has no name`);
+    if (text(d.photo) && !text(d.photoAlt)) problems.push(`doctors[${i}] (${text(d.name) || 'no name'}): the photo ${text(d.photo)} has no photoAlt`);
+  });
+  LISTS.clinicPhotos.forEach((ph, i) => {
+    if (!text(ph.file)) problems.push(`clinicPhotos[${i}] has no file`);
+    if (!text(ph.alt)) problems.push(`clinicPhotos[${i}] (${text(ph.file) || 'no file'}) has no alt`);
+  });
+  const shown = [...LISTS.doctors.map((d) => photoFile(d.photo)), ...LISTS.clinicPhotos.map((ph) => photoFile(ph.file))].filter(Boolean).length;
+  report(!problems.length, 'site-config.js photos (alt text)', `${shown} of ${LISTS.doctors.length + LISTS.clinicPhotos.length} photos in the repo (shown)`, problems);
 }
 
 // The studies: up to date, every citation points at a source, every source is cited.
@@ -1504,6 +1684,25 @@ function renderedHome() {
   } catch (error) {
     report(false, label, 'could not render', [error.message]);
   }
+}
+
+// Nothing unfinished shows while showUnfinished is false: no highlighted gap
+// and no text in [square brackets] on any page (the home page as written and
+// as script.js renders it, every treatment page, the glossary, the policy
+// pages, the studies and the page for missing addresses).
+{
+  const files = ['index.html', ...DRIPS.map((d) => `treatments/${d.slug}/index.html`), 'ingredients/index.html', ...LEGAL.map((n) => `${n}/index.html`), 'studies/index.html', ...STUDIES.map((st) => `studies/${st.slug}/index.html`), '404.html'];
+  const visibleText = (html) => textOf(html.replace(/<script\b[\s\S]*?<\/script>/gi, ' ').replace(/<style\b[\s\S]*?<\/style>/gi, ' '));
+  const problems = [];
+  const look = (where, html) => {
+    if (/class="[^"]*\b(?:legal-gap|photo-gap|placeholder-note)\b/.test(html)) problems.push(`${where}: a highlighted gap`);
+    const bracket = visibleText(html).match(/\[[A-Za-z][^\]]*\]/);
+    if (bracket) problems.push(`${where}: "${bracket[0].slice(0, 70)}"`);
+  };
+  for (const f of files) if (existsSync(at(f))) look(f, read(f));
+  try { look('index.html (as script.js renders it)', renderedHome()); } catch (error) { /* reported above */ }
+  if (SHOW_UNFINISHED) report(true, 'no gaps visible', 'showUnfinished is true: the gaps are shown, highlighted');
+  else report(!problems.length, 'no gaps visible', `none on any of the ${files.length} pages`, problems);
 }
 
 // Where the menu itself says "Blue Bird Wellness" (the site's own name is SITE_NAME).

@@ -10,8 +10,9 @@
      - a day on the calendar and a time (some times show as taken, as they
        would in a real diary),
      - your details, confirming you're 18 or over (site-config.js: minimumAge)
-       and agreeing to the privacy policy (neither box pre-ticked), then a
-       confirmation.
+       and agreeing to how their details will be used, with a link to the
+       privacy policy once it's finished (data/pages.js; neither box
+       pre-ticked), then a confirmation.
    A call-out charge (site-config.js: callOutFee) shows on the call-out
    choice. It is clearly marked as a preview, and nothing is sent or stored anywhere.
    Once bookingUrl is set (and the generator re-run), the Book buttons go to
@@ -25,6 +26,8 @@
   const SITE = window.SITE || {};
   // The site's root folder, from where this file is (for the privacy policy link on every page).
   const ROOT = new URL('.', (document.currentScript && document.currentScript.src) || location.href);
+  // The privacy policy is linked only once it's finished (shown in full: data/pages.js).
+  const PRIVACY_SHOWN = !!(window.SITE_PAGES && Array.isArray(window.SITE_PAGES.shown) && window.SITE_PAGES.shown.includes('privacy'));
   const MIN_AGE = String(SITE.minimumAge || '18');
   const CALL_OUT_FEE = String(SITE.callOutFee || '').trim();
   const LIST = window.BOOK_LIST || { drips: [], standalone: [] };
@@ -169,7 +172,7 @@
             </div>
             <div class="booking__checks">
               <label class="booking__check"><input type="checkbox" name="age" required> <span>I'm ${esc(MIN_AGE)} or over.</span></label>
-              <label class="booking__check"><input type="checkbox" name="privacy" required> <span>I agree to ${esc(SITE.legalName || 'Bluebird Wellness')} using these details, including any health information I give, to arrange my appointment, as explained in the <a href="${esc(new URL('privacy/', ROOT).href)}" target="_blank" rel="noopener">privacy policy</a>.</span></label>
+              <label class="booking__check"><input type="checkbox" name="privacy" required> <span>I agree to ${esc(SITE.legalName || 'Bluebird Wellness')} using these details, including any health information I give, to arrange my appointment${PRIVACY_SHOWN ? `, as explained in the <a href="${esc(new URL('privacy/', ROOT).href)}" target="_blank" rel="noopener">privacy policy</a>` : ''}.</span></label>
             </div>
             <p class="booking__note">All treatments are subject to a medical consultation with one of our doctors.</p>
             <p class="booking__error" data-error role="alert" hidden></p>
@@ -183,7 +186,7 @@
           </div>
         </div>
         <div class="booking__foot">
-          <button type="button" class="btn btn--secondary" data-back hidden>Back</button>
+          <button type="button" class="text-link booking__back" data-back hidden>Back</button>
           <button type="button" class="btn btn--primary" data-next disabled>Continue</button>
         </div>
       </div>`;

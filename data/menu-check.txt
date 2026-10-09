@@ -18,13 +18,15 @@ PASS  treatments/longevity-infusion/               73 strings
 PASS  treatments/signature-infusion/               67 strings
 PASS  treatments/iron-infusion/                    128 strings
 PASS  ingredients/ (glossary)                      246 strings
-PASS  privacy/ (policy)                            13 gaps for the clinic to fill in
-PASS  terms/ (policy)                              16 gaps for the clinic to fill in
-PASS  cancellations/ (policy)                      8 gaps for the clinic to fill in
+PASS  privacy/ (policy)                            13 gaps to fill in: hidden until then (a "being finalised" notice)
+PASS  terms/ (policy)                              16 gaps to fill in: hidden until then (a "being finalised" notice)
+PASS  cancellations/ (policy)                      8 gaps to fill in: hidden until then (a "being finalised" notice)
 PASS  cookies/ (policy)                            complete
-PASS  accessibility/ (policy)                      2 gaps for the clinic to fill in
-PASS  complaints/ (policy)                         7 gaps for the clinic to fill in
-PASS  faq/ (policy)                                7 gaps for the clinic to fill in
+PASS  accessibility/ (policy)                      2 gaps to fill in: hidden until then (a "being finalised" notice)
+PASS  complaints/ (policy)                         7 gaps to fill in: hidden until then (a "being finalised" notice)
+PASS  faq/ (policy)                                7 gaps to fill in: hidden until then (a "being finalised" notice)
+PASS  data/pages.js (policy pages shown)           cookies
+PASS  site-config.js photos (alt text)             0 of 7 photos in the repo (shown)
 PASS  studies/ (all studies)                       6 studies
 PASS  studies/iron-deficiency-in-the-uk/           9 sources
 PASS  studies/vitamin-d-in-the-uk/                 6 sources
@@ -35,6 +37,7 @@ PASS  studies/dehydration-in-adults/               7 sources
 PASS  404.html (page not found)                    links from /bluebird-wellness/
 PASS  images/icons/treatments.svg (the menu's drawings) 13 drawings
 PASS  index.html (home page, as script.js renders it) 64 strings
+PASS  no gaps visible                              none on any of the 33 pages
 
 Result: all passed
 

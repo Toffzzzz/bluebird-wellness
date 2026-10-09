@@ -1,170 +1,133 @@
 # Bluebird Wellness — Style Reference
-> Calm clinical light. Build screens as a sequence of bright, spacious cream galleries where large, confident Inter headlines frame a single floating treatment object, generous white space, and one violet, in shades.
+> A calm boutique studio. Build screens as quiet, spacious off-white pages where light serif headlines frame a single line drawing, with generous space, one deep bluebird blue for everything that acts, and green kept for Pro alone.
 
 **Theme:** light
 
-Bluebird Wellness is an IV drip clinic based at Bluebird Dentists near Westfield, London, offering treatments in clinic and as a mobile call-out service. The site must feel **safe, clean, calm and premium** — the reassurance of a good clinic with the polish of a high-end product launch. Each treatment is staged as an isolated, softly shadowed object (a runner, a halved orange, a red blood cell, flowing hair, a young plant) floating on warm cream, with oversized navy display type and colour withheld until it signals an action. Structure and rhythm are borrowed from premium product-launch pages — long cinematic sections, big type, rounded tiles — but the palette is light and warm, never dark or techy.
+Bluebird Wellness is an IV drip clinic based at Bluebird Dentists near Westfield, London, offering treatments in clinic and as a mobile call-out service. The site must feel **safe, clean, calm and premium**: the reassurance of a good clinic with the restraint of a boutique studio. Each treatment is a single line drawing in the brand blue on the warm off-white page, joined to the next by one straight line down the middle; headings are a light serif, everything else a clean sans; colour is withheld until it signals an action.
 
-## Tokens — Colors
+## Tokens — Colours
+
+Every colour is a CSS variable in the `:root` block at the top of `styles.css` (the token names are kept from earlier schemes, so they read the same all over the stylesheet).
 
 | Name | Value | Token | Role |
 |------|-------|-------|------|
-| Violet 50 (page) | `#F6F3FE` | `--color-cream` | Default page background; the treatment pages; the first band |
-| Porcelain | `#FAF9FE` | `--color-porcelain` | Alternate light surfaces and panels |
-| White | `#FFFFFF` | `--color-white` | Cards, information tiles, the header, button text on violet |
-| Violet 100 | `#EDE7FD` | `--color-sand`, `--color-sky`, `--color-pro-tint`, `--color-pop` | Badges, image wells, the booking panel, the hero's Book now button (Violet 950 text, 13.8:1) |
-| Violet 200 | `#DDD1FB` | `--color-mist`, `--color-lavender` | 1px dividers, card and input borders; text on the dark violet (7.3:1 on Violet 800) |
-| Violet 300 | `#C3AEF7` | `--color-violet-soft` | The hero's ticks and its "Scroll to explore" line |
-| Violet 600 (main) | `#6A3BD3` | `--color-bluebird`, `--color-violet-bright` | The main violet: filled buttons (White text, 6.6:1), links, focus rings, the line drawings, the logo, the favicon |
-| Violet 700 | `#5A2DB8` | `--color-bluebird-deep` | Hover and pressed state for buttons and links |
-| Violet 800 | `#4A2696` | `--color-pro`, `--color-violet`, `--color-violet-band`, `--color-ink-soft` | Everything Pro (White on it 10.5:1; on Violet 100, 8.7:1); "How it works"; the middle of the hero's gradient; body text on the bands |
-| Violet 950 | `#24124D` | `--color-ink`, `--color-violet-night` | Headlines and body copy (15.1:1 on the page); the footer; the top of the hero's gradient |
-| Violet Grey | `#514A66` | `--color-slate` | Muted body copy, captions, secondary labels (7.6:1 on the page) |
-| Bands | `#F6F3FE`, `#EDE7FD`, `#E5DCFC`, `#DDD1FB`, `#D3C3F9`, `#CCBAF8` | `--band-1` … `--band-6` | In turn, a shade deeper each time: behind each featured treatment (all six), the cards' pictures (the first five), the menu's mini drawings, the study cards |
+| Bluebird (brand) | `#1F3A5F` | `--color-bluebird` | A deep, muted blue like the logo: buttons, links, the line, the drawings, the logo, the favicon, focus rings |
+| Bluebird deep | `#172C48` | `--color-bluebird-deep` | Hover and pressed |
+| Page | `#F7F5F0` | `--color-cream` | The page, everywhere: the hero, every treatment section, the treatment pages, the browser's bar (`theme-color`) |
+| Porcelain | `#FBFAF7` | `--color-porcelain` | The studies section, panels, dialogs; the footer's text |
+| White | `#FFFFFF` | `--color-white` | The header, "All treatments", tiles, cards on phones' treatment sections, the contact menu |
+| Ink | `#121A2A` | `--color-ink` | Headings and body text (16:1 on the page); the footer, the one dark area |
+| Ink soft | `#2B3445` | `--color-ink-soft` | Body text in About us, notes |
+| Slate | `#555D6B` | `--color-slate` | Quieter text: leads, summaries, prices on cards (6.1:1 on the page) |
+| Mist | `#DDD8CE` | `--color-mist` | Hairlines and input borders only |
+| Sand | `#EFEBE3` | `--color-sand` | The one soft background behind every drawing: the cards' tiles and the menus' mini drawings |
+| Sand deep | `#E8E3D9` | `--color-sand-deep` | A card's tile on hover |
+| Sky | `#E8EDF3` | `--color-sky` | The one soft brand tint, for a few highlighted areas: "How it works", the booking panel (and focus halos, a highlighted source on a study) |
+| Pro green | `#2D6A4F` | `--color-pro` | Pro only: the PRO badge (white on it, 6.4:1), "Upgrade to Pro" (5.9:1 on the page), the Pro pages' drawing and link back |
+| Pro tint | `#E6F0EA` | `--color-pro-tint` | Behind "Upgrade to Pro" |
+| Pro line | `rgba(45, 106, 79, 0.35)` | `--color-pro-line` | The hairline round "Upgrade to Pro" and its panel |
+| Error | `#B42318` | `--color-error` | An error message |
+| Gap | `#FCEFC7` | `--color-gap` | A gap still to fill: shown only with `showUnfinished: true` |
 
-**One colour: Violet (October 2026).** Every colour on the page is a shade of one violet, from almost white to almost black: a deep violet hero (950 → 800 → 600) with a pale Book now button, the featured treatments on bands a shade deeper each time, the cards' pictures on the same shades, a deep violet "How it works", a pale violet booking panel, Pro in the deepest violet, and the line drawings, logo, favicon, links and buttons in the main violet. The only other colours: WhatsApp's own green on its button, the red of an error message, and the yellow that marks a gap for the clinic to fill. (The token names are kept from earlier schemes, so "bluebird" is now the main violet and "cream" the palest.)
-
-All text/background pairs above meet WCAG AA contrast (Violet 950 on the page 15.1:1, Violet Grey on the page 7.6:1, White on Violet 600 6.6:1, Violet 600 on the page 6.0:1, Violet 800 on the deepest band 6.0:1, Violet Grey on it 4.7:1).
+Contrast (WCAG AA throughout): brand on the page 10.5:1, white on the brand 11.5:1, ink on the page 16:1, slate on the page 6.1:1, Pro green on the page 5.9:1, white on Pro green 6.4:1. No violet, no lavender, no gradient anywhere. Green is never used for anything that isn't Pro.
 
 ## Tokens — Typography
 
-### Inter — Display headlines, section headings and all interface text · `--font-sans`
-- **Source:** Google Fonts (free for commercial use). Load weights 400, 500 and 600.
-- **Weights:** 400 (body), 500 (labels, buttons), 600 (headlines)
-- **Letter spacing:** tighten large headlines (-0.03em at hero size, -0.02em at section size); body text at -0.01em; small uppercase eyebrows at +0.08em
-- **Font features:** `"ss01", "cv11"` optional for a cleaner single-storey look
-- **Role:** One family throughout for a calm, coherent, clinical voice. Hierarchy comes from size, weight and space — not from mixing typefaces.
+### Newsreader — headings · `--font-serif`
+- **Source:** the `@fontsource-variable/newsreader` package (SIL Open Font License, `fonts/Newsreader-OFL.txt`), the Latin, upright, weight-axis variable font, served from the site itself (`fonts/Newsreader-Variable.woff2`, preloaded).
+- **Used for:** the hero headline, the treatment names (home page sections, cards, the treatment pages' titles), every section title (`h2.section-title`), the policy, study, glossary and 404 page titles, and the smaller headings (card, tile and step titles, doctors' names, study cards, dialogs).
+- **Weights:** 300 (light) for large headings, 400 for smaller ones (card titles, h3s). Never bold.
+- **Letter spacing:** -0.01em (not Inter's tight tracking).
+
+### Inter — body text, labels and buttons · `--font-sans`
+- **Source:** served from the site itself (`fonts/`, SIL Open Font License). Weights 400, 500 and 600.
+- **Weights:** 400 (body), 500 (labels, buttons, links), 600 (the wordmark, small labels).
+- **Letter spacing:** -0.01em for body text; small uppercase eyebrows +0.08em.
 
 ### Type Scale
 
-Use `clamp()` so type scales smoothly from mobile to desktop.
-
-| Role | Weight | Size | Line Height | Letter Spacing | Token |
-|------|--------|------|-------------|----------------|-------|
-| eyebrow (small uppercase label) | 500 | 12px | 1.3 | +0.08em | `--text-eyebrow` |
-| nav / button-label | 500 | 15px | 1.2 | -0.01em | `--text-label` |
-| caption | 400 | 14px | 1.45 | -0.005em | `--text-caption` |
-| body | 400 | 17px | 1.55 | -0.01em | `--text-body` |
-| body-large | 400 | clamp(18px, 1.6vw, 21px) | 1.5 | -0.01em | `--text-body-lg` |
-| card-title | 600 | 21px | 1.2 | -0.015em | `--text-card-title` |
-| section-heading | 600 | clamp(32px, 4.5vw, 48px) | 1.08 | -0.02em | `--text-section` |
-| treatment-display | 600 | clamp(44px, 7vw, 88px) | 1.0 | -0.03em | `--text-treatment` |
-| hero-display | 600 | clamp(44px, 7.5vw, 96px) | 1.0 | -0.03em | `--text-hero` |
+| Role | Font | Weight | Size | Token |
+|------|------|--------|------|-------|
+| eyebrow (small uppercase label) | Inter | 500 | 12px | `--text-eyebrow` |
+| nav / button label | Inter | 500 | 15px | `--text-label` |
+| caption | Inter | 400 | 14px | `--text-caption` |
+| body | Inter | 400 | 17px | `--text-body` |
+| body-large | Inter | 400 | clamp(18px, 1.6vw, 21px) | `--text-body-lg` |
+| card title | Newsreader | 400 | 22px | |
+| section heading | Newsreader | 300 | clamp(32px, 4.5vw, 48px) | `--text-section` |
+| treatment name (home, laptops) | Newsreader | 300 | clamp(48px, 5.2vw, 76px) from 1024px | |
+| page title | Newsreader | 300 | clamp(42px, 5.6vw, 76px) | |
+| hero headline | Newsreader | 300 | clamp(44px, 7.5vw, 96px) | `--text-hero` |
 
 ## Tokens — Spacing & Shapes
 
 **Density:** spacious. White space is part of the calm; when in doubt, add more.
 
-### Spacing Scale
+Spacing steps: 4, 8, 12, 16, 24, 32, 48, 64, 96, 144px (`--space-*`). Sections: `--section-padding`, clamp(96px, 13vw, 200px) top and bottom; section headings sit 96px above their content on laptops (64px on phones). Max content width 1200px; side gutters 24px on phones, 48px on tablets, 64px on laptops.
 
-| Name | Value | Token |
-|------|-------|-------|
-| 4 | 4px | `--space-4` |
-| 8 | 8px | `--space-8` |
-| 12 | 12px | `--space-12` |
-| 16 | 16px | `--space-16` |
-| 24 | 24px | `--space-24` |
-| 32 | 32px | `--space-32` |
-| 48 | 48px | `--space-48` |
-| 64 | 64px | `--space-64` |
-| 96 | 96px | `--space-96` |
-| 144 | 144px | `--space-144` |
+### One corner radius
 
-### Border Radius
-
-| Element | Value |
-|---------|-------|
-| cards / media tiles | 28px |
-| small tiles, inputs (multi-line) | 16px |
-| buttons, pills, single-line inputs | 9999px |
-| badges | 9999px |
-
-### Layout
-
-- **Max content width:** 1200px, centred
-- **Side gutters:** 24px on mobile, 48px on tablet, 64px+ on desktop
-- **Section padding:** clamp(96px, 12vw, 160px) top and bottom for standard sections
-- **Card padding:** 24px (mobile) to 32px (desktop)
-- **Grid gap:** 24px
+`--radius: 12px` for everything rounded: buttons, the cards' drawing tiles, panels, menus, the booking preview, the chat, inputs, badges and chips. Only true circles stay round: the contact button, the side list's dots and small round icons (avatars, the tiles' icons, close and send buttons). No pills.
 
 ## Components
 
 ### Hero
-**Role:** The first screen, and the main selling point: doctor-led
+**Role:** the first screen, and the main selling point: doctor-led
 
-Centred on the violet gradient (Violet 950 → 800 → 600): a Violet 200 eyebrow ("IV drip clinic · London"), the headline "Doctor-led IV drips." in White (Inter 600, hero size, a non-breaking hyphen so it never splits), a Violet 200 lead line, Book now (Violet 100 with Violet 950 text) and Speak to a doctor (White outline), three Violet 300 ticks with White 14px labels, and the medical-consultation note. "Scroll to explore" ends in a Violet 300 line.
+The page's own off-white, no gradient, centred and spacious (on laptops it fills the first screen): the eyebrow "IV drip clinic · London" (slate), the headline "Doctor-led IV drips." in the serif, light (a non-breaking hyphen so it never splits), one sentence in slate ("Every drip starts with a consultation with one of our doctors."), "Book now" (solid brand) and "Speak to a doctor" (the one outline button, in brand blue; it opens the chat), the three points (13px, slate, thin brand-blue ticks) and the medical-consultation note. At the bottom, on the page's centre line, the bird (96px tall on laptops, 72px on phones) draws itself, and its line grows down from the tip of its tail to the bottom of the hero, joining the central line exactly (same x, no gap, 3.2px, the brand blue). The bird's drawing and where the tip of its tail is come from `images/logo/bluebird-mark.svg`, written in by the generator.
 
 ### Site Header
-**Role:** Sitewide navigation, 64px tall
+**Role:** sitewide navigation, 64px tall
 
-Solid White background (no translucency or backdrop blur: a blur has to be redrawn on every frame while the page scrolls beneath it). "Bluebird Wellness" wordmark on the left in Inter 600, 18px, Violet 950. Nav: Treatments and Studies (each opening a menu, with a chevron), Ingredients (the glossary), About, How it works, Contact, in Inter 500, 15px, Violet Grey, turning Violet 950 on hover. On tablets (820 to 1023px) the wordmark is hidden, leaving the bird, so everything fits on one line. A compact Violet 600 "Book now" (White text) on the right. A 1px Violet 200 bottom border appears only once the page has scrolled.
+Solid white. The bird and "Bluebird Wellness" (Inter 600, 18px, ink) on the left; Treatments and Studies (each opening a menu), Ingredients, About, How it works and Contact in Inter 500, 15px, slate (ink on hover); a compact solid "Book now" on the right. A mist hairline appears once the page has scrolled. On tablets (820 to 1023px) the wordmark is hidden.
 
-The drop-down menus: a White panel with 20px corners and a soft violet shadow under the header. Treatments lists every standard drip (not the Pro versions) in two columns, each with its mini line drawing on a colour-band tile (40px), its name (Inter 500, 14px) and price (13px, Ink Soft), then "All treatments" and "Ingredient glossary" in Violet; Studies lists each study. On phones they open inside the Menu, under "Treatments" and "Studies".
+The drop-down menus: a white panel (12px corners, a mist hairline, a soft shadow). Treatments lists every standard drip in two columns, each with its mini drawing on a sand tile, its name and price; Studies lists each study.
 
-### Primary Pill Button
-**Role:** Main call to action ("Book now", "Book")
+### Buttons and links
+- **Solid button** (the main actions, "Book", "Book now"): brand blue, white text, Inter 500 15px, 12px corners, 14px 28px padding (compact: 10px 20px). Hover: bluebird deep and a 1px lift. The only filled button style.
+- **Outline button** (only the hero's "Speak to a doctor"): transparent, brand-blue text and 1px border; hover: the sky tint.
+- **Text links with an arrow** (every secondary action): "Learn more →" on the treatment sections and cards (keeping their full names for screen readers, e.g. "Learn more about Iron Infusion"), "See all studies →", "Ask a question →", "Read the summary →", "Upgrade to Pro"'s "Learn more →" (in green). Inter 500, brand blue, at least 44px tall; the arrow nudges right on hover. "Expand all" and the booking preview's Back are the same, without the arrow.
+- **Focus:** a 2px brand-blue outline, offset 3px, with a 3px sky halo.
 
-Violet 600 `#6A3BD3` fill, White text, Inter 500 15px, 9999px radius, padding 14px 28px (compact version: 10px 20px). Hover: Violet 700 `#5A2DB8` and a 1px upward lift. Visible focus ring: 3px Violet 100 outline plus 2px Violet 600 offset.
+### Treatment line drawings (the home page)
+**Role:** one section per featured treatment, joined by one line
 
-### Secondary Pill Button
-**Role:** Lower-priority actions ("Learn more", "See all treatments")
+All six on the page colour. One brand-blue line, 3.2px, round ends, runs straight down the middle of the page and draws as you scroll on laptops (the pen two thirds of the way down the screen); on phones each drawing plays by itself when reached. It flows into the top of each drawing, the drawing is drawn from the top down, and the line carries on from its bottom. Drawings never run backwards or replay while you're on the page, and start afresh when you come back to it. On laptops each section reads like a magazine page: the eyebrow, the name large in the serif, Book, Learn more → and the price on one side of the drawing, and on the other a narrow summary (about 30 characters a line, 17–18px, slate), swapping sides each time and never touching the drawing or the side list. On phones the text is a white card under the drawing (mist hairline, 12px corners), the line running into its top and out of its bottom.
 
-Transparent fill, Violet 950 text, 1px Violet 950 border at 20% opacity, 9999px radius, same padding as primary. Hover: Violet 100 fill.
+The side list of names down the right (dots below 1360px): small (12px), regular weight, slate and a little faded; the current one in brand blue with a short dash. The dots are quiet (slate at 35%), the current one brand blue.
 
-### Treatment Line Drawings (the live version)
-**Role:** One section per featured treatment, joined by one line
+### Treatment card
+**Role:** one standard drip in the "All treatments" grid
 
-Each section on its own band, a shade of violet deeper each time. A single Violet 600 `#6A3BD3` line, 3.2px, round ends and joins, runs straight down the middle of the page and draws as the page scrolls (the pen is two thirds of the way down the screen, so each drawing finishes low and stays in view). The cards under "All treatments" and the treatment pages show the same drawings in the same violet, drawing themselves in from the top down as they come into view. Coming back to the home page (Back, or a link to one of its sections), every drawing starts afresh and draws again as it comes onto the screen. It stops at the top of each treatment's drawing, the drawing is drawn from the top down, and the line carries on from its bottom. Drawings are clean line art (no hand-drawn wobble), all the same weight (eight, the people, the coconut, the glass of water, the oranges and the sunrise, are traced from ChatGPT line art, the people with small details left out), about 440px on laptops and 340px on phones; the Signature drawing is the logo itself, with its strokes made thinner (`images/logo/bluebird-mark-thin.svg`) so it sits with the lines, revealed from the top down. On laptops the text (eyebrow, name at 36–60px, Book, Learn more, price) sits beside the drawing, alternately left (right-aligned towards the line) and right, and a short summary in Violet 800 (the opening sentences of the drip's description, 17px) sits on the other side of the drawing; on phones it's a Porcelain card with a Violet 200 border under the drawing, the line running into its top and out of its bottom. The hero's "Scroll to explore" line is drawn in Violet 300, as the start of the line.
+No box: no border, background or shadow. The drawing sits on a square sand tile (12px corners, no border), filling about 92% of it, the same for every card; the name (Newsreader 22px), the price (slate) and "Learn more →" underneath. Hover (laptops): the tile darkens very slightly (sand deep) and the drawing scales up a touch. Grid: 1 column on small screens, 2, 3, then 4 across. On phones a compact list, one row per drip: the drawing on a 64px sand tile, name, price, a chevron, with a hairline between rows. A Pro version has no card of its own: its standard version's card says "Upgrade to Pro".
 
-### Treatment Showcase Section (the video version)
-**Role:** One section per featured treatment, with a short video of its animation
+### Pro
+Green, for Pro only, so Pro drips are obvious at a glance: the PRO badge beside a Pro drip's name (white on green); every "Upgrade to Pro" link (green text and arrow on the Pro tint, with the green hairline); on the Pro pages (Immunity Pro, Recovery Pro, Hair & Scalp Pro) the drawing in green and the link back to the standard version in green. The Book buttons stay brand blue.
 
-On its treatment's tint. Split layout on desktop: the text column on the left, the video on the right. On laptops the scroll drives the video as the section moves up the screen (nothing is pinned); on phones the video sits above the text and plays by itself when half of it is in view, with a round pause / play / replay button in its corner. A side list of the treatments' names shows down the right while the sections are on screen (dots below 1360px), the current one in Violet with a short dash beside it. Text column: eyebrow ("IV therapy" in Violet Grey, uppercase), treatment name in treatment-display size, 1–2 sentence description in body-large Violet Grey, then a Primary Pill Button. On mobile, stack image above text and reduce image size so the headline stays visible.
+### Information tile
+**Role:** "How it works" (on the sky tint)
 
-### Treatment Card
-**Role:** One treatment in the "All treatments" grid
+White, 12px corners, 32px padding; a small sky circle with a line icon in brand blue, a serif title and slate body copy. The steps below sit on brand-blue hairlines.
 
-White `#FFFFFF` background, 28px radius, 1px Violet 200 border, 24–32px padding. A square image area at top (Violet 100 `#EDE7FD` background with 20px radius; transparent treatment image centred inside with soft shadow, or a soft coloured placeholder shape). Card title in card-title style, one-line description in caption Violet Grey, and a compact Primary Pill Button. Hover: lift 4px, shadow-card, image scales to 1.04. Grid: 1 column mobile, 2 tablet, 3–4 desktop. One card per standard drip: a Pro version has no card of its own; its standard version's card says "Upgrade to Pro" and links to it.
+### About us
+The first paragraph, then the clinic's own (`aboutParagraphs`); each doctor on a mist hairline with their name in the serif, and their role, GMC number (linked) and introduction once filled in; their photo, once it's in `images/team/`, as a 4:5 portrait with 12px corners. The CQC line once rated. "Inside the clinic": the clinic's photos (4:3, 12px corners), 3 across on laptops, one column on phones, hidden while there are none. Nothing unfinished ever shows (with `showUnfinished: true`, each gap is highlighted in the gap yellow).
 
-### Information Tile
-**Role:** "How it works", in-clinic vs mobile call-out options, contact details
+### The contact button
+**Role:** WhatsApp and the chat assistant, every page
 
-White background, 28px radius, 1px Violet 200 border, 32px padding. Small Violet 100 circular badge with a simple monochrome line icon in Violet 600, then a card-title heading and body copy.
+One 52px round button, brand blue with a white speech bubble, in the bottom right corner (16px from the edges on phones, 24px on laptops, plus the safe area), named "Contact us". It opens a small white menu just above it (12px corners, a mist hairline, a soft shadow): "WhatsApp us" and "Speak to a doctor", each at least 48px tall with a brand-blue icon; without a WhatsApp number, the menu says it's coming soon. It steps aside (fades out, not focusable) over the hero, over the footer, while a menu or dialog is open, and whenever it would cover anything; it sits above a treatment page's Book bar on phones.
 
-### Availability Badge
-**Role:** Small status labels ("Mobile call-out available", "Consultation required")
+### Text input
+White, 1px mist border, 12px corners, ink text, slate placeholder. Focus: brand-blue border and a 3px sky ring.
 
-Pill shape, 6px 12px padding, Inter 500 13px. Default: Violet 100 background with Violet 600 text. Availability variant: Violet 700 text on Violet 100.
+### Booking preview and chat
+Porcelain dialogs with 12px corners and a soft ink shadow over a faint ink backdrop (the whole screen on phones). Chosen days, times and choices are brand blue (or the sky tint with a brand-blue border); the "PREVIEW" labels and notes on the page colour; the booking confirmation's tick on the sky tint. The chat's bubbles: theirs brand blue, the assistant's white with a mist hairline, all 12px corners.
 
-### Text Input
-**Role:** Booking and contact forms
-
-White fill, 1px Violet 200 border, 9999px radius for single-line inputs (16px for text areas), 14px 20px padding, Violet 950 text, Violet Grey placeholder. Focus: Violet 600 border plus a 3px Violet 100 ring.
-
-### Booking Sheet
-**Role:** The booking preview (`booking.js`)
-
-A Porcelain card (28px radius, max 720px wide) over a 42% Violet 950 backdrop on laptops; the whole screen on phones. A small Violet 100 "PREVIEW" pill above the title, three numbered steps (current: Violet 600; done: Violet 100 tick), then choice tiles (White, 16px radius, 1px border; chosen: Violet 100 with a Violet 600 border), a White month calendar (chosen day: a Violet 600 circle; today: a dot), pill time slots (taken: struck through and faded), Text Inputs, and a footer with Back (Secondary) and Continue (Primary, Violet 200 while not ready). The confirmation has a Pro Green tick on Pro Tint and a Violet 100 note that it is a preview.
-
-### Corner Buttons (WhatsApp and Speak to a doctor)
-**Role:** Contact, every page
-
-Fixed bottom right, stacked 12px apart: WhatsApp, a green `#13803F` pill (darker than WhatsApp's own green so the white label reads at 5:1), above "Speak to a doctor", a Violet 600 pill, each with a white icon and its label on laptops; 52px circles with the icon alone on phones (on the home page, they fade in once you scroll past the hero). They lift above a treatment page's Book bar; the glossary's "Back to top" moves to the left.
-
-### Chat Assistant
-**Role:** "Speak to a doctor" (`chat.js`)
-
-A 400px Porcelain panel (28px radius) in the bottom right corner on laptops; the whole screen on phones. Header: a Violet 600 avatar with a speech bubble and medical cross, "Speak to a doctor", "Doctor-led care" and a Violet 100 "PREVIEW" pill. Messages: the assistant's in White bubbles with a Violet 200 border, theirs in Violet 600; notes (emergencies, preview) in Violet 100. Suggestions are White pills with a Violet 600 border, right-aligned above a pill text box and a round Violet 600 send button. Three dots while it "types" (with reduced motion, no dots and no pause).
-
-### Policy Page
-**Role:** Privacy, terms, cancellations and refunds, cookies, accessibility
-
-A single 46rem column on Violet 50: the page title (as a treatment page's), "Last updated" in Violet Grey, a Violet 100 "Draft" note until the clinic's details are in, a Porcelain "On this page" box of links, then the text at 17px/1.6 with 24px semibold section headings. The business's details sit in a Porcelain list. Anything still to be filled in is highlighted in pale yellow `#FCEFC7`.
+### Policy and study pages
+A single 46rem column on the page colour: the title in the serif, "Last updated" in slate, the "Draft" note (white with a mist hairline), an "On this page" box, the text at 17px/1.6 with serif section headings. A policy page with a gap left is shown, until it's filled in, only as its title, "This page is being finalised and will be here soon." and a link home. Each study keeps its "Draft: awaiting review by the clinic's doctors" note.
 
 ### Footer
-**Role:** Closing band
-
-Violet 950 `#24124D` background with Porcelain text, links in Porcelain at 70% opacity, and the line "All treatments are subject to a medical consultation., then a row of links to the five policy pages and the business's legal details (name, company number, registered office, ICO and CQC numbers) in 14px.
+The one dark area: ink background, porcelain text (links at 70%, 8:1), the bird in porcelain. Links to the policy pages that are finished, and the business's details once filled in.
 
 ## Motion
 
@@ -179,115 +142,63 @@ Motion is **slow, smooth and purposeful** — it should feel like calm breathing
 - **Only animate opacity and transform/translate** for smooth performance, and never blur anything over moving content.
 - **Far jumps don't scroll:** an in-page link to somewhere more than about a screen and a half away goes straight there.
 - **One motion idea per section** — never stack several effects on the same object.
-- **Reduced motion:** when `prefers-reduced-motion: reduce` is set, nothing moves by itself: every treatment shows its finished picture, and its button plays the video on request.
+- **The hero's bird:** as the page opens, after the hero's words have risen in, the bird's outline draws itself as one continuous 1.5px line (1.6s), the filled bird fades in over it as the outline fades (0.4s), and a 3.2px line grows down from the tip of its tail to the bottom of the hero (0.6s), where the central line carries on. Once, never again while you're on the page.
+- **Reduced motion:** when `prefers-reduced-motion: reduce` is set, nothing moves by itself: every drawing (and the hero's bird) is shown finished, and with the videos each treatment shows its finished picture, its button playing the video on request.
 
 ## Do's and Don'ts
 
 ### Do
-- Use Violet 50 `#F6F3FE` as the default background.
-- Use Violet 950 `#24124D` for all headlines and body text; Violet Grey `#514A66` for secondary text.
-- Use Violet 600 `#6A3BD3` for actions, links, the line drawings and small highlights, and only shades of the same violet for everything else (see the colour table).
-- Give floating treatment images a soft, natural shadow so they sit on the page: `filter: drop-shadow(0 30px 40px rgba(36, 18, 77, 0.12))`.
-- Use 28px radius on cards and tiles and fully rounded pill buttons.
-- Keep generous white space around every treatment image.
+- Use the page colour `#F7F5F0` everywhere; white for the header, tiles and the "All treatments" section.
+- Use ink `#121A2A` for headings and text, slate `#555D6B` for quieter text.
+- Use the brand blue `#1F3A5F` for actions, links, the line, the drawings, the logo and focus rings.
+- Put every drawing on a cards or menu tile on the same sand `#EFEBE3`.
+- Use one corner radius, 12px; only true circles are round.
+- Use the serif, light, for headings; never bold.
 - Keep all copy calm, factual and reassuring.
 
 ### Don't
-- Do not use black backgrounds; the dark surfaces (the hero, "How it works", the footer) are deep violet.
-- Do not use pure white `#FFFFFF` as the page background; it reads as sterile. White is for cards only.
-- Do not use neon, glows or heavy textures; the hero's violet gradient is the only gradient.
-- Do not use any colour that isn't a shade of the violet, except WhatsApp's green on its own button, red for an error and yellow to mark a gap for the clinic to fill.
-- Do not use square-cornered buttons.
-- Do not use stock "smiling at camera" photography or before/after imagery.
-- Do not state or imply that treatments cure, treat, prevent, detox, boost immunity, reverse ageing or grow hair (UK ASA/CAP rules for IV therapy).
-
-## Surfaces
-
-| Level | Name | Value | Purpose |
-|-------|------|-------|---------|
-| 0 | Violet 50 | `#F6F3FE` | Default page background, treatment pages |
-| 1 | Porcelain | `#FAF9FE` | Alternate light surfaces and panels |
-| 2 | Violet 100 to the deepest band | `#EDE7FD` … `#CCBAF8` | The featured treatments' bands, image wells in cards, the booking panel |
-| 3 | White Tile | `#FFFFFF` | Cards, information tiles, inputs, the header |
-| 4 | Deep violet | `#4A2696`, `#24124D` | The hero, "How it works", the footer |
-
-## Elevation
-
-Depth is soft and natural, like objects resting in daylight.
-
-| Name | Value | Use |
-|------|-------|-----|
-| shadow-card | `0 1px 2px rgba(21,34,56,0.04), 0 8px 24px rgba(21,34,56,0.06)` | Cards on hover, raised tiles |
-| shadow-float | `drop-shadow(0 30px 40px rgba(21,34,56,0.12))` | Transparent floating treatment images |
-
-Cards rest flat with a 1px Violet 200 border by default and gain shadow-card only on hover.
-
-## Imagery
-
-Imagery is object-first and bright: each treatment is represented by a single isolated subject — a runner mid-stride, a halved orange with suspended juice, a glossy red blood cell, flowing glossy hair seen from behind, a young green shoot with water droplets — supplied as transparent cut-outs that float on the cream canvas with a soft shadow. Lighting is soft, diffused daylight. Faces are never the focus. Images are the only source of rich colour on the page; the interface stays neutral so they glow against it. No decorative illustrations; icons are simple monochrome line icons in Violet 950 or Violet 600.
-
-## Layout
-
-The page is a vertically sequenced treatment story in blocks of one violet, light and deep. A solid 64px White header (with the Treatments and Studies menus) sits above a centred violet hero that leads with the service being doctor-led (eyebrow, very large headline, one supporting line, Book now and Speak to a doctor, three ticks). The featured treatments follow, one per band, each a shade deeper, joined by one Violet 600 line, with a side list of their names. Next, an "All treatments" grid of White cards on White, their pictures on the same shades. Then "How it works" on a deep violet band, About us (placeholder text until the clinic writes its own, and the two doctors with their GMC numbers), a booking/contact section with a pale violet panel, the studies (three cards and a link to them all), and the Violet 950 footer.
-
-## Agent Prompt Guide
-
-Quick Color Reference:
-One violet in shades:
-- Violet 50: #F6F3FE — page background
-- Porcelain: #FAF9FE — panels
-- White: #FFFFFF — cards, tiles, the header, button text on violet
-- Violet 100: #EDE7FD — badges, image wells, the hero's Book now
-- Violet 200: #DDD1FB — borders and dividers; text on the deep violet
-- Violet 300: #C3AEF7 — the hero's ticks and scroll line
-- Violet 600: #6A3BD3 — the main violet: buttons, links, focus, line drawings, logo
-- Violet 700: #5A2DB8 — hover/pressed
-- Violet 800: #4A2696 — everything Pro; "How it works"; text on the bands
-- Violet 950: #24124D — all primary text; the footer
-- Violet Grey: #514A66 — muted text
-- Bands, in turn: #F6F3FE, #EDE7FD, #E5DCFC, #DDD1FB, #D3C3F9, #CCBAF8
-
-Create a centred hero on a Violet 950 → 800 → 600 gradient with a small Violet 200 uppercase eyebrow, an Inter 600 hero-display headline in White with -0.03em tracking, one body-large Violet 200 line, and a Violet 100 pill "Book now" button with Violet 950 text.
-Create a treatment showcase section on the treatment's tint: a short video of the treatment object (playing once it's half in view, with a round pause/play/replay button) on one side; an eyebrow, a treatment-display heading, two calm factual sentences in Violet Grey, and a Violet 600 pill button.
-Create an "All treatments" grid of White 28px-radius cards with 1px Violet 200 borders, each with a Violet 100 image well, card title, one-line Violet Grey description and compact Violet 600 "Book" pill; lift 4px with shadow-card on hover.
-Create a "How it works" section on a Violet 800 #4A2696 band with two White information tiles, each with a Violet 100 circular icon badge, a card-title heading and body copy.
+- Don't use violet, lavender, gradients, neon or glows.
+- Don't use green for anything that isn't Pro.
+- Don't put boxes inside boxes (the cards have no border, background or shadow).
+- Don't use pills or any second filled button style: secondary actions are text links with an arrow.
+- Don't show anything unfinished: no square-bracket placeholders, no yellow (except with `showUnfinished: true`).
+- Don't use stock "smiling at camera" photography, before/after imagery or AI pictures of the clinic or the doctors.
+- Don't state or imply that treatments cure, treat, prevent, detox, boost immunity, reverse ageing or grow hair (UK ASA/CAP rules for IV therapy).
 
 ## Quick Start
 
-### CSS Custom Properties
+### CSS Custom Properties (from the top of `styles.css`)
 
 ```css
 :root {
-  /* Colors: one violet, in shades */
-  --color-cream: #F6F3FE;
-  --color-porcelain: #FAF9FE;
+  /* Colors */
+  /* The bluebird palette (see "Colour" near the end and DESIGN.md): one deep,
+     muted blue like the logo on a warm off-white page, very dark navy text,
+     warm neutrals for hairlines and the drawings' tiles, one soft blue tint
+     for a few highlighted areas, and green for Pro only. Contrast on the
+     page: brand 10.5:1, ink 16:1, slate 6.1:1, Pro green 5.9:1; white on the
+     brand 11.5:1, on the green 6.4:1. */
+  --color-bluebird: #1F3A5F;                 /* the brand: buttons, links, the line, drawings, logo, focus rings */
+  --color-bluebird-deep: #172C48;            /* hover and pressed */
+  --color-cream: #F7F5F0;                    /* the page, everywhere */
+  --color-porcelain: #FBFAF7;
   --color-white: #FFFFFF;
-  --color-sand: #EDE7FD;
-  --color-ink: #24124D;
-  --color-slate: #514A66;
-  --color-mist: #DDD1FB;
-  --color-bluebird: #6A3BD3;
-  --color-bluebird-deep: #5A2DB8;
-  --color-sky: #EDE7FD;
-  --color-pro: #4A2696;
-  --color-pro-tint: #EDE7FD;
-  --color-violet-night: #24124D;
-  --color-violet: #4A2696;
-  --color-violet-bright: #6A3BD3;
-  --color-violet-band: #4A2696;
-  --color-lavender: #DDD1FB;
-  --color-violet-soft: #C3AEF7;
-  --color-pop: #EDE7FD;
-  --color-ink-soft: #4A2696;
-  --band-1: #F6F3FE;
-  --band-2: #EDE7FD;
-  --band-3: #E5DCFC;
-  --band-4: #DDD1FB;
-  --band-5: #D3C3F9;
-  --band-6: #CCBAF8;
+  --color-ink: #121A2A;                      /* headings and body text */
+  --color-ink-soft: #2B3445;
+  --color-slate: #555D6B;                    /* quieter text */
+  --color-mist: #DDD8CE;                     /* hairlines and input borders only */
+  --color-sand: #EFEBE3;                     /* the one soft background behind every drawing (cards, menus) */
+  --color-sand-deep: #E8E3D9;                /* a card's tile on hover */
+  --color-sky: #E8EDF3;                      /* the one soft brand tint: "How it works", the booking panel */
+  --color-pro: #2D6A4F;                      /* Pro only */
+  --color-pro-tint: #E6F0EA;
+  --color-pro-line: rgba(45, 106, 79, 0.35);
+  --color-error: #B42318;                    /* an error message (6.2:1) */
+  --color-gap: #FCEFC7;                      /* a gap still to fill: shown only with showUnfinished: true */
 
   /* Typography */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
 
   --text-eyebrow: 12px;
   --text-label: 15px;
@@ -314,22 +225,25 @@ Create a "How it works" section on a Violet 800 #4A2696 band with two White info
   --space-64: 64px;
   --space-96: 96px;
   --space-144: 144px;
-  --section-padding: clamp(96px, 12vw, 160px);
+  --section-padding: clamp(96px, 13vw, 200px);
   --content-max: 1200px;
+  --gutter: 24px;
+  --header-h: 64px;
 
-  /* Radius */
-  --radius-card: 28px;
-  --radius-tile: 16px;
-  --radius-pill: 9999px;
+  /* Radius: one corner everywhere (buttons, the drawings' tiles, panels,
+     menus, dialogs, inputs, badges, chips). Only true circles stay round. */
+  --radius: 12px;
 
   /* Elevation */
-  --shadow-card: 0 1px 2px rgba(36, 18, 77, 0.04), 0 8px 24px rgba(36, 18, 77, 0.06);
-  --shadow-float: drop-shadow(0 30px 40px rgba(36, 18, 77, 0.12));
+  --shadow-float: drop-shadow(0 30px 40px rgba(18, 26, 42, 0.12));
+  --shadow-menu: 0 16px 40px rgba(18, 26, 42, 0.12);
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 200ms;
   --duration-base: 400ms;
   --duration-slow: 800ms;
+
+  color-scheme: light;
 }
 ```

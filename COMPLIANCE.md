@@ -4,20 +4,22 @@ What has been done on the website for each of the 20 common legal checks, what d
 
 This is a practical checklist, not legal advice. The clinic should have the policy pages, the treatment wording and the regulatory points below checked by a qualified adviser before the site is opened to search engines (the `noindex` tag) and promoted.
 
-Last reviewed: 6 October 2026.
+Last reviewed: 9 October 2026.
+
+**The policy pages must be filled in and live before launch.** While a policy page still has a gap (an empty `site-config.js` value it uses, or a `[[gap]]` in `content/legal/`), the site hides it (with `showUnfinished: false`, the normal setting): its links disappear and its address shows only "This page is being finalised". Today only the cookies page is complete. In particular, while the privacy policy is hidden the booking and chat consent sentences can't link to it. That's acceptable only while the site is a preview. **`launched` must stay `false` until every policy page is finished and live** (the generator's report lists the gaps left on each one; `showUnfinished: true` shows them highlighted).
 
 ## The 20 checks at a glance
 
 | # | Check | Status |
 |---|---|---|
-| 1 | Privacy policy | **Done**, at `privacy/`. Waiting for the clinic's details (highlighted on the page) |
-| 2 | Terms of service | **Done**, at `terms/`. Waiting for the clinic's details and payment terms |
-| 3 | Refund policy | **Done**, at `cancellations/` (cancellations and refunds, including the legal 14-day right to cancel). Waiting for the notice period and charges |
+| 1 | Privacy policy | **Written**, at `privacy/`. Waiting for the clinic's details; hidden ("being finalised") until they're in |
+| 2 | Terms of service | **Written**, at `terms/`. Waiting for the clinic's details and payment terms; hidden until they're in |
+| 3 | Refund policy | **Done**, at `cancellations/` (cancellations and refunds, including the legal 14-day right to cancel). Waiting for the notice period and charges; hidden until they're in |
 | 4 | Cookie policy | **Done**, at `cookies/`. The site uses no cookies, and the page says exactly that |
 | 5 | Cookie consent banner | **Not needed.** UK law (PECR) requires consent only for cookies or device storage that aren't strictly necessary. This site sets none and stores nothing (the checks confirm it). If analytics or advertising tags are ever added, a banner must be added first |
-| 6 | Check form consents | **Done.** Booking asks the visitor to agree to the privacy policy and confirm their age (neither box pre-ticked). The chat asks for explicit consent before it would pass on health details. Both link to the privacy policy |
+| 6 | Check form consents | **Done, needs the privacy policy live.** Booking asks the visitor to agree to how their details will be used and confirm their age (neither box pre-ticked). The chat asks for explicit consent before it would pass on health details. Both link to the privacy policy as soon as it's finished (`data/pages.js`); until then the sentence ends without the link, so the privacy policy must be live before launch |
 | 7 | No unnecessary data | **Done.** Booking asks only for what the appointment needs (the address only for a call-out; notes optional). The chat's email question is optional because the doctor phones. No date of birth: a tick box confirms the age instead |
-| 8 | Audit third-party SDKs | **Done.** The site loads nothing from other companies: the Inter font is now served from the site itself (it used to come from Google Fonts, which passed visitors' IP addresses to Google). There is no analytics, advertising, chat or tracking code. WhatsApp and the booking link only open when clicked |
+| 8 | Audit third-party SDKs | **Done.** The site loads nothing from other companies: the Inter and Newsreader fonts are served from the site itself (Inter used to come from Google Fonts, which passed visitors' IP addresses to Google). There is no analytics, advertising, chat or tracking code. WhatsApp and the booking link only open when clicked |
 | 9 | Remove dark patterns | **Audited: none found.** No pre-ticked boxes, countdowns, fake scarcity, confirm-shaming or hidden opt-outs. The "taken" times in the booking calendar are made up, but only in the clearly labelled preview; the real booking system will show real availability |
 | 10 | Remove hidden fees | **Done, needs the clinic's figures.** "From" prices are explained in the terms. A `callOutFee` setting shows any call-out charge in the booking calendar, the booking section and the terms. Cancellation charges are on the cancellations page. The clinic must confirm whether call-outs cost extra |
 | 11 | Remove fake reviews | **Audited: none.** The site has no reviews, testimonials or star ratings. Any added later must be genuine, from real patients, with their permission |
@@ -28,7 +30,7 @@ Last reviewed: 6 October 2026.
 | 16 | Add business details | **Done, needs the details.** The footer of every page and the policy pages show the legal name, company number, registered office, VAT, ICO and CQC numbers from `site-config.js`. They stay hidden or highlighted until filled in |
 | 17 | Age consent for kids' data | **Done.** Treatments are for adults (`minimumAge: '18'` in `site-config.js`; please confirm). Booking asks visitors to confirm their age. The chat asks first, before any health questions, and stops and keeps nothing for anyone under 18 |
 | 18 | Unsubscribe link in emails | **Not applicable yet.** The website sends no emails. Once the booking system sends marketing emails, each one needs an unsubscribe link and marketing needs opt-in consent (appointment confirmations and reminders don't) |
-| 19 | License fonts and images | **Done.** Inter is under the SIL Open Font License; its licence is in `fonts/LICENSE.txt`. Where every picture comes from is in `CREDITS.md` |
+| 19 | License fonts and images | **Done.** Inter and Newsreader are under the SIL Open Font License; their licences are in `fonts/LICENSE.txt` and `fonts/Newsreader-OFL.txt`. Where every picture comes from is in `CREDITS.md`; the doctors' and clinic's photos, once added, must be real photos the clinic has the rights to (with the doctors' permission) |
 | 20 | Data deletion request | **Done.** The privacy policy explains how to ask for information to be deleted (and the other rights), and what has to be kept, such as clinical records |
 
 ## Beyond the 20: what a doctor-led clinic's site also needs
@@ -36,11 +38,11 @@ Last reviewed: 6 October 2026.
 | Item | Status |
 |---|---|
 | Complaints procedure | **Done, needs the clinic's decisions.** `complaints/` explains how to complain, what happens next, and where to go if still unhappy: ISCAS if the clinic subscribes (most private providers' independent adjudication), the CQC (which wants to hear about care but doesn't investigate individual private complaints), the GMC for a doctor's fitness to practise, and the ICO for data. CQC-registered providers must run a complaints system. The time limits and who investigates are highlighted for the clinic to fill in |
-| The doctors' registration | **Done, needs the numbers.** About us names Dr Nema and Dr Mahdi with their GMC numbers (`gmcDrNema`, `gmcDrMahdi`), linked to the medical register, so patients can check them. GMC guidance expects information about doctors' services to be factual and verifiable |
-| CQC rating on the website | **Done, needs the details.** Once the CQC rates the clinic, the law (Regulation 20A) requires the latest rating on the website. About us shows it from `cqcRating`, `cqcRatingDate` and `cqcReportUrl`, or the registration (`cqcNumber`) until then. CQC also offers a ready-made widget; it loads from the CQC's site, so it would be the one exception to "nothing loads from other sites" |
+| The doctors' registration | **Done, needs the numbers.** About us names Dr Nema and Dr Mahdi, and shows each one's GMC number (`doctors[].gmc` in `site-config.js`) once filled in, linked to the medical register, so patients can check them. GMC guidance expects information about doctors' services to be factual and verifiable |
+| CQC rating on the website | **Done, needs the details.** Once the CQC rates the clinic, the law (Regulation 20A) requires the latest rating on the website. About us shows it from `cqcRating`, `cqcRatingDate` and `cqcReportUrl` once filled in (until then the registration, `cqcNumber`, shows in every page's footer once filled in). CQC also offers a ready-made widget; it loads from the CQC's site, so it would be the one exception to "nothing loads from other sites" |
 | Not for emergencies | **Done.** The contact section, the chat, the questions page and every study say to call NHS 111 or 999 |
 | Health information (the studies) | **Done, needs the doctors' review.** Six studies (`studies/`) summarise what NHS, NICE, NDNS and published research say about deficiencies, every figure cited and independently fact-checked against its source. Each is marked "Draft" until `studiesReviewed: true`. Following ASA guidance on IV drips, they say nothing about the clinic's treatments, contain no Book buttons or links to drips, and sit at the bottom of the home page, apart from the menu: evidence about deficiency doesn't support claims for drips, and a statistic beside a drip can read as an implied claim. Don't use their figures in adverts for drips |
-| Questions page | **Done, needs the clinic's answers** (`faq/`): consultations, blood tests, where, how long, age, risks, aftercare, payment, emergencies. The gaps are highlighted |
+| Questions page | **Written, needs the clinic's answers** (`faq/`): consultations, blood tests, where, how long, age, risks, aftercare, payment, emergencies. Hidden, with its links, until the answers are in |
 | Link previews and search | **Done.** Each page has a title, description and preview picture (`images/share.png`) for when it's shared, and the home page describes the clinic for search engines. The picture shows no medicine. Search engines are kept out until `launched: true` |
 | A page for mistyped addresses | **Done** (`404.html`) |
 
@@ -50,7 +52,7 @@ Last reviewed: 6 October 2026.
 
 ## What the clinic needs to provide
 
-Fill these in in `site-config.js`, then run `node scripts/build-menu.mjs`. The policy pages show a highlighted gap for each one until then.
+Fill these in in `site-config.js`, then run `node scripts/build-menu.mjs`. Until then the policy pages that use them stay hidden (with `showUnfinished: true` they show a highlighted gap for each one).
 
 - `legalName`: the business's full legal name.
 - `companyNumber`, `registeredOffice`: if it's a limited company. `registeredIn` is set to England and Wales; change it if that's wrong.
@@ -62,9 +64,9 @@ Fill these in in `site-config.js`, then run `node scripts/build-menu.mjs`. The p
 - `callOutFee`, `cancellationNotice`, `cancellationFee`: the call-out charge (or "none"), the notice needed to cancel and the late-cancellation charge.
 - `phone`, `email`: needed for the policy pages as well as the contact links.
 - `minimumAge`: confirm 18.
-- `gmcDrNema`, `gmcDrMahdi`: each doctor's GMC number.
+- `doctors`: each doctor's `gmc` number, `role` and `intro`, and their photo in `images/team/` (see README.md).
 - `cqcRating`, `cqcRatingDate`, `cqcReportUrl`: once the CQC has rated the clinic.
-- The About us text (in `index.html`), the answers on the questions page and the complaints procedure's details.
+- The About us text (`aboutParagraphs` in `site-config.js`), the clinic's photos (`images/clinic/`), the answers on the questions page and the complaints procedure's details.
 
 The policy pages also have gaps the clinic has to decide in words (search the page for the highlighted text): how long enquiries are kept, how and when payment is taken, the complaints procedure, whether cancelling with enough notice is free, and what's charged if the doctor decides a treatment isn't suitable. These are in `content/legal/`.
 
@@ -117,9 +119,9 @@ Line by line, the clinic should review these (the wording is in `data/drips.json
 
 ## Before going live
 
-1. Fill in the business details and decisions above; run the generator; set `legalDraft: false`.
+1. Fill in the business details and decisions above and run the generator, until every policy page is finished and live (the generator's report shows "complete" for each one, and `data/pages.js` lists all seven); then set `legalDraft: false`.
 2. Have the policy pages and the treatment wording reviewed (see above). Consider CAP Copy Advice.
 3. Register with the ICO (if not already), and check CQC registration.
 4. Choose how the chat and booking will really send (see the README); update the privacy policy's "booking system" and the chat's privacy wording to match; remove the "Preview" labels.
 5. Have the doctors review the studies; set `studiesReviewed: true`.
-6. Then set `launched: true` in `site-config.js` and run the generator: it removes the `noindex` tag from every page and writes `robots.txt` and `sitemap.xml`.
+6. Only then (every policy page live) set `launched: true` in `site-config.js` and run the generator: it removes the `noindex` tag from every page and writes `robots.txt` and `sitemap.xml`.
