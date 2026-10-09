@@ -1,8 +1,9 @@
-"""Traces five of the line drawings from black-on-white pictures.
+"""Traces eight of the line drawings from black-on-white pictures.
 
 Beauty & Glow (the face in profile), Hair & Scalp (the woman with wavy hair),
-Muscle & Fitness (the deadlift), Energy (the runner) and Hydration (the
-coconut with a straw and a cocktail umbrella) were drawn in ChatGPT
+Muscle & Fitness (the deadlift), Energy (the runner), Hydration (the
+coconut with a straw and a cocktail umbrella), Detox (the glass of water),
+Immunity (the oranges) and Recovery (the sunrise) were drawn in ChatGPT
 as black line art (scripts/line-art/sources/, kept as one-bit PNGs) and are
 traced here into the site's strokes:
 
@@ -102,6 +103,30 @@ DRAWINGS = {
         'add': [drop(680, 366, 39, 84)],
         'top': ('point', 680, 366),              # the drop's point
         'bottom': ('at-x', 4, 680),              # the ground line, straight below it
+    },
+    'detox': {
+        'source': 'detox.png',
+        'alt': 'A line drawing of a tall glass of water with a slice of lemon on the rim, a sprig of mint and two ice cubes',
+        'drop': [],
+        'keep_short': [],
+        'top': ('at-x', 12, 605),                # the far rim of the glass, in the middle
+        'bottom': ('at-x', 5, 605),              # the base of the glass, straight below it
+    },
+    'immunity': {
+        'source': 'immunity.png',
+        'alt': 'A line drawing of a whole orange with its stem and two leaves, and half an orange showing its segments',
+        'drop': [],
+        'keep_short': [],
+        'top': ('highest', 14),                  # the top of the stem
+        'bottom': ('below', 1, 'top'),           # the ground line, straight below it
+    },
+    'recovery': {
+        'source': 'recovery.png',
+        'alt': 'A line drawing of the sun rising over the horizon, with a cloud and two birds',
+        'drop': [],
+        'keep_short': [],
+        'top': ('top-end', 9),                   # the top of the sun's middle ray
+        'bottom': ('below', 0, 'top'),           # the horizon, straight below it
     },
     'energy': {
         'source': 'runner.png',

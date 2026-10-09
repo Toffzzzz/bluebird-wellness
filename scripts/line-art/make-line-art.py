@@ -41,8 +41,9 @@ def polar(cx, cy, r, deg):
     a = math.radians(deg)
     return cx + r * math.cos(a), cy + r * math.sin(a)
 
-# Five drawings are traced from line art drawn in ChatGPT (Hydration, Energy,
-# Muscle & Fitness, Beauty & Glow, Hair & Scalp): scripts/line-art/trace-drawings.py
+# Eight drawings are traced from line art drawn in ChatGPT (Hydration, Energy,
+# Muscle & Fitness, Detox, Immunity, Recovery, Beauty & Glow, Hair & Scalp):
+# scripts/line-art/trace-drawings.py
 # turns scripts/line-art/sources/*.png into traced.json, read here.
 TRACED = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'traced.json')))
 
@@ -127,50 +128,14 @@ for p, q in rods:
         paths.append(f"M{P(x1 + 9 + ux * (r1 + 8), y1 + uy * (r1 + 8))} L{P(x2 + 9 - ux * (r2 + 8), y2 - uy * (r2 + 8))}")
 ART['nad'] = {'alt': 'A line drawing of a molecule: spheres joined by rods', 'top': 46, 'bottom': 368, 'paths': paths}
 
-# 7. Detox: a cucumber slice dropping into a tall glass of water
-seeds = [polar(200, 74, 11, a) for a in (-90, 30, 150)]
-ART['detox'] = {
-    'alt': 'A line drawing of a cucumber slice dropping into a tall glass of water',
-    'top': 46, 'bottom': 342,
-    'paths': [
-        circle_from_top(200, 74, 28),
-        circle_from_top(200, 74, 21),
-        *[circle_from_top(x, y, 2.5) for x, y in seeds],
-        "M180 128 Q170 118 162 118",
-        "M220 128 Q230 118 238 118",
-        "M146 140 L254 140",
-        f"M{f(146 + 40 * 14 / 202)} 180 L{f(254 - 40 * 14 / 202)} 180",
-        "M146 140 L160 342 L200 342",
-        "M254 140 L240 342 L200 342",
-    ],
-}
+# 7. Detox: a tall glass of water with a slice of lemon, mint and ice (traced)
+ART['detox'] = TRACED['detox']
 
-# 8. Immunity: an orange cut in half, showing its segments
-wedges = []
-for i in range(10):
-    a0, a1 = -90 + i * 36 + 3.5, -90 + (i + 1) * 36 - 3.5
-    p0, p1 = polar(200, 200, 16, a0), polar(200, 200, 70, a0)
-    p2, p3 = polar(200, 200, 70, a1), polar(200, 200, 16, a1)
-    wedges.append(f"M{P(*p1)} A70 70 0 0 1 {P(*p2)} L{P(*p3)} L{P(*p0)} Z")
-ART['immunity'] = {
-    'alt': 'A line drawing of an orange cut in half, showing its segments',
-    'top': 108, 'bottom': 292,
-    'paths': [*halves_circle(200, 200, 92), *halves_circle(200, 200, 80), *wedges,
-              "M318 120 C318 120 308 136 308 142 A10 10 0 0 0 328 142 C328 136 318 120 318 120"],
-}
+# 8. Immunity: a whole orange with its leaves, and half an orange (traced)
+ART['immunity'] = TRACED['immunity']
 
-# 9. Recovery: a sun with rays
-rays = []
-for i in range(12):
-    deg = -90 + i * 30
-    a, b = polar(200, 200, 82, deg), polar(200, 200, 110, deg)
-    top, bot = (a, b) if a[1] <= b[1] else (b, a)
-    rays.append(f"M{P(*top)} L{P(*bot)}")
-ART['recovery'] = {
-    'alt': 'A line drawing of a sun with rays',
-    'top': 90, 'bottom': 310,
-    'paths': [*halves_circle(200, 200, 62), "M160 200 A40 40 0 0 1 200 160", *rays],
-}
+# 9. Recovery: the sun rising over the horizon, a cloud and two birds (traced)
+ART['recovery'] = TRACED['recovery']
 
 # 10. Vitamin D: a bone
 r = 22
