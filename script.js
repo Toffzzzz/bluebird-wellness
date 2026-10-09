@@ -813,15 +813,41 @@ function initLines(items, animated) {
 
   // Arriving on the page (or coming back to it): every drawing the pen is
   // already past waits, undrawn, and draws itself once its picture is on the
-  // screen (straight away for the one you're looking at).
-  let arriving = true;
+  // screen (straight away for the one you're looking at). Browsers put you
+  // back where you were at different moments (Safari often only once the
+  // page has loaded), so this holds until the page has settled or the
+  // visitor scrolls themselves: whatever the pen is past by then waits too.
+  let arriving = false;
+  const INPUT = ['wheel', 'touchstart', 'keydown', 'mousedown'];
   const arrive = () => {
-    arriving = false;
     const pen = window.innerHeight * LINE.pen;
     for (const sec of secs) {
-      if (sec.done) continue;
+      if (sec.done || sec.replay || sec.auto) continue;
       if (pen - sec.section.getBoundingClientRect().top > 0) sec.replay = { start: null };
     }
+  };
+  const endArrival = () => {
+    if (!arriving) return;
+    arrive();
+    arriving = false;
+    INPUT.forEach((e) => window.removeEventListener(e, endArrival));
+    wake();
+  };
+  // settle: ms after the page has loaded (or come back) before it counts as settled.
+  const startArrival = (settle) => {
+    arriving = true;
+    INPUT.forEach((e) => window.addEventListener(e, endArrival, { passive: true }));
+    const later = () => setTimeout(endArrival, settle);
+    if (document.readyState === 'complete') later();
+    else window.addEventListener('load', later, { once: true });
+  };
+  // Every drawing back to undrawn.
+  const resetAll = () => {
+    for (const sec of secs) {
+      sec.done = false; sec.auto = null; sec.replay = null;
+      sec.parts.forEach((p) => { p.reached = 0; p.shown = -1; draw(p, 0); });
+    }
+    last = 0;
   };
 
   let ticking = false;
@@ -890,18 +916,16 @@ function initLines(items, animated) {
 
   layout();
   secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 0)));
+  startArrival(400);
   wake();
   window.addEventListener('scroll', wake, { passive: true });
-  // Back to the page from the browser's memory (Back or Forward, with the
-  // page kept as it was): every drawing starts afresh, as on arriving.
+  // Leaving the page: every drawing goes back to undrawn, so a browser that
+  // keeps the page in its memory (Back or Forward) brings it back afresh.
+  window.addEventListener('pagehide', () => { endArrival(); resetAll(); arriving = true; });
   window.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
-    for (const sec of secs) {
-      sec.done = false; sec.auto = null; sec.replay = null;
-      sec.parts.forEach((p) => { p.reached = 0; p.shown = -1; draw(p, 0); });
-    }
-    arriving = true;
-    last = 0;
+    resetAll();
+    startArrival(300);
     wake();
   });
   const relayout = () => {
@@ -1396,11 +1420,11 @@ function initReveals() {
     }
   }, { rootMargin: '0px 0px -12% 0px' });
   targets.forEach((el) => { el.classList.add('reveal'); io.observe(el); });
-  // Back on the page from the browser's memory: they rise into view afresh.
-  window.addEventListener('pageshow', (event) => {
-    if (!event.persisted) return;
-    targets.forEach((el) => { el.classList.remove('is-in'); el.style.transitionDelay = ''; io.unobserve(el); io.observe(el); });
-  });
+  // Leaving the page, and back on it from the browser's memory: they rise
+  // into view afresh.
+  const afresh = () => targets.forEach((el) => { el.classList.remove('is-in'); el.style.transitionDelay = ''; io.unobserve(el); io.observe(el); });
+  window.addEventListener('pagehide', afresh);
+  window.addEventListener('pageshow', (event) => { if (event.persisted) afresh(); });
 }
 
 /* ---------- Start ---------- */

@@ -135,9 +135,11 @@
   };
   window.SiteDraw = { watch };
   watch(document);
-  // Back on the page from the browser's memory: every drawing starts afresh.
-  window.addEventListener('pageshow', (event) => {
-    if (!event.persisted || still) return;
+  // Leaving the page, and back on it from the browser's memory (Back or
+  // Forward): every drawing starts afresh, drawing itself again as it comes
+  // into view.
+  const afresh = () => {
+    if (still) return;
     for (const svg of document.querySelectorAll('svg[data-draw]')) {
       if (!svg.__draw) continue;
       svg.__run = (svg.__run || 0) + 1;
@@ -146,7 +148,9 @@
       seen.unobserve(svg);
       seen.observe(svg);
     }
-  });
+  };
+  window.addEventListener('pagehide', afresh);
+  window.addEventListener('pageshow', (event) => { if (event.persisted) afresh(); });
 
   // The header's drop-down menus (Treatments, Studies), on laptops: the
   // button opens its panel (a mouse can also just hover); Escape, a click
