@@ -709,17 +709,17 @@ function lineSectionHTML(t, i) {
 }
 
 // The line drawings, drawn by the scroll. The "pen" is a little below the
-// middle of the screen (LINE.pen): everything in a section above it is
-// drawn, and as the page moves up the line comes down the middle, draws the
-// treatment's picture from the top down, and carries on to the next. The
-// whole line follows the scroll with one gentle smoothing (the same for
-// every section and every part of a picture), so the straight line never
-// breaks: not between the hero's bird and the first drawing, not where it
-// goes into or out of a picture, and not between one section and the next.
-// It only ever draws forwards: once drawn, a picture stays drawn when you
-// scroll back up. Arriving by a jump (the side list of names, a link), the
-// picture draws itself. With reduced motion everything is shown already
-// drawn.
+// middle of the screen (LINE.pen): everything in a section above it is drawn, and as the page moves
+// up the line comes down the middle, draws the treatment's picture from the
+// top down, and carries on to the next. It only ever draws forwards: once
+// drawn, a picture stays drawn when you scroll back up. Arriving by a jump
+// (the side list of names, a link), the picture draws itself. With reduced motion
+// everything is shown already drawn.
+// The straight line down the middle never breaks: each piece of it (the
+// line into a picture, the stroke it runs into, the stroke it leaves from,
+// the line out, on phones the line under the card, then the next section's
+// line) only starts once the piece before it is fully drawn, and the line
+// starts below the hero's bird only once the bird's own line has grown.
 // Coming back to the home page (Back from another page, or a link to one of
 // its sections) starts every drawing afresh: you stay where you were, the
 // drawing on the screen draws itself again, the ones below draw as you
@@ -727,10 +727,8 @@ function lineSectionHTML(t, i) {
 // up to them.
 const LINE = {
   pen: 0.66,      // where the pen is, as a share of the screen's height from the top (lower: drawings finish lower down, so they stay in view longer)
-  follow: 0.12,   // seconds: how smoothly the pen follows the scroll (one smoothing for the whole line, so it never breaks)
-  lag: 0.5,       // the furthest the pen is ever behind the scroll, as a share of the screen's height
-  settle: 300,    // px a second: the slowest the pen catches up, so it comes to rest promptly
-  minRange: 28,   // px of scrolling over which even a short piece of line is drawn
+  follow: 0.1,    // seconds: how closely the drawing follows the scroll (a little smoothing)
+  minRange: 28,   // px of scrolling over which even a level stroke (a base line) is drawn
   jump: 1.6,      // seconds a picture takes to draw itself after a jump
   width: 3.2,     // px: the line's thickness, the same everywhere
 };
@@ -750,14 +748,18 @@ function initLines(items, animated) {
     const strokes = [...g.querySelectorAll('path')].map((el) => ({
       el,
       clip: el.classList.contains('tx-art__fill') ? section.querySelector(`${el.getAttribute('clip-path').slice(4, -1)} rect`) : null,
-      len: 0, y0: 0, y1: 0, shown: -1,
+      len: 0, y0: 0, y1: 0, reached: 0, shown: -1, join: false,
     }));
-    const segs = [...overlay.querySelectorAll('[data-seg]')].map((el) => ({ el, seg: true, len: 0, y0: 0, y1: 0, shown: -1 }));
+    const segs = [...overlay.querySelectorAll('[data-seg]')].map((el) => ({ el, seg: el.dataset.seg, len: 0, y0: 0, y1: 0, reached: 0, shown: -1 }));
+    const seg = (n) => segs.find((p) => p.seg === n);
     return {
       it, section, overlay, art, g, text: section.querySelector('.tx__text'),
       top: Number(g.dataset.top), bottom: Number(g.dataset.bottom),
-      parts: [...segs, ...strokes],
-      at: -Infinity, // how far down the section the pen has been (px from its top); it never goes back
+      parts: [...segs, ...strokes], strokes,
+      into: seg('in'), out: seg('out'), after: seg('after'),
+      entry: [], exit: [], // the strokes the straight line runs into, and leaves from
+      tip: 0, // how far down the section (px) the straight line has been drawn
+      goal: 0, // and how far the pen has been
       auto: null, replay: null, done: false,
     };
   });
@@ -783,7 +785,7 @@ function initLines(items, animated) {
       };
       for (const p of sec.parts) {
         if (p.seg) {
-          const span = lines[p.el.dataset.seg];
+          const span = lines[p.seg];
           p.el.setAttribute('d', span ? `M${cx.toFixed(1)} ${span[0].toFixed(1)} V${span[1].toFixed(1)}` : '');
           p.len = span ? Math.max(0, span[1] - span[0]) : 0;
           p.y0 = span ? span[0] : 0;
@@ -795,21 +797,17 @@ function initLines(items, animated) {
           if (!p.clip) p.len = p.el.getTotalLength();
         }
         if (p.y1 - p.y0 < LINE.minRange) p.y1 = p.y0 + LINE.minRange;
-        // A stroke that the straight line runs into (or out of) joins it
-        // without a break: it starts only once the line coming in has
-        // arrived, and is finished by the time the line going out starts
-        // (e.g. Signature's base line, drawn in towards the middle).
-        if (!p.seg && !p.clip && p.len) {
-          const m = p.el.getScreenCTM();
-          const end = (l) => { const q = p.el.getPointAtLength(l); return [m.a * q.x + m.c * q.y + m.e - box.left, m.b * q.x + m.d * q.y + m.f - box.top]; };
-          const ends = [end(0), end(p.len)];
-          const touches = (y) => ends.some(([x, ey]) => Math.hypot(x - cx, ey - y) < 2);
-          const into = lines.in[1], out = lines.out[0];
-          if (touches(into) && p.y0 < into) { p.y0 = into; p.y1 = Math.max(p.y1, into + LINE.minRange); }
-          if (touches(out) && p.y1 > out) { p.y0 = Math.min(p.y0, out - LINE.minRange); p.y1 = out; }
-        }
         p.shown = -1; // draw it afresh at its new size
       }
+      // The strokes with an end where the straight line comes in, or goes out.
+      const ends = (p) => {
+        const m = p.el.getScreenCTM();
+        return [0, p.len].map((l) => { const q = p.el.getPointAtLength(l); return [m.a * q.x + m.c * q.y + m.e - box.left, m.b * q.x + m.d * q.y + m.f - box.top]; });
+      };
+      const at = (y) => sec.strokes.filter((p) => !p.clip && p.len && ends(p).some(([x, ey]) => Math.hypot(x - cx, ey - y) < 2));
+      sec.entry = at(lines.in[1]);
+      sec.exit = at(lines.out[0]);
+      sec.strokes.forEach((p) => { p.join = sec.entry.includes(p) || sec.exit.includes(p); });
     }
   };
 
@@ -824,17 +822,10 @@ function initLines(items, animated) {
     p.el.style.visibility = v > 0.001 ? 'visible' : 'hidden';
   };
 
-  // Draws a section as far as the pen at `at` (px from the section's top):
-  // every part (the straight line and each stroke of the picture) is drawn
-  // as the pen passes down over it, from its top to its bottom.
-  const drawTo = (sec, at) => {
-    for (const p of sec.parts) draw(p, clamp((at - p.y0) / (p.y1 - p.y0)));
-  };
-
   if (!animated) {
     layout();
-    secs.forEach((sec) => drawTo(sec, Infinity));
-    const redo = () => { layout(); secs.forEach((sec) => drawTo(sec, Infinity)); };
+    secs.forEach((sec) => sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); }));
+    const redo = () => { layout(); secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 1))); };
     window.addEventListener('resize', redo, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(redo);
     return;
@@ -844,9 +835,6 @@ function initLines(items, animated) {
   document.addEventListener('tx:arrive', (event) => {
     const sec = secs.find((x) => x.section === event.detail);
     if (sec && !sec.done) { sec.replay = null; sec.auto = { start: performance.now(), from: null }; }
-    // The pen goes straight there: what the page jumped past is drawn at once.
-    sy = null;
-    wake();
   });
 
   // Arriving on the page (or coming back to it): every drawing the pen is
@@ -882,37 +870,22 @@ function initLines(items, animated) {
   // Every drawing back to undrawn.
   const resetAll = () => {
     for (const sec of secs) {
-      sec.done = false; sec.auto = null; sec.replay = null; sec.at = -Infinity;
-      sec.parts.forEach((p) => { p.shown = -1; draw(p, 0); });
+      sec.done = false; sec.auto = null; sec.replay = null; sec.tip = 0; sec.goal = 0;
+      sec.parts.forEach((p) => { p.reached = 0; p.shown = -1; draw(p, 0); });
     }
     last = 0;
-    sy = null;
   };
 
   // The hero's line grows down from the bird as the page opens (styles.css).
-  // While it's still growing and on the screen, the central line waits for
-  // it, so the line never starts below a gap; then the pen glides on.
+  // While it's still growing and on the screen, the line below waits for it.
   const heroLine = document.querySelector('.hero__bird-line');
   const heroAnims = heroLine && heroLine.getAnimations ? heroLine.getAnimations().filter((a) => a.playState !== 'finished') : [];
   let heroReady = !heroAnims.length;
-  let heroHeld = false; // the central line has been kept waiting for it
+  if (!heroReady) Promise.all(heroAnims.map((a) => a.finished)).catch(() => {}).then(() => { heroReady = true; wake(); });
   const heroWaits = () => !heroReady && heroLine.getBoundingClientRect().bottom > 0;
-  if (!heroReady) {
-    Promise.all(heroAnims.map((a) => a.finished)).catch(() => {}).then(() => {
-      heroReady = true;
-      // If the line was kept waiting, the pen starts from where it comes in, and glides on from there.
-      if (heroHeld && !arriving && sy !== null) sy = Math.min(sy, secs[0].section.getBoundingClientRect().top + window.scrollY - window.innerHeight * LINE.pen);
-      wake();
-    });
-  }
 
   let ticking = false;
   let last = 0;
-  // The pen follows the scroll a little smoothly: `sy` is where the page is
-  // for the pen. It is the same for every section, so the line coming out
-  // of one section and the line going into the next always meet. Scrolling
-  // up, it simply keeps up (nothing is ever rubbed out).
-  let sy = null;
   const tick = (now) => {
     ticking = false;
     if (arriving) arrive();
@@ -921,52 +894,88 @@ function initLines(items, animated) {
     const k = 1 - Math.exp(-dt / LINE.follow);
     const pen = window.innerHeight * LINE.pen;
     let moving = false;
-    const y = window.scrollY;
-    if (sy === null || arriving || y <= sy) sy = y;
-    else {
-      // Never more than half a screen behind (after a big jump the pen picks up
-      // from there), and it settles promptly once the page stops.
-      sy = Math.max(sy, y - window.innerHeight * LINE.lag);
-      sy = Math.min(y, sy + Math.max((y - sy) * k, LINE.settle * dt));
-      if (sy < y) moving = true;
-    }
-    const behind = y - sy;
+    // How far the straight line may have come down the next section: no
+    // further than the line above it has (so it never breaks between
+    // sections), and not at all below the hero's bird while its line grows.
+    let limit = heroWaits() ? 0 : Infinity;
     for (const sec of secs) {
+      const cap = limit;
+      limit = Infinity;
       if (sec.done) continue;
       const box = sec.section.getBoundingClientRect();
+      let at;
+      let direct = false; // drawing itself: it follows its own timing exactly
+      let finished = false;
       if (sec.replay) {
-        // Waiting for its picture to come onto the screen, then drawing itself.
+        // Waiting for its picture to come onto the screen (and for the line
+        // above it to be drawn), then drawing itself.
         if (sec.replay.start === null) {
           const a = sec.art.getBoundingClientRect();
           if (a.bottom <= 0 || a.top >= window.innerHeight) continue;
-          if (sec === secs[0] && heroWaits()) continue;
+          if (cap !== Infinity) { limit = 0; continue; }
           sec.replay.start = now;
+          sec.tip = 0;
         }
         const u = Math.min(1, (now - sec.replay.start) / (LINE.jump * 1000));
-        drawTo(sec, box.height * ease(u));
-        if (u < 1) moving = true;
-        else { sec.replay = null; sec.done = true; sec.at = Infinity; }
-        continue;
+        at = box.height * ease(u);
+        direct = true;
+        if (u < 1) moving = true; else finished = true;
+      } else {
+        // Below the screen: nothing yet.
+        if (box.top > window.innerHeight) continue;
+        // Gone by above the screen (e.g. after a jump past it): drawn.
+        if (box.bottom < 0) {
+          sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); });
+          sec.tip = box.height;
+          sec.done = true;
+          continue;
+        }
+        at = pen - box.top;
+        if (sec.auto) {
+          if (sec.auto.from === null) sec.auto.from = at;
+          const u = Math.min(1, (now - sec.auto.start) / (LINE.jump * 1000));
+          at = Math.max(at, sec.auto.from + (box.height - sec.auto.from) * ease(u));
+          if (u < 1) moving = true; else sec.auto = null;
+        }
       }
-      // Below the screen: nothing yet.
-      if (box.top > window.innerHeight) continue;
-      // Gone by above the screen (e.g. after a jump past it): drawn.
-      if (box.bottom < 0) {
-        drawTo(sec, Infinity);
-        sec.done = true; sec.at = Infinity; sec.auto = null;
-        continue;
+      // The straight line's end: it follows the pen with the same little
+      // smoothing, only ever forwards, and never past the line above it.
+      if (!direct) sec.goal = Math.max(sec.goal, at); // the furthest the pen has been
+      const goal = Math.min(direct ? at : sec.goal, cap);
+      let tip = direct || Math.abs(goal - sec.tip) < 0.5 ? goal : sec.tip + (goal - sec.tip) * k;
+      tip = Math.max(sec.tip, Math.min(tip, cap));
+      if (tip < goal) moving = true;
+      sec.tip = tip;
+      // The pieces of the straight line, and the strokes it runs into and
+      // out of, are drawn as far as its end has come; the line out starts
+      // once the strokes it leaves from are finished.
+      const upTo = (p, from) => clamp((tip - from) / Math.max(p.y1 - from, 1));
+      draw(sec.into, upTo(sec.into, sec.into.y0));
+      draw(sec.out, upTo(sec.out, Math.max(sec.out.y0, ...sec.exit.map((p) => p.y1))));
+      draw(sec.after, upTo(sec.after, sec.after.y0));
+      // The rest of the picture: drawn as the pen passes down over it, each
+      // stroke following the scroll with a little smoothing.
+      let all = true;
+      for (const p of sec.strokes) {
+        if (p.join) {
+          const v = upTo(p, Math.max(p.y0, sec.into.y1));
+          draw(p, v);
+          if (v < 1) all = false;
+          continue;
+        }
+        const r = clamp((at - p.y0) / (p.y1 - p.y0));
+        p.reached = direct ? r : Math.max(p.reached, r);
+        const from = Math.max(p.shown, 0);
+        const v = direct || Math.abs(p.reached - from) < 0.002 ? p.reached : from + (p.reached - from) * k;
+        draw(p, v);
+        if (v !== p.reached) moving = true;
+        if (v < 1) all = false;
       }
-      let at = pen - box.top - behind;
-      if (sec === secs[0] && !sec.auto && at > 0 && heroWaits()) { at = 0; heroHeld = true; }
-      if (sec.auto) {
-        if (sec.auto.from === null) sec.auto.from = Math.max(at, Math.min(sec.at, box.height), 0);
-        const u = Math.min(1, (now - sec.auto.start) / (LINE.jump * 1000));
-        at = Math.max(at, sec.auto.from + (box.height - sec.auto.from) * ease(u));
-        if (u < 1) moving = true; else sec.auto = null;
-      }
-      sec.at = Math.max(sec.at, at);
-      drawTo(sec, sec.at);
-      if (sec.at >= box.height) { drawTo(sec, Infinity); sec.done = true; }
+      if (tip < box.height) { all = false; limit = tip - box.height; }
+      if (direct) {
+        if (finished && all) { sec.replay = null; sec.done = true; }
+        else if (finished) moving = true;
+      } else if (all) sec.done = true;
     }
     if (moving) wake();
   };
@@ -977,7 +986,7 @@ function initLines(items, animated) {
   }
 
   layout();
-  secs.forEach((sec) => drawTo(sec, -Infinity));
+  secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 0)));
   startArrival(400);
   wake();
   window.addEventListener('scroll', wake, { passive: true });
@@ -991,8 +1000,9 @@ function initLines(items, animated) {
     wake();
   });
   const relayout = () => {
+    const was = secs.map((sec) => sec.parts.map((p) => Math.max(0, p.shown)));
     layout();
-    secs.forEach((sec) => drawTo(sec, sec.done ? Infinity : sec.at));
+    secs.forEach((sec, i) => sec.parts.forEach((p, j) => draw(p, was[i][j])));
     wake();
   };
   window.addEventListener('resize', relayout, { passive: true });

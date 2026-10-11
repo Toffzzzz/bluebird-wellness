@@ -425,7 +425,9 @@
      (plus 8px) would cover anything: text, links, buttons, fields, pictures,
      line drawings, cards, tiles, prices, badges, any panel with a
      background… but not the page's or a section's own background, or the
-     central line. Checked after each scroll and resize (once a frame). */
+     central line. Checked after each resize and change (once a frame), and
+     while the page scrolls at most every SCROLL_CHECK ms, then once more as
+     soon as it stops: checking every frame made scrolling stutter. */
   const root = document.documentElement;
   const hero = document.querySelector('.hero');
   const footer = document.querySelector('.site-footer');
@@ -493,15 +495,24 @@
     fab.inert = away;
   };
   let queued = false;
+  let lastCheck = -Infinity;
   function queueCheck() {
     if (queued) return;
     queued = true;
-    requestAnimationFrame(() => { queued = false; check(); });
+    requestAnimationFrame(() => { queued = false; lastCheck = performance.now(); check(); });
+  }
+  // While things keep moving (scrolling, blocks rising in): now and then, and once more when they stop.
+  const SCROLL_CHECK = 200;
+  let stopped = 0;
+  function soonCheck() {
+    clearTimeout(stopped);
+    stopped = setTimeout(queueCheck, 100);
+    if (performance.now() - lastCheck >= SCROLL_CHECK) queueCheck();
   }
   window.addEventListener('scroll', () => {
     // Scrolling closes its menu.
     if (!menu.hidden) setMenu(false);
-    queueCheck();
+    soonCheck();
   }, { passive: true });
   window.addEventListener('resize', queueCheck, { passive: true });
   window.addEventListener('load', queueCheck);
@@ -509,7 +520,8 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueCheck);
   // Things that move without a scroll: an entry opened, a block risen into
   // place, the Book bar sliding in, a dialog opening or closing.
-  ['toggle', 'transitionend', 'animationend'].forEach((e) => document.addEventListener(e, queueCheck, true));
+  document.addEventListener('toggle', queueCheck, true);
+  ['transitionend', 'animationend'].forEach((e) => document.addEventListener(e, soonCheck, true));
   new MutationObserver(queueCheck).observe(root, { attributes: true, attributeFilter: ['class'] });
   if (bar) new MutationObserver(queueCheck).observe(bar, { attributes: true, attributeFilter: ['class'] });
   if ('ResizeObserver' in window) new ResizeObserver(queueCheck).observe(document.body);

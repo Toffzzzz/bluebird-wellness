@@ -2,3 +2,4 @@
 node_modules
 __pycache__/
 scripts/line-art/sources/*-strokes.png
+.vscode/

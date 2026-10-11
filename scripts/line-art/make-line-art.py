@@ -172,7 +172,11 @@ ART['longevity'] = {
 ART['skin'] = TRACED['skin']
 
 # 13. Hair & Scalp: a woman with long, wavy hair, eyes closed (traced)
-ART['hair'] = TRACED['hair']
+# The page's line comes into the top of her head and starts again just
+# below the whole drawing (below the ends of her hair), so it never looks as
+# if it runs down through her.
+hair_low = max(float(m.group(1)) for d in TRACED['hair']['paths'] for m in re.finditer(r'-?[\d.]+ (-?[\d.]+)', d))
+ART['hair'] = {**TRACED['hair'], 'bottom': round(hair_low + 8, 1)}
 
 # 14. Signature: a fountain pen nib, the Bluebird logo, and a signature line
 logo = open(os.path.join(ROOT, 'images', 'logo', 'bluebird-mark-thin.svg')).read()  # the logo with thinner strokes (thin-logo.py)
