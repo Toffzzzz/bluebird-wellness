@@ -90,7 +90,7 @@
   // drawing is drawn, the splash grows from nothing until it covers the
   // whole wash (fast at first, then slowing, as paint spreading on wet
   // paper), while the wash fades in and opens out a little.
-  const WASH = { duration: 1.6, spread: 2.7 }; // seconds; how large the splash grows (2.7 covers it all)
+  const WASH = { duration: 1.1, spread: 2.7, at: 0.55 }; // seconds; how large the splash grows (2.7 covers it all); how far through a card's or page's drawing it starts
   const washOf = (svg) => (svg ? svg.querySelector('image.wash') : null);
   const loadWash = (img) => { if (img.dataset.href && !img.getAttribute('href')) img.setAttribute('href', img.dataset.href); };
   const nearWash = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
@@ -165,6 +165,7 @@
       const { parts, set } = entry.target.__draw;
       const start = performance.now();
       const run = entry.target.__run = (entry.target.__run || 0) + 1;
+      let painted = false;
       const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
       const frame = (now) => {
         if (entry.target.__run !== run) return; // started afresh since
@@ -175,11 +176,10 @@
           set(p, ease(u));
           if (u < 1) more = true;
         }
+        // The colour splashes out while the last strokes are still drawing.
+        if (!painted && (!more || t >= DRAW.duration * WASH.at)) { painted = true; paintWash(entry.target); }
         if (more) requestAnimationFrame(frame);
-        else {
-          entry.target.classList.add('is-drawn');
-          paintWash(entry.target);
-        }
+        else entry.target.classList.add('is-drawn');
       };
       requestAnimationFrame(frame);
     }

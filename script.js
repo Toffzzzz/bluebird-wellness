@@ -740,6 +740,10 @@ function lineSectionHTML(t, i) {
 // drawing on the screen draws itself again, the ones below draw as you
 // scroll down to them, and the ones above draw themselves as you scroll back
 // up to them.
+// How far through drawing a picture its watercolour starts to splash out
+// (so it has filled in by the time you've scrolled past it).
+const WASH_AT = 0.65;
+
 const LINE = {
   pen: 0.66,      // where the pen is, as a share of the screen's height from the top (lower: drawings finish lower down, so they stay in view longer)
   follow: 0.1,    // seconds: how closely the drawing follows the scroll (a little smoothing)
@@ -775,6 +779,7 @@ function initLines(items, animated) {
       entry: [], exit: [], // the strokes the straight line runs into, and leaves from
       svg: art.querySelector('svg'),
       painted: false, // its watercolour wash has splashed out
+      paintAt: Infinity, // and how far down the section the pen is when it does
       tip: 0, // how far down the section (px) the straight line has been drawn
       goal: 0, // and how far the pen has been
       auto: null, replay: null, done: false,
@@ -822,6 +827,10 @@ function initLines(items, animated) {
         return [0, p.len].map((l) => { const q = p.el.getPointAtLength(l); return [m.a * q.x + m.c * q.y + m.e - box.left, m.b * q.x + m.d * q.y + m.f - box.top]; });
       };
       const at = (y) => sec.strokes.filter((p) => !p.clip && p.len && ends(p).some(([x, ey]) => Math.hypot(x - cx, ey - y) < 2));
+      // The colour splashes out once the pen is this far down the picture (WASH_AT of the way).
+      const ys = sec.strokes.map((p) => [p.y0, p.y1]);
+      const top = Math.min(...ys.map((y) => y[0])), bottom = Math.max(...ys.map((y) => y[1]));
+      sec.paintAt = top + (bottom - top) * WASH_AT;
       sec.entry = at(lines.in[1]);
       sec.exit = at(lines.out[0]);
       sec.strokes.forEach((p) => { p.join = sec.entry.includes(p) || sec.exit.includes(p); });
@@ -1036,8 +1045,8 @@ function initLines(items, animated) {
         if (v !== p.reached) moving = true;
         if (v < 1) all = false;
       }
-      // The picture is drawn: its watercolour splashes out behind it.
-      if (all) paint(sec);
+      // The picture is mostly drawn (or all of it): its watercolour splashes out behind it.
+      if (all || at >= sec.paintAt) paint(sec);
       if (tip < box.height) { all = false; limit = tip - box.height; }
       if (direct) {
         if (finished && all) { sec.replay = null; sec.done = true; }

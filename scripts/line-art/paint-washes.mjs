@@ -1,17 +1,26 @@
 #!/usr/bin/env node
 /* Bluebird Wellness: the watercolour washes behind the line drawings.
 
-   Once a drawing has finished drawing itself, a splash of its own colours
-   (the orange's orange, the leaves' green…) spreads out behind the lines,
-   like watercolour: loose, a little past the outlines, darker where the
-   paint pooled at its edges, with the grain of the paper and a few drops.
+   Once a drawing has been drawn, a splash of its own colours (the orange's
+   orange, the leaves' green…) spreads out behind the lines, like
+   watercolour: filling the drawing's own shapes, loosely and a little past
+   their outlines, darker where the paint pooled at the edges, with uneven
+   pigment and the grain of the paper.
 
    This script paints those washes. For each drawing (data/line-art.js) it
-   takes the patches of colour below, in the drawing's own 400 x 400 box,
-   turns them into watercolour (rippled edges, soft, darker rims, paper
-   grain) and saves the result as images/washes/<drawing>.webp, covering
-   the box plus 40 on every side (-40 to 440). It also paints
-   images/washes/splat.webp: the ragged splash shape the colour is revealed
+   colours the parts listed below, in the drawing's own 400 x 400 box:
+     - at: [x, y]  the closed shape of the drawing around that point (found
+                   by filling outwards from it, up to the drawing's lines),
+                   spread a little under the lines;
+     - shape:      a loose shape of its own (SVG), for parts the lines don't
+                   close (a face, hair, the sky);
+     - art: n      the drawing's own filled shape number n (the logo);
+     - within / without: a shape to keep the colour inside, or out of;
+     - drop: [x, y, r]  a small drop of paint beside the drawing.
+   Then it turns them into watercolour (rippled, soft edges, a darker rim,
+   uneven pigment, paper grain) and saves images/washes/<drawing>.webp,
+   covering the box plus 40 on every side (-40 to 440). It also paints
+   images/washes/splat.webp: the ragged splash the colour is revealed
    through as it spreads (site.js).
 
    Run it after changing a wash (from the repo's folder):
@@ -20,208 +29,211 @@
    then python3 scripts/line-art/make-line-art.py (it adds each wash to
    data/line-art.js) and node scripts/build-menu.mjs. */
 
+import { readFileSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import vm from 'node:vm';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'images', 'washes');
-const SIZE = 720; // px: the image covers the 480 x 480 box (-40 to 440)
+const SIZE = 720; // px: the picture covers the 480 x 480 box (-40 to 440)
 
-// The colours: [shape (SVG, in the 400 x 400 box), colour, strength], then
-// drops [x, y, radius, colour]. Shapes are loose on purpose.
 const SKIN = '#f1c3a1';
-const LEAF = '#5f9449';
+const LEAF = '#5d8a4a';
+const ORANGE = '#e98b2e';
 const WASHES = {
-  hydration: {
-    patches: [
-      ['<ellipse cx="193" cy="262" rx="112" ry="88"/>', '#9a6a3c', 0.55],             // the coconut's shell
-      ['<ellipse cx="170" cy="285" rx="70" ry="50"/>', '#7d532c', 0.25],              // shade on the shell
-      ['<ellipse cx="198" cy="160" rx="72" ry="17"/>', '#f3e6c8', 0.9],               // its white flesh
-      ['<path d="M66 128 Q110 60 170 60 Q200 70 188 92 Q150 110 92 132 Z"/>', '#e2574c', 0.6], // the umbrella
-      ['<path d="M120 70 Q150 62 178 70 L150 100 Z"/>', '#f2c14e', 0.55],              // its stripe
-      ['<circle cx="200" cy="114" r="20"/>', '#5fb6d9', 0.6],                         // the drop
-      ['<path d="M232 165 L300 52 L318 58 L250 170 Z"/>', '#f08a9a', 0.45],           // the straw
-      ['<ellipse cx="50" cy="268" rx="40" ry="26" transform="rotate(30 50 268)"/>', LEAF, 0.6], // the leaf
-      ['<circle cx="115" cy="300" r="42"/>', '#f6d6dc', 0.7],                         // the flower
-      ['<circle cx="117" cy="303" r="14"/>', '#f2c14e', 0.6],                         // its centre
-    ],
-    drops: [[40, 200, 4, '#5fb6d9'], [318, 330, 3, '#9a6a3c'], [285, 110, 3, '#5fb6d9'], [60, 340, 2.5, LEAF], [330, 250, 2, '#9a6a3c']],
-  },
-  energy: {
-    patches: [
-      ['<ellipse cx="150" cy="50" rx="40" ry="24" transform="rotate(-15 150 50)"/>', '#8a5a3b', 0.55],   // her hair
-      ['<ellipse cx="205" cy="52" rx="22" ry="28"/>', SKIN, 0.55],                    // her face
-      ['<path d="M168 82 L226 86 L236 150 L214 186 L170 176 L160 122 Z"/>', '#e9806e', 0.55], // her top
-      ['<ellipse cx="140" cy="140" rx="28" ry="46"/>', SKIN, 0.45],                  // her arms
-      ['<ellipse cx="255" cy="130" rx="30" ry="20" transform="rotate(-40 255 130)"/>', SKIN, 0.45],
-      ['<path d="M170 176 L240 186 L286 214 L266 236 L186 232 Z"/>', '#3d8fa0', 0.55], // her shorts
-      ['<ellipse cx="118" cy="280" rx="72" ry="28" transform="rotate(-42 118 280)"/>', SKIN, 0.4], // her legs
-      ['<ellipse cx="256" cy="262" rx="24" ry="44" transform="rotate(15 256 262)"/>', SKIN, 0.4],
-      ['<ellipse cx="232" cy="328" rx="32" ry="14" transform="rotate(30 232 328)"/>', '#e9806e', 0.5], // her shoes
-      ['<ellipse cx="46" cy="352" rx="18" ry="26"/>', '#e9806e', 0.5],
-      ['<ellipse cx="110" cy="386" rx="100" ry="7"/>', '#b9c7a8', 0.4],              // the ground
-    ],
-    drops: [[300, 70, 3, '#e9806e'], [95, 120, 2.5, '#3d8fa0'], [320, 300, 3, '#3d8fa0'], [30, 260, 2.5, '#e9806e']],
-  },
-  myers: {
-    patches: [
-      ['<ellipse cx="120" cy="95" rx="48" ry="22" transform="rotate(50 120 95)"/>', '#e8a33a', 0.55], // the bottles
-      ['<ellipse cx="280" cy="95" rx="48" ry="22" transform="rotate(-50 280 95)"/>', '#f2c14e', 0.55],
-      ['<circle cx="200" cy="62" r="14"/>', '#f2c14e', 0.6],                          // the drop
-      ['<circle cx="200" cy="285" r="66"/>', '#cfe3ee', 0.35],                        // the flask's glass
-      ['<rect x="186" y="182" width="28" height="46"/>', '#cfe3ee', 0.35],
-      ['<ellipse cx="200" cy="300" rx="60" ry="42"/>', '#f5b942', 0.55],              // the cocktail
-      ['<ellipse cx="200" cy="272" rx="52" ry="10"/>', '#f8d77a', 0.45],
-    ],
-    drops: [[150, 150, 3, '#e8a33a'], [252, 150, 3, '#f2c14e'], [292, 330, 2.5, '#f5b942'], [110, 300, 2.5, '#f5b942']],
-  },
-  iron: {
-    patches: [
-      ['<path d="M132 124 Q170 116 200 122 Q235 128 268 120 L268 280 Q268 300 240 310 L210 318 L190 318 L160 310 Q132 300 132 280 Z"/>', '#a83a32', 0.55], // the iron-rich drip
-      ['<path d="M140 200 Q200 190 262 200 L262 290 Q240 312 200 316 Q160 312 140 290 Z"/>', '#8c2a25', 0.3], // deeper at the bottom
-      ['<rect x="185" y="318" width="30" height="22"/>', '#a83a32', 0.35],            // the port
-      ['<circle cx="200" cy="40" r="14"/>', '#b8c3cf', 0.45],                         // the hook
-    ],
-    drops: [[110, 260, 4, '#a83a32'], [292, 200, 3, '#a83a32'], [280, 330, 2.5, '#8c2a25'], [118, 150, 2, '#a83a32']],
-  },
-  'muscle-recovery': {
-    patches: [
-      ['<circle cx="75" cy="275" r="52"/>', '#d2493f', 0.5],                           // the plates
-      ['<circle cx="255" cy="270" r="55"/>', '#d2493f', 0.5],
-      ['<rect x="20" y="266" width="235" height="12"/>', '#9aa5b1', 0.35],             // the bar
-      ['<ellipse cx="200" cy="92" rx="26" ry="28"/>', SKIN, 0.55],                    // his head
-      ['<path d="M140 124 L205 116 L216 182 L176 202 L130 190 Z"/>', '#3f7fbf', 0.5],  // his vest
-      ['<ellipse cx="208" cy="205" rx="18" ry="55"/>', SKIN, 0.45],                  // his arms
-      ['<ellipse cx="112" cy="198" rx="42" ry="30"/>', '#4b5563', 0.4],              // his shorts
-      ['<ellipse cx="160" cy="255" rx="26" ry="42"/>', SKIN, 0.4],                   // his legs
-      ['<ellipse cx="190" cy="318" rx="150" ry="7"/>', '#b9c7a8', 0.35],             // the floor
-    ],
-    drops: [[22, 220, 3, '#d2493f'], [330, 230, 3, '#d2493f'], [300, 330, 2.5, '#3f7fbf'], [90, 120, 2.5, '#3f7fbf']],
-  },
-  nad: {
-    patches: [
-      ['<ellipse cx="200" cy="210" rx="110" ry="150"/>', '#b39ddb', 0.18],            // a soft glow
-      ['<circle cx="200" cy="62" r="17"/>', '#e57373', 0.55],                          // the atoms
-      ['<circle cx="200" cy="142" r="24"/>', '#5c6bc0', 0.5],
-      ['<circle cx="128" cy="184" r="17"/>', '#4db6ac', 0.55],
-      ['<circle cx="272" cy="184" r="17"/>', '#4db6ac', 0.55],
-      ['<circle cx="128" cy="262" r="17"/>', '#ffb74d', 0.55],
-      ['<circle cx="272" cy="262" r="17"/>', '#ffb74d', 0.55],
-      ['<circle cx="200" cy="302" r="24"/>', '#5c6bc0', 0.5],
-      ['<circle cx="200" cy="356" r="13"/>', '#e57373', 0.55],
-    ],
-    drops: [[90, 110, 3, '#5c6bc0'], [310, 120, 2.5, '#e57373'], [310, 330, 3, '#4db6ac'], [80, 320, 2.5, '#ffb74d']],
-  },
-  detox: {
-    patches: [
-      ['<path d="M127 100 L273 100 L265 355 L135 355 Z"/>', '#9fd3df', 0.4],           // the water
-      ['<circle cx="282" cy="72" r="40"/>', '#f4d03f', 0.6],                          // the lemon
-      ['<circle cx="282" cy="72" r="26"/>', '#f9e37a', 0.4],
-      ['<ellipse cx="165" cy="155" rx="36" ry="20" transform="rotate(30 165 155)"/>', '#4caf50', 0.55], // the mint
-      ['<ellipse cx="218" cy="162" rx="40" ry="17" transform="rotate(-20 218 162)"/>', '#4caf50', 0.55],
-      ['<ellipse cx="205" cy="132" rx="15" ry="28"/>', '#5cbf60', 0.5],
-      ['<path d="M196 205 L262 222 L245 268 L190 258 Z"/>', '#dbeefa', 0.55],         // the ice
-      ['<path d="M146 276 L204 258 L215 300 L172 322 L150 316 Z"/>', '#dbeefa', 0.55],
-    ],
-    drops: [[330, 130, 3, '#f4d03f'], [100, 200, 2.5, '#9fd3df'], [300, 300, 3, '#9fd3df'], [240, 20, 2.5, '#f4d03f']],
-  },
-  immunity: {
-    patches: [
-      ['<circle cx="152" cy="232" r="84"/>', '#f08a24', 0.6],                         // the whole orange
-      ['<circle cx="140" cy="215" r="50"/>', '#f6a94a', 0.35],                        // its light side
-      ['<ellipse cx="293" cy="242" rx="92" ry="80"/>', '#f39a2e', 0.5],               // the half: its peel
-      ['<ellipse cx="293" cy="240" rx="72" ry="64"/>', '#fbc15a', 0.55],              // and its flesh
-      ['<ellipse cx="130" cy="88" rx="52" ry="22" transform="rotate(28 130 88)"/>', LEAF, 0.6], // the leaves
-      ['<ellipse cx="255" cy="105" rx="52" ry="18" transform="rotate(-22 255 105)"/>', '#6aa152', 0.55],
-      ['<rect x="186" y="85" width="12" height="50" transform="rotate(18 192 110)"/>', '#7d532c', 0.5], // the stem
-    ],
-    drops: [[60, 330, 3, '#f08a24'], [375, 300, 4, '#f39a2e'], [355, 150, 2.5, '#f08a24'], [90, 140, 2.5, LEAF], [230, 345, 2, '#f08a24']],
-  },
-  recovery: {
-    patches: [
-      ['<ellipse cx="200" cy="215" rx="150" ry="70"/>', '#f8c291', 0.3],              // the warm sky
-      ['<path d="M140 259 A60 60 0 0 1 260 259 Z"/>', '#f6b93b', 0.6],                 // the sun
-      ['<ellipse cx="72" cy="163" rx="46" ry="22"/>', '#cfe0ef', 0.55],               // the cloud
-      ['<ellipse cx="200" cy="272" rx="175" ry="13"/>', '#9cc59a', 0.35],             // the ground
-    ],
-    drops: [[300, 120, 2.5, '#f6b93b'], [110, 230, 2.5, '#f6b93b'], [345, 280, 3, '#9cc59a']],
-  },
-  'vitamin-d': {
-    patches: [
-      ['<ellipse cx="200" cy="200" rx="72" ry="155"/>', '#f7d774', 0.3],              // a sunny glow
-      ['<rect x="182" y="92" width="36" height="216"/>', '#efe3c4', 0.8],             // the bone
-      ['<circle cx="182" cy="77" r="22"/>', '#efe3c4', 0.8],
-      ['<circle cx="218" cy="77" r="22"/>', '#efe3c4', 0.8],
-      ['<circle cx="182" cy="323" r="22"/>', '#efe3c4', 0.8],
-      ['<circle cx="218" cy="323" r="22"/>', '#efe3c4', 0.8],
-    ],
-    drops: [[120, 130, 3, '#f7d774'], [285, 260, 3, '#f7d774'], [270, 90, 2, '#f7d774']],
-  },
-  longevity: {
-    patches: [
-      ['<ellipse cx="240" cy="130" rx="46" ry="18" transform="rotate(-27 240 130)"/>', '#6aa84f', 0.6], // the leaves
-      ['<ellipse cx="160" cy="178" rx="46" ry="18" transform="rotate(22 160 178)"/>', '#6aa84f', 0.6],
-      ['<ellipse cx="200" cy="90" rx="7" ry="20"/>', '#9ccc65', 0.6],                 // the bud
-      ['<rect x="196" y="100" width="8" height="185"/>', '#6aa84f', 0.4],             // the stem
-      ['<path d="M118 304 Q200 266 282 304 Z"/>', '#8d6e4f', 0.55],                    // the soil
-    ],
-    drops: [[300, 180, 3, '#6aa84f'], [110, 250, 2.5, '#8d6e4f'], [290, 290, 2.5, '#8d6e4f']],
-  },
-  skin: {
-    patches: [
-      ['<path d="M200 15 L245 65 Q255 95 290 115 L295 160 L310 210 Q300 225 260 230 L195 228 Q180 160 185 60 Z"/>', SKIN, 0.5], // her face
-      ['<circle cx="255" cy="172" r="22"/>', '#f19c9c', 0.35],                         // a blush
-      ['<ellipse cx="284" cy="164" rx="11" ry="6"/>', '#e07a7a', 0.55],                // her lips
-      ['<path d="M225 230 L266 232 L240 300 L222 385 L200 390 L206 300 Z"/>', SKIN, 0.4], // her neck
-    ],
-    drops: [[330, 120, 2.5, '#f19c9c'], [160, 260, 3, SKIN], [300, 300, 2.5, '#f19c9c']],
-  },
-  hair: {
-    patches: [
-      ['<path d="M150 70 Q90 90 72 160 Q30 230 22 280 Q50 330 110 345 Q142 300 132 240 Q120 170 160 120 Z"/>', '#8b5a3c', 0.5], // her hair
-      ['<path d="M215 66 Q236 92 232 122 Q240 170 262 192 Q302 232 300 302 Q280 320 260 300 Q240 252 212 242 Q240 220 246 180 Z"/>', '#8b5a3c', 0.5],
-      ['<ellipse cx="175" cy="72" rx="52" ry="24"/>', '#8b5a3c', 0.5],
-      ['<ellipse cx="202" cy="140" rx="30" ry="42"/>', SKIN, 0.45],                  // her face
-      ['<path d="M184 184 L238 184 L242 240 L186 240 Z"/>', SKIN, 0.35],             // her neck
-      ['<ellipse cx="214" cy="159" rx="8" ry="5"/>', '#e07a7a', 0.5],                 // her lips
-    ],
-    drops: [[40, 200, 3, '#8b5a3c'], [320, 250, 2.5, '#8b5a3c'], [150, 360, 2.5, '#8b5a3c']],
-  },
-  signature: {
-    patches: [
-      ['<path d="M188 40 L212 40 L212 66 L200 96 L188 66 Z"/>', '#c9a227', 0.6],     // the nib
-      ['<ellipse cx="172" cy="185" rx="62" ry="78" transform="rotate(-20 172 185)"/>', '#5b9bd5', 0.45], // the bluebird's wings
-      ['<ellipse cx="228" cy="245" rx="55" ry="36" transform="rotate(-35 228 245)"/>', '#5b9bd5', 0.45], // its body
-      ['<ellipse cx="232" cy="238" rx="26" ry="18" transform="rotate(-35 232 238)"/>', '#f0a35e', 0.4], // its breast
-      ['<ellipse cx="200" cy="356" rx="72" ry="5"/>', '#1f3a5f', 0.2],                // the signature line
-    ],
-    drops: [[120, 110, 2.5, '#5b9bd5'], [300, 200, 3, '#5b9bd5'], [260, 320, 2.5, '#c9a227']],
-  },
+  hydration: [
+    { at: [207, 269], colour: '#a7743f', a: 0.58 },    // the coconut's shell
+    { at: [194, 192], colour: '#efe1bd', a: 0.7 },     // its white rim
+    { at: [194, 163], colour: '#e9dcb8', a: 0.55 },    // inside
+    { at: [113, 98], colour: '#d9604f', a: 0.6 },      // the umbrella
+    { at: [140, 86], colour: '#e8bd55', a: 0.6 },
+    { at: [160, 74], colour: '#d9604f', a: 0.6 },
+    { at: [86, 110], colour: '#e8bd55', a: 0.55 },
+    { at: [200, 113], colour: '#6aaed0', a: 0.65 },    // the drop
+    { at: [260, 105], colour: '#e2909b', a: 0.55 },    // the straw
+    { at: [53, 262], colour: LEAF, a: 0.6 },           // the leaf
+    { at: [118, 276], colour: '#f5c3cf', a: 0.65 },    // the flower's petals
+    { at: [148, 297], colour: '#f5c3cf', a: 0.65 },
+    { at: [86, 298], colour: '#f5c3cf', a: 0.65 },
+    { at: [136, 333], colour: '#f5c3cf', a: 0.65 },
+    { at: [94, 331], colour: '#f5c3cf', a: 0.65 },
+    { shape: '<circle cx="117" cy="303" r="9"/>', colour: '#e8bd55', a: 0.6 }, // its centre
+    { drop: [40, 205, 3.5], colour: '#6aaed0' }, { drop: [318, 330, 3], colour: '#a7743f' }, { drop: [292, 165, 2.5], colour: '#e2909b' },
+  ],
+  energy: [
+    { at: [202, 50], colour: SKIN, a: 0.45 },          // her face
+    { at: [202, 50], within: '<ellipse cx="192" cy="30" rx="26" ry="16"/>', colour: '#8a5a3b', a: 0.5 }, // her hair
+    { at: [156, 44], colour: '#8a5a3b', a: 0.55 },     // her ponytail
+    { at: [144, 114], colour: SKIN, a: 0.45 },         // her arms
+    { at: [253, 137], colour: SKIN, a: 0.45 },
+    { at: [202, 140], colour: '#de8573', a: 0.55 },    // her top
+    { at: [181, 235], without: '<path d="M163 176 L232 181 L252 194 L292 211 L286 234 L205 234 L174 231 L158 205 Z"/>', colour: SKIN, a: 0.42 }, // her legs
+    { at: [181, 235], within: '<path d="M163 176 L232 181 L252 194 L292 211 L286 234 L205 234 L174 231 L158 205 Z"/>', colour: '#4a8a98', a: 0.55 }, // her shorts
+    { at: [235, 320], colour: '#de8573', a: 0.55 },    // her shoes
+    { at: [48, 350], colour: '#de8573', a: 0.55 },
+    { shape: '<ellipse cx="110" cy="386" rx="98" ry="6"/>', colour: '#b9c7a8', a: 0.35 }, // the ground
+    { drop: [300, 75, 3], colour: '#de8573' }, { drop: [320, 300, 2.5], colour: '#4a8a98' },
+  ],
+  myers: [
+    { at: [121, 95], colour: '#e8a33a', a: 0.55 },     // the bottles
+    { at: [279, 95], colour: '#e8bd55', a: 0.55 },
+    { at: [200, 64], colour: '#e8bd55', a: 0.6 },      // the drop
+    { at: [200, 236], colour: '#d7e8f0', a: 0.4 },     // the flask's glass
+    { at: [200, 301], colour: '#f5b942', a: 0.6 },     // the cocktail
+    { drop: [150, 150, 2.5], colour: '#e8a33a' }, { drop: [292, 330, 2.5], colour: '#f5b942' },
+  ],
+  iron: [
+    { at: [197, 219], colour: '#d4a03c', a: 0.58 },    // the iron infusion: amber yellow
+    { at: [219, 211], colour: '#d4a03c', a: 0.58 },
+    { at: [201, 102], colour: '#dfe6ee', a: 0.35 },    // the bag above it
+    { at: [200, 75], colour: '#c9d2dc', a: 0.4 },      // its cap
+    { at: [200, 42], colour: '#b8c3cf', a: 0.45 },     // the hook
+    { drop: [110, 262, 3.5], colour: '#d4a03c' }, { drop: [292, 200, 2.5], colour: '#c8913a' },
+  ],
+  'muscle-recovery': [
+    { at: [194, 84], colour: '#8a5a3b', a: 0.55 },     // his hair
+    { at: [201, 114], colour: SKIN, a: 0.45 },         // his face
+    { at: [159, 182], colour: SKIN, a: 0.45 },         // his arm
+    { at: [188, 164], colour: '#4f7fae', a: 0.5 },     // his vest
+    { at: [202, 213], colour: '#4f7fae', a: 0.5 },
+    { at: [112, 183], colour: '#6b7480', a: 0.42 },    // his shorts
+    { at: [132, 227], colour: SKIN, a: 0.4 },          // his legs
+    { at: [181, 234], colour: SKIN, a: 0.4 },
+    { at: [197, 254], colour: SKIN, a: 0.4 },
+    { at: [153, 294], colour: SKIN, a: 0.35 },
+    { at: [209, 294], colour: SKIN, a: 0.35 },
+    { at: [72, 278], colour: '#c45a4a', a: 0.55 },     // the plates
+    { at: [106, 276], colour: '#a84a3e', a: 0.5 },
+    { at: [99, 267], colour: '#a84a3e', a: 0.5 },
+    { at: [258, 271], colour: '#c45a4a', a: 0.55 },
+    { at: [288, 271], colour: '#a84a3e', a: 0.5 },
+    { at: [39, 277], colour: '#9aa5b1', a: 0.45 },     // the bar
+    { at: [133, 309], colour: '#cfd5dc', a: 0.5 },     // his shoes
+    { at: [184, 304], colour: '#cfd5dc', a: 0.5 },
+    { shape: '<ellipse cx="190" cy="318" rx="150" ry="6"/>', colour: '#b9c7a8', a: 0.3 }, // the floor
+    { drop: [22, 225, 3], colour: '#c45a4a' }, { drop: [330, 235, 2.5], colour: '#c45a4a' },
+  ],
+  nad: [
+    { at: [201, 222], colour: '#b39ddb', a: 0.18 },    // inside the ring
+    { at: [200, 62], colour: '#d88078', a: 0.55 },     // the atoms
+    { at: [200, 356], colour: '#d88078', a: 0.55 },
+    { at: [200, 142], colour: '#6874b0', a: 0.5 },
+    { at: [200, 302], colour: '#6874b0', a: 0.5 },
+    { at: [128, 184], colour: '#5fa8a0', a: 0.55 },
+    { at: [272, 184], colour: '#5fa8a0', a: 0.55 },
+    { at: [128, 262], colour: '#efb35c', a: 0.55 },
+    { at: [272, 262], colour: '#efb35c', a: 0.55 },
+    { drop: [100, 110, 2.5], colour: '#6874b0' }, { drop: [305, 330, 2.5], colour: '#5fa8a0' },
+  ],
+  detox: [
+    { at: [192, 236], colour: '#9fd3df', a: 0.45 },    // the water
+    { at: [201, 105], colour: '#9fd3df', a: 0.45 },
+    { at: [201, 371], colour: '#bfe2ea', a: 0.4 },
+    { at: [256, 37], colour: '#f4d03f', a: 0.6 },      // the lemon
+    { at: [293, 61], colour: '#f4d03f', a: 0.6 },
+    { at: [295, 85], colour: '#f4d03f', a: 0.6 },
+    { at: [305, 44], colour: '#e9b824', a: 0.55 },     // its peel
+    { at: [204, 132], colour: '#5e9e5a', a: 0.55 },    // the mint
+    { at: [162, 155], colour: '#5e9e5a', a: 0.55 },
+    { at: [220, 175], colour: '#5e9e5a', a: 0.55 },
+    { at: [219, 239], colour: '#e6f4fb', a: 0.7 },     // the ice
+    { at: [236, 213], colour: '#e6f4fb', a: 0.7 },
+    { at: [249, 242], colour: '#e6f4fb', a: 0.7 },
+    { at: [188, 293], colour: '#e6f4fb', a: 0.7 },
+    { at: [170, 269], colour: '#e6f4fb', a: 0.7 },
+    { at: [158, 300], colour: '#e6f4fb', a: 0.7 },
+    { drop: [330, 130, 2.5], colour: '#f4d03f' }, { drop: [100, 210, 2.5], colour: '#9fd3df' },
+  ],
+  immunity: [
+    { at: [152, 224], colour: ORANGE, a: 0.6 },        // the whole orange
+    { at: [275, 310], colour: ORANGE, a: 0.55 },       // the half: its peel
+    { at: [297, 202], colour: '#fde3b0', a: 0.55 },    // its pith
+    { at: [297, 240], colour: '#fde3b0', a: 0.5 },
+    { at: [277, 201], colour: '#f4ae46', a: 0.6 },     // its segments
+    { at: [315, 205], colour: '#f4ae46', a: 0.6 },
+    { at: [245, 217], colour: '#f4ae46', a: 0.6 },
+    { at: [345, 227], colour: '#f4ae46', a: 0.6 },
+    { at: [243, 250], colour: '#f4ae46', a: 0.6 },
+    { at: [349, 260], colour: '#f4ae46', a: 0.6 },
+    { at: [276, 275], colour: '#f4ae46', a: 0.6 },
+    { at: [318, 279], colour: '#f4ae46', a: 0.6 },
+    { at: [143, 79], colour: '#86a86b', a: 0.55 },     // the leaves
+    { at: [129, 97], colour: LEAF, a: 0.6 },
+    { at: [256, 107], colour: LEAF, a: 0.6 },
+    { at: [194, 112], colour: '#7d532c', a: 0.55 },    // the stem
+    { drop: [60, 330, 3], colour: ORANGE }, { drop: [378, 300, 3.5], colour: ORANGE }, { drop: [90, 140, 2.5], colour: LEAF },
+  ],
+  recovery: [
+    { shape: '<ellipse cx="200" cy="215" rx="150" ry="68"/>', within: '<rect x="0" y="0" width="400" height="258"/>', colour: '#f8c291', a: 0.22 }, // the warm sky
+    { at: [200, 234], colour: '#eeb246', a: 0.6 },     // the sun
+    { at: [73, 165], colour: '#cfe0ef', a: 0.55 },     // the cloud
+    { shape: '<ellipse cx="200" cy="270" rx="175" ry="11"/>', within: '<rect x="0" y="261" width="400" height="60"/>', colour: '#9cc59a', a: 0.3 }, // the ground
+    { drop: [300, 120, 2.5], colour: '#eeb246' }, { drop: [345, 285, 2.5], colour: '#9cc59a' },
+  ],
+  'vitamin-d': [
+    { shape: '<ellipse cx="200" cy="200" rx="70" ry="152"/>', colour: '#f7d774', a: 0.22 }, // a sunny glow
+    { at: [200, 200], colour: '#efe3c4', a: 0.8 },     // the bone
+    { drop: [120, 130, 2.5], colour: '#f7d774' }, { drop: [285, 260, 2.5], colour: '#f7d774' },
+  ],
+  longevity: [
+    { at: [242, 124], colour: '#86a86b', a: 0.55 },    // the leaves
+    { at: [246, 138], colour: LEAF, a: 0.6 },
+    { at: [158, 172], colour: '#86a86b', a: 0.55 },
+    { at: [154, 185], colour: LEAF, a: 0.6 },
+    { shape: '<ellipse cx="200" cy="88" rx="5" ry="16"/>', colour: '#9ccc65', a: 0.6 }, // the bud
+    { at: [200, 296], colour: '#8d6e4f', a: 0.55 },    // the soil
+    { drop: [300, 185, 2.5], colour: LEAF }, { drop: [115, 255, 2.5], colour: '#8d6e4f' },
+  ],
+  skin: [
+    { shape: '<path d="M196 18 L240 60 Q246 80 252 95 Q270 105 290 115 L293 128 L286 142 L294 152 L290 168 L299 180 L310 200 L306 216 L288 226 L255 229 L215 230 L193 224 Q182 150 188 70 Z"/>', colour: SKIN, a: 0.48 }, // her face
+    { shape: '<circle cx="252" cy="178" r="17"/>', colour: '#f19c9c', a: 0.3 },  // a blush
+    { shape: '<ellipse cx="283" cy="164" rx="10" ry="6"/>', colour: '#e07a7a', a: 0.5 }, // her lips
+    { shape: '<path d="M228 232 L268 231 L252 262 L240 292 L226 290 Z"/>', colour: SKIN, a: 0.3 }, // her neck
+    { drop: [325, 125, 2.5], colour: '#f19c9c' },
+  ],
+  hair: [
+    { at: [139, 113], colour: '#8b5a3c', a: 0.5 },     // her hair
+    { at: [230, 128], colour: '#8b5a3c', a: 0.5 },
+    { at: [131, 180], colour: '#8b5a3c', a: 0.5 },
+    { at: [189, 58], colour: '#8b5a3c', a: 0.5 },
+    { at: [207, 72], colour: '#8b5a3c', a: 0.5 },
+    { at: [241, 219], without: '<path d="M178 170 L234 178 L240 248 L196 252 L176 214 Z"/>', colour: '#8b5a3c', a: 0.5 },
+    { shape: '<path d="M150 52 Q100 70 85 130 Q55 165 45 210 Q20 258 30 290 Q55 320 95 336 Q124 312 116 272 Q103 236 124 206 Q140 172 160 132 Q176 100 186 70 Z"/>', colour: '#8b5a3c', a: 0.45 },
+    { shape: '<ellipse cx="203" cy="140" rx="27" ry="40"/>', colour: SKIN, a: 0.42 }, // her face
+    { shape: '<path d="M182 176 L232 182 L236 240 L198 246 L182 214 Z"/>', colour: SKIN, a: 0.32 }, // her neck
+    { shape: '<ellipse cx="214" cy="159" rx="7" ry="4.5"/>', colour: '#e07a7a', a: 0.5 }, // her lips
+    { drop: [40, 200, 2.5], colour: '#8b5a3c' }, { drop: [320, 255, 2.5], colour: '#8b5a3c' },
+  ],
+  signature: [
+    { at: [200, 56], colour: '#c9a227', a: 0.6 },      // the nib
+    { art: 3, grow: 9, colour: '#6a9cc9', a: 0.45 },   // the bluebird
+    { art: 3, grow: 9, within: '<ellipse cx="238" cy="232" rx="22" ry="15" transform="rotate(-35 238 232)"/>', colour: '#f0a35e', a: 0.4 }, // its breast
+    { drop: [125, 115, 2.5], colour: '#6a9cc9' }, { drop: [292, 205, 2.5], colour: '#6a9cc9' },
+  ],
 };
 
-// Watercolour, as an SVG filter: the patches' edges rippled, softened,
-// darker where the paint pooled at the rim, with the grain of the paper.
-const FILTER = (seed) => `
-<filter id="wc" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-  <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="${seed}" result="warp"/>
-  <feDisplacementMap in="SourceGraphic" in2="warp" scale="30" xChannelSelector="R" yChannelSelector="G" result="shape"/>
-  <feGaussianBlur in="shape" stdDeviation="2.4" result="soft"/>
-  <feMorphology in="soft" operator="erode" radius="3.2" result="inner"/>
+// Watercolour, as an SVG filter: the edges rippled and softened, a darker
+// rim where the paint pooled, uneven pigment, and the grain of the paper.
+// (Sizes in the drawing's units; k: pixels per unit where it's applied.)
+const FILTER = (seed, k) => `
+<filter id="wc" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="${0.03 / k}" numOctaves="3" seed="${seed}" result="warp"/>
+  <feDisplacementMap in="SourceGraphic" in2="warp" scale="${18 * k}" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+  <feGaussianBlur in="shape" stdDeviation="${1.5 * k}" result="soft"/>
+  <feMorphology in="soft" operator="erode" radius="${2 * k}" result="inner"/>
   <feComposite in="soft" in2="inner" operator="out" result="rim"/>
-  <feGaussianBlur in="rim" stdDeviation="1.3" result="rimSoft"/>
-  <feTurbulence type="fractalNoise" baseFrequency="0.32" numOctaves="3" seed="${seed + 5}" result="grain"/>
-  <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.55 1.08" result="grainA"/>
-  <feComposite in="soft" in2="grainA" operator="in" result="grained"/>
-  <feMerge><feMergeNode in="grained"/><feMergeNode in="rimSoft"/><feMergeNode in="rimSoft"/></feMerge>
+  <feGaussianBlur in="rim" stdDeviation="${0.9 * k}" result="rimSoft"/>
+  <feTurbulence type="fractalNoise" baseFrequency="${0.014 / k}" numOctaves="2" seed="${seed + 3}" result="pigment"/>
+  <feColorMatrix in="pigment" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0.3" result="pigmentA"/>
+  <feComposite in="soft" in2="pigmentA" operator="in" result="uneven"/>
+  <feTurbulence type="fractalNoise" baseFrequency="${0.45 / k}" numOctaves="2" seed="${seed + 5}" result="grain"/>
+  <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.35 1.05" result="grainA"/>
+  <feComposite in="uneven" in2="grainA" operator="in" result="grained"/>
+  <feMerge><feMergeNode in="grained"/><feMergeNode in="rimSoft"/></feMerge>
 </filter>`;
-
-const washSVG = (w, seed) => {
-  const patches = w.patches.map(([shape, colour, strength]) => `<g fill="${colour}" fill-opacity="${strength}" style="mix-blend-mode:multiply">${shape}</g>`).join('');
-  const drops = w.drops.map(([x, y, r, colour]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${colour}" fill-opacity="0.6"/>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -40 480 480" width="${SIZE}" height="${SIZE}"><defs>${FILTER(seed)}</defs><g filter="url(#wc)" style="isolation:isolate">${patches}${drops}</g></svg>`;
-};
 
 // The splash the colour spreads through: white, its edge ragged and soft.
 const SPLAT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -40 480 480" width="${SIZE}" height="${SIZE}"><defs>
@@ -232,6 +244,10 @@ const SPLAT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -40 480 480"
 </filter></defs><g filter="url(#rag)"><circle cx="200" cy="200" r="170" fill="#fff"/>
 <circle cx="345" cy="120" r="12" fill="#fff"/><circle cx="60" cy="300" r="10" fill="#fff"/><circle cx="300" cy="350" r="8" fill="#fff"/></g></svg>`;
 
+const context = { window: {} };
+vm.runInNewContext(readFileSync(path.join(ROOT, 'data', 'line-art.js'), 'utf8'), context);
+const ART = context.window.LINE_ART;
+
 let pw;
 try { pw = createRequire(path.join(ROOT, 'package.json'))('playwright'); } catch {
   console.error('This needs Playwright: npm install --no-save playwright && npx playwright install chromium');
@@ -241,25 +257,135 @@ await mkdir(OUT, { recursive: true });
 const browser = await pw.chromium.launch();
 const page = await browser.newPage();
 await page.setContent('<!doctype html><html><body></body></html>');
-// Draws an SVG onto a canvas and returns it as WebP (with transparency).
-const toWebP = (svg) => page.evaluate(async ({ svg, size }) => {
+
+// Paints one drawing's wash in the browser and returns it as WebP bytes.
+const paint = (art, parts, seed, filter) => page.evaluate(async ({ art, parts, seed, filter, SIZE }) => {
+  const S = 2, M = 40, W = 480 * S; // work at 2px per unit
+  const canvas = () => { const c = document.createElement('canvas'); c.width = c.height = W; return c; };
+  const toUnits = (g) => g.setTransform(S, 0, 0, S, M * S, M * S);
+  const matrix = (t) => { const el = document.createElementNS('http://www.w3.org/2000/svg', 'g'); el.setAttribute('transform', t); return el.transform.baseVal.consolidate().matrix; };
+  // The drawing's lines, a little thicker, as the walls that shapes are filled up to.
+  const walls = canvas(); const wg = walls.getContext('2d'); toUnits(wg);
+  wg.lineCap = 'round'; wg.lineJoin = 'round'; wg.strokeStyle = '#000'; wg.fillStyle = '#000';
+  for (const p of art.paths) {
+    const o = typeof p === 'string' ? { d: p } : p;
+    wg.save();
+    let width = 5;
+    if (o.transform) { const m = matrix(o.transform); wg.transform(m.a, m.b, m.c, m.d, m.e, m.f); width /= Math.hypot(m.a, m.b); }
+    wg.lineWidth = width;
+    if (o.fill) wg.fill(new Path2D(o.d)); else wg.stroke(new Path2D(o.d));
+    wg.restore();
+  }
+  const wall = wg.getImageData(0, 0, W, W).data;
+  // A shape (SVG) drawn white on a canvas.
+  const drawSVG = async (svg) => {
+    const img = new Image();
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -40 480 480" width="${W}" height="${W}"><g fill="#fff">${svg}</g></svg>`)}`;
+    await img.decode();
+    const c = canvas(); c.getContext('2d').drawImage(img, 0, 0); return c;
+  };
+  const artShape = (n) => { const o = art.paths[n]; return `<path d="${o.d}"${o.transform ? ` transform="${o.transform}"` : ''}/>`; };
+  // The closed shape around a point: filled outwards up to the walls.
+  const region = (x, y) => {
+    // (the nearest point off the lines, if it's right on one)
+    let start = -1;
+    for (let r = 0; r <= 4 && start < 0; r++) {
+      for (let dy = -r; dy <= r && start < 0; dy++) for (let dx = -r; dx <= r && start < 0; dx++) {
+        const i = Math.round((y + M) * S + dy) * W + Math.round((x + M) * S + dx);
+        if (wall[i * 4 + 3] <= 40) start = i;
+      }
+    }
+    if (start < 0) throw new Error(`(${x}, ${y}) is on a line`);
+    const seen = new Uint8Array(W * W); const stack = [start]; seen[start] = 1; let n = 0;
+    while (stack.length) {
+      const i = stack.pop(); n++;
+      const px = i % W;
+      if (px === 0 || px === W - 1 || i < W || i >= W * (W - 1)) throw new Error(`(${x}, ${y}) isn't inside a closed shape`);
+      for (const j of [i - 1, i + 1, i - W, i + W]) if (!seen[j] && wall[j * 4 + 3] <= 40) { seen[j] = 1; stack.push(j); }
+    }
+    const c = canvas(); const g = c.getContext('2d'); const im = g.createImageData(W, W);
+    for (let i = 0; i < W * W; i++) if (seen[i]) im.data.set([255, 255, 255, 255], i * 4);
+    g.putImageData(im, 0, 0); return c;
+  };
+  // Spread a shape out by r units (so the colour runs a little under the lines).
+  const grow = (c, r) => {
+    const out = canvas(); const g = out.getContext('2d');
+    g.filter = `blur(${r * S * 0.6}px)`; g.drawImage(c, 0, 0); g.filter = 'none';
+    const im = g.getImageData(0, 0, W, W);
+    for (let i = 3; i < im.data.length; i += 4) im.data[i] = im.data[i] > 20 ? 255 : 0;
+    g.putImageData(im, 0, 0); return out;
+  };
+  const layers = [];
+  for (const part of parts) {
+    let c;
+    if (part.drop) {
+      c = await drawSVG(`<circle cx="${part.drop[0]}" cy="${part.drop[1]}" r="${part.drop[2]}"/>`);
+      part.a = 0.6;
+    } else {
+      if (part.at) c = grow(region(...part.at), part.grow ?? 3.5);
+      else if (part.art !== undefined) c = grow(await drawSVG(artShape(part.art)), part.grow ?? 3);
+      else c = await drawSVG(part.shape);
+      if (part.at && part.shape) { const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-in'; g.drawImage(await drawSVG(part.shape), 0, 0); }
+      if (part.within) { const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-in'; g.drawImage(await drawSVG(part.within), 0, 0); }
+      if (part.without) { const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-out'; g.drawImage(await drawSVG(part.without), 0, 0); }
+    }
+    // Coloured in, as a painter would: lighter and thinner where the light
+    // falls (from the top left), the colour itself in the middle, and
+    // deeper, warmer shade on the far side, so each shape has some form.
+    const g = c.getContext('2d');
+    g.globalCompositeOperation = 'source-in';
+    if (part.drop || part.flat) {
+      g.fillStyle = part.colour; g.globalAlpha = part.a; g.fillRect(0, 0, W, W);
+    } else {
+      const im = g.getImageData(0, 0, W, W).data;
+      let x0 = W, y0 = W, x1 = 0, y1 = 0;
+      for (let i = 3; i < im.length; i += 4) if (im[i]) { const p = (i - 3) / 4, x = p % W, y = (p / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+      const rgb = (hex) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+      const mix = (a, b, t) => a.map((v, k) => Math.round(v + (b[k] - v) * t));
+      const base = rgb(part.colour);
+      const light = mix(base, [255, 252, 245], 0.42);
+      const shade = mix(base, [62, 40, 32], 0.3);
+      const rgba = (c, al) => `rgba(${c.join(',')},${Math.min(0.95, al).toFixed(3)})`;
+      const gr = g.createRadialGradient(x0 + w * 0.3, y0 + h * 0.26, 0, x0 + w * 0.3, y0 + h * 0.26, Math.hypot(w, h) * 0.85);
+      gr.addColorStop(0, rgba(light, part.a * 0.7));
+      gr.addColorStop(0.42, rgba(base, part.a));
+      gr.addColorStop(1, rgba(shade, part.a * 1.12));
+      g.fillStyle = gr; g.fillRect(0, 0, W, W);
+    }
+    layers.push(c.toDataURL('image/png'));
+  }
+  // The colours, overlapping like glazes, made watercolour.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${W} ${W}" width="${SIZE}" height="${SIZE}"><defs>${filter}</defs><g filter="url(#wc)" style="isolation:isolate">${layers.map((u) => `<image href="${u}" width="${W}" height="${W}" style="mix-blend-mode:multiply"/>`).join('')}</g></svg>`;
   const img = new Image();
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   await img.decode();
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  canvas.getContext('2d').drawImage(img, 0, 0, size, size);
-  const blob = await new Promise((r) => canvas.toBlob(r, 'image/webp', 0.8));
+  const out = document.createElement('canvas'); out.width = out.height = SIZE;
+  out.getContext('2d').drawImage(img, 0, 0, SIZE, SIZE);
+  const blob = await new Promise((r) => out.toBlob(r, 'image/webp', 0.8));
   return [...new Uint8Array(await blob.arrayBuffer())];
-}, { svg, size: SIZE });
+}, { art, parts, seed, filter, SIZE });
 
+const only = process.argv.slice(2);
 let seed = 7;
-for (const [id, w] of Object.entries(WASHES)) {
-  const bytes = await toWebP(washSVG(w, seed++));
+for (const [id, parts] of Object.entries(WASHES)) {
+  seed++;
+  if (only.length && !only.includes(id)) continue;
+  const bytes = await paint(ART[id], parts, seed, FILTER(seed, 2));
   await writeFile(path.join(OUT, `${id}.webp`), Buffer.from(bytes));
   console.log(`images/washes/${id}.webp`, `${Math.round(bytes.length / 1024)} KB`);
 }
-const splat = await toWebP(SPLAT);
-await writeFile(path.join(OUT, 'splat.webp'), Buffer.from(splat));
-console.log('images/washes/splat.webp', `${Math.round(splat.length / 1024)} KB`);
+if (!only.length || only.includes('splat')) {
+  const splat = await page.evaluate(async ({ svg, size }) => {
+    const img = new Image();
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    await img.decode();
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    c.getContext('2d').drawImage(img, 0, 0, size, size);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/webp', 0.8));
+    return [...new Uint8Array(await blob.arrayBuffer())];
+  }, { svg: SPLAT, size: SIZE });
+  await writeFile(path.join(OUT, 'splat.webp'), Buffer.from(splat));
+  console.log('images/washes/splat.webp', `${Math.round(splat.length / 1024)} KB`);
+}
 await browser.close();
