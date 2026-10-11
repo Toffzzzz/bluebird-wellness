@@ -15,6 +15,10 @@
      Coming back to a page with Back or Forward (the browser showing it as
      it was), they start afresh and draw themselves again as they come
      into view.
+   - window.SiteWash: a drawing's watercolour wash (images/washes/) splashes
+     out behind it once it has been drawn: paint(svg) spreads it, clear(svg)
+     hides it again, watch(root) loads the washes in root as they come near
+     the screen. With reduced motion it's simply there.
    ========================================================================== */
 
 (() => {
@@ -80,6 +84,59 @@
   // Line drawings that draw themselves once they come into view.
   const DRAW = { duration: 1.5, stroke: 0.7 }; // seconds in all, and for each stroke
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window);
+
+  // Watercolour washes. A drawing's wash is an <image class="wash"> behind
+  // its lines, seen through a mask holding the ragged splash shape: once the
+  // drawing is drawn, the splash grows from nothing until it covers the
+  // whole wash (fast at first, then slowing, as paint spreading on wet
+  // paper), while the wash fades in and opens out a little.
+  const WASH = { duration: 1.6, spread: 2.7 }; // seconds; how large the splash grows (2.7 covers it all)
+  const washOf = (svg) => (svg ? svg.querySelector('image.wash') : null);
+  const loadWash = (img) => { if (img.dataset.href && !img.getAttribute('href')) img.setAttribute('href', img.dataset.href); };
+  const nearWash = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      nearWash.unobserve(entry.target);
+      loadWash(entry.target);
+    }
+  }, { rootMargin: '800px 0px' }) : null;
+  const showWash = (img, splash, u) => {
+    const e = 1 - Math.pow(1 - u, 3);
+    const grow = (k) => `translate(200 200) scale(${k.toFixed(4)}) translate(-200 -200)`;
+    splash.setAttribute('transform', grow(WASH.spread * e));
+    img.setAttribute('transform', grow(0.94 + 0.06 * e));
+    img.setAttribute('opacity', String(Math.min(1, u * 3)));
+  };
+  const paintWash = (svg, now = false) => {
+    const img = washOf(svg);
+    if (!img) return;
+    loadWash(img);
+    const splash = svg.querySelector(`${img.getAttribute('mask').slice(4, -1)} image`);
+    const run = img.__run = (img.__run || 0) + 1;
+    if (now || still) { showWash(img, splash, 1); return; }
+    const start = performance.now();
+    const frame = (t) => {
+      if (img.__run !== run) return; // cleared or painted again since
+      const u = Math.min(1, Math.max(0, (t - start) / (WASH.duration * 1000)));
+      showWash(img, splash, u);
+      if (u < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  };
+  const clearWash = (svg) => {
+    const img = washOf(svg);
+    if (!img) return;
+    img.__run = (img.__run || 0) + 1;
+    img.setAttribute('opacity', '0');
+    svg.querySelector(`${img.getAttribute('mask').slice(4, -1)} image`).setAttribute('transform', 'scale(0)');
+  };
+  const watchWashes = (root) => {
+    if (!root) return;
+    for (const img of root.querySelectorAll('image.wash[data-href]')) {
+      if (nearWash) nearWash.observe(img); else loadWash(img);
+    }
+  };
+  window.SiteWash = { paint: paintWash, clear: clearWash, watch: watchWashes };
   const drawIn = (svg) => {
     const box = svg.getBoundingClientRect();
     const parts = [...svg.querySelectorAll('path')].map((el) => {
@@ -119,15 +176,23 @@
           if (u < 1) more = true;
         }
         if (more) requestAnimationFrame(frame);
-        else entry.target.classList.add('is-drawn');
+        else {
+          entry.target.classList.add('is-drawn');
+          paintWash(entry.target);
+        }
       };
       requestAnimationFrame(frame);
     }
   }, { threshold: 0.35 });
   const watch = (root) => {
     if (!root) return;
+    watchWashes(root);
     for (const svg of root.querySelectorAll('svg[data-draw]')) {
-      if (svg.__draw || still) { svg.classList.add('is-drawn'); continue; }
+      if (svg.__draw || still) {
+        svg.classList.add('is-drawn');
+        if (still) paintWash(svg, true);
+        continue;
+      }
       svg.__draw = drawIn(svg);
       svg.__draw.parts.forEach((p) => svg.__draw.set(p, 0));
       seen.observe(svg);
@@ -144,6 +209,7 @@
       if (!svg.__draw) continue;
       svg.__run = (svg.__run || 0) + 1;
       svg.classList.remove('is-drawn');
+      clearWash(svg);
       svg.__draw.parts.forEach((p) => svg.__draw.set(p, 0));
       seen.unobserve(svg);
       seen.observe(svg);

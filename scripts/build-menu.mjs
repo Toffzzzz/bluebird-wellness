@@ -726,7 +726,9 @@ const bookHref = (up) => (SITE.bookingUrl ? esc(SITE.bookingUrl) : `${up}#book`)
 /* ---------- Treatment page ---------- */
 
 // A treatment's line drawing (a Pro drip shows its standard version's), as
-// inline SVG; site.js draws it in from the top down as it comes into view.
+// inline SVG; site.js draws it in from the top down as it comes into view,
+// then its watercolour wash splashes out behind it (as on the home page:
+// washParts in script.js; here the pages are two folders down).
 function lineArtSVG(art, idPrefix) {
   const clips = [];
   const paths = art.paths.map((p, k) => {
@@ -737,7 +739,10 @@ function lineArtSVG(art, idPrefix) {
     clips.push(`<clipPath id="${idPrefix}-${k}"><rect x="${x}" y="${y}" width="${w}" height="${h}" data-h="${h}"/></clipPath>`);
     return `<path class="tx-art__fill" d="${esc(o.d)}"${move} clip-path="url(#${idPrefix}-${k})"/>`;
   }).join('');
-  return `<svg class="line-art" viewBox="0 0 400 400" data-draw aria-hidden="true" focusable="false"><defs>${clips.join('')}</defs><g class="tx-art">${paths}</g></svg>`;
+  const id = `${idPrefix}-wash`;
+  const washDefs = art.wash ? `<mask id="${id}" maskUnits="userSpaceOnUse" x="-40" y="-40" width="480" height="480"><image href="../../images/washes/splat.webp" x="-40" y="-40" width="480" height="480" transform="scale(0)"/></mask>` : '';
+  const wash = art.wash ? `<image class="wash" data-href="../../${esc(art.wash)}" x="-40" y="-40" width="480" height="480" mask="url(#${id})" opacity="0"/>` : '';
+  return `<svg class="line-art" viewBox="0 0 400 400" data-draw aria-hidden="true" focusable="false"><defs>${clips.join('')}${washDefs}</defs>${wash}<g class="tx-art">${paths}</g></svg>`;
 }
 
 function pictureHTML(drip, v) {

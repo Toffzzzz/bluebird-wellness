@@ -199,6 +199,10 @@ ART['signature'] = {
 
 order = ['hydration', 'energy', 'myers', 'iron', 'muscle-recovery', 'nad', 'detox', 'immunity', 'recovery', 'vitamin-d', 'longevity', 'skin', 'hair', 'signature']
 out = {k: ART[k] for k in order}
+# Each drawing's watercolour wash (painted by paint-washes.mjs), if it has one.
+for k in order:
+    if os.path.exists(os.path.join(ROOT, 'images', 'washes', f'{k}.webp')):
+        out[k] = {**out[k], 'wash': f'images/washes/{k}.webp'}
 js = """/* ==========================================================================
    Bluebird Wellness: the line drawings (the "line-drawings" version of the
    featured treatments; script.js, TX_STYLE = 'lines')
@@ -210,7 +214,9 @@ js = """/* =====================================================================
      - paths: the strokes, each written from its highest end, because each
        is drawn as the middle of the screen passes down through it. A path
        is an SVG path string, or { d, transform } for a moved or turned one;
-     - alt: what the drawing shows, for screen readers.
+     - alt: what the drawing shows, for screen readers;
+     - wash: its watercolour wash (images/washes/, scripts/line-art/
+       paint-washes.mjs), which splashes out behind it once it's drawn.
    All drawn with one even, round-ended line in the main violet (styles.css).
    ========================================================================== */
 

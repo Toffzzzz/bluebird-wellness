@@ -9,7 +9,9 @@
      - paths: the strokes, each written from its highest end, because each
        is drawn as the middle of the screen passes down through it. A path
        is an SVG path string, or { d, transform } for a moved or turned one;
-     - alt: what the drawing shows, for screen readers.
+     - alt: what the drawing shows, for screen readers;
+     - wash: its watercolour wash (images/washes/, scripts/line-art/
+       paint-washes.mjs), which splashes out behind it once it's drawn.
    All drawn with one even, round-ended line in the main violet (styles.css).
    ========================================================================== */
 
@@ -58,7 +60,8 @@ window.LINE_ART = {
       "M157.9 344.1 L161.8 345.7 L171.9 346.5 L234.4 346.5 L243.7 345.8 L272.4 346.5 L315.6 346.5 L316.2 346.1",
       "M101 345.7 L104.7 346.3 L123.2 346.2 L126.2 345.8",
       "M43.7 346.5 L73.7 346.5"
-    ]
+    ],
+    "wash": "images/washes/hydration.webp"
   },
   "energy": {
     "alt": "A line drawing of a woman in running leggings at full stride, side on",
@@ -108,7 +111,8 @@ window.LINE_ART = {
       "M62.2 346.4 L63.7 347.9 L63.7 349.6 L58.6 358.4 L56.1 365.7 L55.2 370.1 L55.6 371.9 L56.7 374.2 L62.5 379.6 L62.5 380.4",
       "M41.1 351.3 L42.7 359.6 L43 370.3 L44.6 375.2 L46.6 377.7 L49.9 379.8 L54.2 381.1 L59.4 381.8",
       "M12 384.9 L200 384.9"
-    ]
+    ],
+    "wash": "images/washes/energy.webp"
   },
   "myers": {
     "alt": "A line drawing of two small bottles pouring into a round flask",
@@ -132,7 +136,8 @@ window.LINE_ART = {
       "M142 264 L258 264",
       "M184 297 A5 5 0 0 1 184 307 A5 5 0 0 1 184 297",
       "M216 314 A4 4 0 0 1 216 322 A4 4 0 0 1 216 314"
-    ]
+    ],
+    "wash": "images/washes/myers.webp"
   },
   "iron": {
     "alt": "A line drawing of an IV drip bag filled with liquid, with Fe, the symbol for iron, in the liquid",
@@ -158,7 +163,8 @@ window.LINE_ART = {
       "M172 285 A3 3 0 0 1 172 291 A3 3 0 0 1 172 285",
       "M186 322 L186 344 L214 344 L214 322",
       "M200 344 L200 384"
-    ]
+    ],
+    "wash": "images/washes/iron.webp"
   },
   "muscle-recovery": {
     "alt": "A line drawing of a man at the bottom of a deadlift, gripping a barbell with a big plate at each end",
@@ -221,7 +227,8 @@ window.LINE_ART = {
       "M163.9 308.5 L171.3 309.8 L181.3 309.8 L198.4 312.4 L206.3 312.2 L213.9 310.5",
       "M114.5 313 L116.6 314.1 L124.6 315.3 L132.9 318.5 L139.4 319.3 L146.6 318.8 L152.7 317 L163.1 315.3 L169 315.9 L185.9 315.6 L200.4 316.3 L213.4 315.2 L250.9 315.3 L263.9 314.7 L295.2 315.3",
       "M25.5 322.7 L42 322.7"
-    ]
+    ],
+    "wash": "images/washes/muscle-recovery.webp"
   },
   "nad": {
     "alt": "A line drawing of a molecule: spheres joined by rods",
@@ -245,7 +252,8 @@ window.LINE_ART = {
       "M144.6 271.2 L177.3 289.4",
       "M255.4 271.2 L222.7 289.4",
       "M200 328 L200 340"
-    ]
+    ],
+    "wash": "images/washes/nad.webp"
   },
   "detox": {
     "alt": "A line drawing of a tall glass of water with a slice of lemon on the rim, a sprig of mint and two ice cubes",
@@ -279,7 +287,8 @@ window.LINE_ART = {
       "M162 284.5 L163.5 290.9 L174 323.3",
       "M135.7 348.1 L144 352.3 L155.1 355.5 L171.1 358.1 L189.9 359.3 L213.9 359.3 L229.7 358.1 L238.5 356.9 L253.4 353.6 L259.5 351.3 L265.9 348.1",
       "M308.9 384.1 L257.1 383.9 L233.6 386.7 L210.1 388 L178.5 387.5 L162 386.2 L144.5 383.8 L138.9 384.2 L97.2 384.1 L96.5 384.5"
-    ]
+    ],
+    "wash": "images/washes/detox.webp"
   },
   "immunity": {
     "alt": "A line drawing of a whole orange with its stem and two leaves, and half an orange showing its segments",
@@ -309,7 +318,8 @@ window.LINE_ART = {
       "M302.9 249.4 L304.7 249.6 L306.5 250.5 L311.6 254.6 L338.2 278 L345 284.9 L346.2 288.1 L345.9 289.4 L344.8 291.1 L341.2 293.2 L334.5 295.3 L324 297.3 L311.5 298.1 L305 297.5 L303.1 296.6 L301.6 295.2 L300.5 292.7 L299.9 289.2 L299.9 259.7 L300.5 252.4 L301.2 250.5 L302.9 249.4",
       "M221.2 311 L214.7 315.4 L209.1 318.3 L201.3 321.5 L192.7 324.2 L191.3 325.4",
       "M380.5 326.9 L379.8 327.3 L370 327.3 L337.1 326.9 L334.5 327.6 L321.6 333.2 L312.2 335.9 L300.9 337.9 L289.1 338.7 L278 338 L265.4 335.7 L256 332.8 L243.8 327.5 L240.4 326.8 L195.9 326.9 L188.9 326.2 L160.7 327.3 L139.3 326.1 L132.3 326.9 L74 326.9"
-    ]
+    ],
+    "wash": "images/washes/immunity.webp"
   },
   "recovery": {
     "alt": "A line drawing of the sun rising over the horizon, with a cloud and two birds",
@@ -330,7 +340,8 @@ window.LINE_ART = {
       "M286.9 242.4 L265.7 245.1",
       "M112.8 242.4 L133.6 245.1",
       "M388 259.4 L382.8 259.7 L18.1 259.7 L13.3 259.4"
-    ]
+    ],
+    "wash": "images/washes/recovery.webp"
   },
   "vitamin-d": {
     "alt": "A line drawing of a bone",
@@ -339,7 +350,8 @@ window.LINE_ART = {
     "paths": [
       "M200 65.4 A22 22 0 1 0 182 100 L182 300 A22 22 0 1 0 200 334.6",
       "M200 65.4 A22 22 0 1 1 218 100 L218 300 A22 22 0 1 1 200 334.6"
-    ]
+    ],
+    "wash": "images/washes/vitamin-d.webp"
   },
   "longevity": {
     "alt": "A line drawing of a young shoot with two leaves growing from the soil",
@@ -356,7 +368,8 @@ window.LINE_ART = {
       "M200 284 Q250 286 278 304",
       "M96 304 L200 304",
       "M304 304 L200 304"
-    ]
+    ],
+    "wash": "images/washes/longevity.webp"
   },
   "skin": {
     "alt": "A line drawing of a woman's face in profile, turned up, with her eyes closed",
@@ -371,7 +384,8 @@ window.LINE_ART = {
       "M263 169.3 L269.5 169.6 L272.4 169.2 L277.4 167.6 L286.5 163.8 L290.5 162.9 L292.9 163.1 L295 164 L298.2 166.6 L299.5 169.1 L300 171.9 L299.7 174.1 L297.7 178.7 L298.1 183.3 L299.9 186.9 L307.6 196.6 L309.5 200.8 L310.1 204.4 L310 208.5 L308.5 212.9 L306.5 215.8 L302.9 218.9 L297.8 221.6 L291.2 224.1 L273.1 228.2 L257.3 229.5 L245.7 230 L224 229.7 L209.4 228.3 L203.6 227.3 L197 225.3 L187.9 220.7",
       "M283.2 176.1 L290.2 176.8 L297.5 176.5",
       "M268.3 229.4 L267.4 230.4 L259.9 234.6 L253.8 240.3 L248.4 247.6 L244.5 255.5 L241.1 264.7 L238.1 275.9 L229.6 324.1 L227.3 334.3 L224.2 344.8 L219.5 356.7 L214.2 367.1 L205.1 381.3 L200 388"
-    ]
+    ],
+    "wash": "images/washes/skin.webp"
   },
   "hair": {
     "alt": "A line drawing of a woman with long, wavy hair, her eyes closed",
@@ -407,7 +421,8 @@ window.LINE_ART = {
       "M118 211 L118.1 219.7 L116.1 228.4 L112.5 235.8 L107.1 242.5 L102.5 246.2 L96.6 249.5 L91.3 251.6 L74.1 257.2 L63.9 262.2 L55.9 268.4 L52.5 272 L49.6 276.4 L47.6 280.5 L46 285.5 L45.5 289.7 L45.8 294.6 L48.3 302.5 L55.9 316.7 L57 320.7 L57.3 324.9 L55.9 330.4 L53.2 334.8 L49.2 338.5 L43.8 341.3",
       "M245.2 244.8 L249.1 247.4 L252.3 250.5 L254.9 253.9 L257.1 258 L260.5 266.6 L265 284.3 L267.3 291.1 L270 297.3 L274.7 304.2 L281 310.4 L287.6 314.6 L295.4 317.3 L305.7 318.4",
       "M113.5 267.1 L112.6 267.2 L98 274.7 L89.7 280.3 L85.7 284.1 L83.4 287 L81 291.1 L79.7 294.5 L79.3 297.6 L79.3 302.6 L81.1 308.5 L84.3 313.9 L93.7 326.2 L95.8 330.3 L97.1 334.8 L97.3 339.7 L96 344.8 L93.2 349.7 L89.5 353.3"
-    ]
+    ],
+    "wash": "images/washes/hair.webp"
   },
   "signature": {
     "alt": "A line drawing of a fountain pen nib above the Bluebird Wellness bird",
@@ -430,6 +445,7 @@ window.LINE_ART = {
       },
       "M130 356 L200 356",
       "M270 356 L200 356"
-    ]
+    ],
+    "wash": "images/washes/signature.webp"
   }
 };

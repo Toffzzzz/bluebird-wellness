@@ -589,6 +589,20 @@ function render() {
 const TX_STYLE = window.SITE && window.SITE.pictures === 'photos' ? 'videos' : 'lines';
 const LINES = TX_STYLE === 'lines' && !!window.LINE_ART;
 
+// A drawing's watercolour wash (data/line-art.js, images/washes/): behind the
+// lines, covering the drawing's box and 40 more on every side, hidden until
+// the drawing has been drawn; then it splashes out through a ragged splash
+// shape (site.js, SiteWash). It's only loaded as it comes near the screen.
+// up: the way back to the site's top folder ('' here).
+function washParts(art, idPrefix, up = '') {
+  if (!art.wash) return { defs: '', image: '' };
+  const id = `${idPrefix}-wash`;
+  return {
+    defs: `<mask id="${id}" maskUnits="userSpaceOnUse" x="-40" y="-40" width="480" height="480"><image href="${up}images/washes/splat.webp" x="-40" y="-40" width="480" height="480" transform="scale(0)"/></mask>`,
+    image: `<image class="wash" data-href="${esc(up + art.wash)}" x="-40" y="-40" width="480" height="480" mask="url(#${id})" opacity="0"/>`,
+  };
+}
+
 // A treatment's line drawing as an inline SVG. A filled shape (the logo) is
 // revealed from the top down through a clip, whose id starts with idPrefix.
 function lineArtSVG(art, idPrefix, attrs = '') {
@@ -602,7 +616,8 @@ function lineArtSVG(art, idPrefix, attrs = '') {
     clips.push(`<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" data-h="${h}"/></clipPath>`);
     return `<path class="tx-art__fill" d="${esc(o.d)}"${move} clip-path="url(#${id})"/>`;
   }).join('');
-  return `<svg viewBox="0 0 400 400"${attrs}><defs>${clips.join('')}</defs><g class="tx-art" data-top="${art.top}" data-bottom="${art.bottom}">${paths}</g></svg>`;
+  const wash = washParts(art, idPrefix);
+  return `<svg viewBox="0 0 400 400"${attrs}><defs>${clips.join('')}${wash.defs}</defs>${wash.image}<g class="tx-art" data-top="${art.top}" data-bottom="${art.bottom}">${paths}</g></svg>`;
 }
 
 const TREATMENT_VIDEO = {
@@ -758,6 +773,8 @@ function initLines(items, animated) {
       parts: [...segs, ...strokes], strokes,
       into: seg('in'), out: seg('out'), after: seg('after'),
       entry: [], exit: [], // the strokes the straight line runs into, and leaves from
+      svg: art.querySelector('svg'),
+      painted: false, // its watercolour wash has splashed out
       tip: 0, // how far down the section (px) the straight line has been drawn
       goal: 0, // and how far the pen has been
       auto: null, replay: null, done: false,
@@ -815,6 +832,17 @@ function initLines(items, animated) {
     }
   };
 
+  // A picture's watercolour wash (site.js): splashes out once it is drawn
+  // (at once when now is set, e.g. off the screen), and is hidden again
+  // when the drawings start afresh.
+  const wash = window.SiteWash;
+  const paint = (sec, now = false) => {
+    if (sec.painted || !wash) return;
+    sec.painted = true;
+    wash.paint(sec.svg, now);
+  };
+  if (wash) wash.watch(secs[0] ? secs[0].section.parentNode : null);
+
   // Shows how much of a part is drawn (0 to 1).
   const draw = (p, v) => {
     if (p.shown === v) return;
@@ -828,7 +856,7 @@ function initLines(items, animated) {
 
   if (!animated) {
     layout();
-    secs.forEach((sec) => sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); }));
+    secs.forEach((sec) => { sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); }); paint(sec, true); });
     const redo = () => { layout(); secs.forEach((sec) => sec.parts.forEach((p) => draw(p, 1))); };
     window.addEventListener('resize', redo, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(redo);
@@ -875,6 +903,8 @@ function initLines(items, animated) {
   const resetAll = () => {
     for (const sec of secs) {
       sec.done = false; sec.auto = null; sec.replay = null; sec.tip = 0; sec.goal = 0;
+      sec.painted = false;
+      if (wash) wash.clear(sec.svg);
       sec.parts.forEach((p) => { p.reached = 0; p.shown = -1; draw(p, 0); });
     }
     last = 0;
@@ -962,6 +992,7 @@ function initLines(items, animated) {
           sec.parts.forEach((p) => { p.reached = 1; draw(p, 1); });
           sec.tip = box.height;
           sec.done = true;
+          paint(sec, true);
           continue;
         }
         at = pen - box.top;
@@ -1005,6 +1036,8 @@ function initLines(items, animated) {
         if (v !== p.reached) moving = true;
         if (v < 1) all = false;
       }
+      // The picture is drawn: its watercolour splashes out behind it.
+      if (all) paint(sec);
       if (tip < box.height) { all = false; limit = tip - box.height; }
       if (direct) {
         if (finished && all) { sec.replay = null; sec.done = true; }
