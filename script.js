@@ -708,19 +708,18 @@ function lineSectionHTML(t, i) {
       </section>`;
 }
 
-// The line drawings, drawn by the scroll, as one continuous line: a single
-// pen comes down the middle of the page, draws each treatment's picture
-// stroke after stroke (always going on from the nearest point, so it reads
-// as one hand drawing it), then carries on down to the next. Only one
-// stroke is ever being drawn at a time, and the line never breaks between
-// the hero's bird, the drawings and the line between them.
-// Where the pen is: a little below the middle of the screen (LINE.pen):
-// as the page moves up, the line coming in reaches the top of the picture,
-// the picture is drawn while the pen goes from its top to its bottom, and
-// the line goes on from its bottom. It only ever draws forwards: once
-// drawn, a picture stays drawn when you scroll back up. Arriving by a jump
-// (the side list of names, a link), the picture draws itself. With reduced
-// motion everything is shown already drawn.
+// The line drawings, drawn by the scroll. The "pen" is a little below the
+// middle of the screen (LINE.pen): everything in a section above it is
+// drawn, and as the page moves up the line comes down the middle, draws the
+// treatment's picture from the top down, and carries on to the next. The
+// whole line follows the scroll with one gentle smoothing (the same for
+// every section and every part of a picture), so the straight line never
+// breaks: not between the hero's bird and the first drawing, not where it
+// goes into or out of a picture, and not between one section and the next.
+// It only ever draws forwards: once drawn, a picture stays drawn when you
+// scroll back up. Arriving by a jump (the side list of names, a link), the
+// picture draws itself. With reduced motion everything is shown already
+// drawn.
 // Coming back to the home page (Back from another page, or a link to one of
 // its sections) starts every drawing afresh: you stay where you were, the
 // drawing on the screen draws itself again, the ones below draw as you
@@ -735,42 +734,6 @@ const LINE = {
   jump: 1.6,      // seconds a picture takes to draw itself after a jump
   width: 3.2,     // px: the line's thickness, the same everywhere
 };
-
-// The order the pen draws a picture's strokes in: starting from where the
-// line comes in, each time the stroke with an end nearest to where the pen
-// is (drawn from that end), finishing with the stroke nearest to where the
-// line goes out. A filled shape (the logo) is revealed from its top down.
-function penOrder(strokes, entry, exit) {
-  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const left = strokes.slice();
-  const out = [];
-  let last = null;
-  if (left.length > 1) {
-    let best = Infinity; let bi = 0; let brev = false;
-    left.forEach((p, i) => {
-      const fwd = dist(p.end, exit);
-      const back = p.clip ? Infinity : dist(p.start, exit);
-      if (fwd < best) { best = fwd; bi = i; brev = false; }
-      if (back < best) { best = back; bi = i; brev = true; }
-    });
-    last = { p: left.splice(bi, 1)[0], rev: brev };
-  }
-  let at = entry;
-  while (left.length) {
-    let best = Infinity; let bi = 0; let brev = false;
-    left.forEach((p, i) => {
-      const fwd = dist(at, p.start);
-      const back = p.clip ? Infinity : dist(at, p.end);
-      if (fwd < best) { best = fwd; bi = i; brev = false; }
-      if (back < best) { best = back; bi = i; brev = true; }
-    });
-    const p = left.splice(bi, 1)[0];
-    out.push({ p, rev: brev });
-    at = brev ? p.start : p.end;
-  }
-  if (last) out.push(last);
-  return out;
-}
 
 function initLines(items, animated) {
   const html = document.documentElement;
@@ -787,13 +750,13 @@ function initLines(items, animated) {
     const strokes = [...g.querySelectorAll('path')].map((el) => ({
       el,
       clip: el.classList.contains('tx-art__fill') ? section.querySelector(`${el.getAttribute('clip-path').slice(4, -1)} rect`) : null,
-      len: 0, cost: 0, c0: 0, rev: false, start: null, end: null, shown: -1,
+      len: 0, y0: 0, y1: 0, shown: -1,
     }));
-    const segs = [...overlay.querySelectorAll('[data-seg]')].map((el) => ({ el, seg: true, len: 0, y0: 0, y1: 0, rev: false, shown: -1 }));
+    const segs = [...overlay.querySelectorAll('[data-seg]')].map((el) => ({ el, seg: true, len: 0, y0: 0, y1: 0, shown: -1 }));
     return {
       it, section, overlay, art, g, text: section.querySelector('.tx__text'),
       top: Number(g.dataset.top), bottom: Number(g.dataset.bottom),
-      segs, strokes, order: null, cost: 0, yA: 0, yB: 0,
+      parts: [...segs, ...strokes],
       at: -Infinity, // how far down the section the pen has been (px from its top); it never goes back
       auto: null, replay: null, done: false,
     };
@@ -813,71 +776,59 @@ function initLines(items, animated) {
       // (Measured without the text's rise-in movement.)
       const card = getComputedStyle(sec.text).position !== 'absolute';
       const textTop = offsetWithin(sec.text, null).top - offsetWithin(sec.section, null).top;
-      // The picture is drawn while the pen goes from where the line comes in (yA) to where it goes out (yB).
-      sec.yA = artTop + sec.top * scale;
-      sec.yB = artTop + sec.bottom * scale;
       const lines = {
-        in: [0, sec.yA],
-        out: [sec.yB, card ? textTop : box.height],
+        in: [0, artTop + sec.top * scale],
+        out: [artTop + sec.bottom * scale, card ? textTop : box.height],
         after: card ? [textTop + sec.text.offsetHeight, box.height] : null,
       };
-      for (const p of sec.segs) {
-        const span = lines[p.el.dataset.seg];
-        p.el.setAttribute('d', span ? `M${cx.toFixed(1)} ${span[0].toFixed(1)} V${span[1].toFixed(1)}` : '');
-        p.len = span ? Math.max(0, span[1] - span[0]) : 0;
-        p.y0 = span ? span[0] : 0;
-        p.y1 = span ? span[1] : 0;
+      for (const p of sec.parts) {
+        if (p.seg) {
+          const span = lines[p.el.dataset.seg];
+          p.el.setAttribute('d', span ? `M${cx.toFixed(1)} ${span[0].toFixed(1)} V${span[1].toFixed(1)}` : '');
+          p.len = span ? Math.max(0, span[1] - span[0]) : 0;
+          p.y0 = span ? span[0] : 0;
+          p.y1 = span ? span[1] : 0;
+        } else {
+          const r = p.el.getBoundingClientRect();
+          p.y0 = r.top - box.top;
+          p.y1 = r.bottom - box.top;
+          if (!p.clip) p.len = p.el.getTotalLength();
+        }
         if (p.y1 - p.y0 < LINE.minRange) p.y1 = p.y0 + LINE.minRange;
+        // A stroke that the straight line runs into (or out of) joins it
+        // without a break: it starts only once the line coming in has
+        // arrived, and is finished by the time the line going out starts
+        // (e.g. Signature's base line, drawn in towards the middle).
+        if (!p.seg && !p.clip && p.len) {
+          const m = p.el.getScreenCTM();
+          const end = (l) => { const q = p.el.getPointAtLength(l); return [m.a * q.x + m.c * q.y + m.e - box.left, m.b * q.x + m.d * q.y + m.f - box.top]; };
+          const ends = [end(0), end(p.len)];
+          const touches = (y) => ends.some(([x, ey]) => Math.hypot(x - cx, ey - y) < 2);
+          const into = lines.in[1], out = lines.out[0];
+          if (touches(into) && p.y0 < into) { p.y0 = into; p.y1 = Math.max(p.y1, into + LINE.minRange); }
+          if (touches(out) && p.y1 > out) { p.y0 = Math.min(p.y0, out - LINE.minRange); p.y1 = out; }
+        }
         p.shown = -1; // draw it afresh at its new size
       }
-      // Each stroke's length on the screen and its two ends (in the section's coordinates).
-      for (const p of sec.strokes) {
-        if (p.clip) {
-          const r = p.el.getBoundingClientRect();
-          p.cost = r.height;
-          p.start = { x: r.left + r.width / 2 - box.left, y: r.top - box.top };
-          p.end = { x: p.start.x, y: r.bottom - box.top };
-        } else {
-          p.len = p.el.getTotalLength();
-          const m = p.el.getScreenCTM();
-          const at = (l) => { const q = p.el.getPointAtLength(l); return { x: m.a * q.x + m.c * q.y + m.e - box.left, y: m.b * q.x + m.d * q.y + m.f - box.top }; };
-          p.cost = p.len * Math.hypot(m.a, m.b);
-          p.start = at(0);
-          p.end = at(p.len);
-        }
-        p.shown = -1;
-      }
-      // The order is the same at every size, so it's worked out once.
-      if (!sec.order) {
-        sec.order = penOrder(sec.strokes, { x: cx, y: sec.yA }, { x: cx, y: sec.yB });
-        sec.order.forEach((o) => { o.p.rev = o.rev; });
-      }
-      let c = 0;
-      for (const { p } of sec.order) { p.c0 = c; c += p.cost; }
-      sec.cost = c;
     }
   };
 
-  // Shows how much of a part is drawn (0 to 1), from its start (or, for a
-  // stroke the pen draws the other way, from its end).
+  // Shows how much of a part is drawn (0 to 1).
   const draw = (p, v) => {
     if (p.shown === v) return;
     p.shown = v;
     if (p.clip) { p.clip.setAttribute('height', String(Number(p.clip.dataset.h) * v)); return; }
     if (!p.len) return;
     p.el.style.strokeDasharray = `${p.len} ${p.len + 2}`;
-    p.el.style.strokeDashoffset = String(p.len * (1 - v) * (p.rev ? -1 : 1));
+    p.el.style.strokeDashoffset = String(p.len * (1 - v));
     p.el.style.visibility = v > 0.001 ? 'visible' : 'hidden';
   };
 
   // Draws a section as far as the pen at `at` (px from the section's top):
-  // the line coming in, then the picture's strokes one after another at an
-  // even pace, then the line going out.
+  // every part (the straight line and each stroke of the picture) is drawn
+  // as the pen passes down over it, from its top to its bottom.
   const drawTo = (sec, at) => {
-    for (const p of sec.segs) draw(p, clamp((at - p.y0) / (p.y1 - p.y0)));
-    const u = clamp((at - sec.yA) / Math.max(1, sec.yB - sec.yA));
-    const pos = u * sec.cost;
-    for (const p of sec.strokes) draw(p, u >= 1 ? 1 : p.cost ? clamp((pos - p.c0) / p.cost) : 0);
+    for (const p of sec.parts) draw(p, clamp((at - p.y0) / (p.y1 - p.y0)));
   };
 
   if (!animated) {
@@ -932,7 +883,7 @@ function initLines(items, animated) {
   const resetAll = () => {
     for (const sec of secs) {
       sec.done = false; sec.auto = null; sec.replay = null; sec.at = -Infinity;
-      [...sec.segs, ...sec.strokes].forEach((p) => { p.shown = -1; draw(p, 0); });
+      sec.parts.forEach((p) => { p.shown = -1; draw(p, 0); });
     }
     last = 0;
     sy = null;
