@@ -808,6 +808,10 @@ function initLines(items, animated) {
       sec.entry = at(lines.in[1]);
       sec.exit = at(lines.out[0]);
       sec.strokes.forEach((p) => { p.join = sec.entry.includes(p) || sec.exit.includes(p); });
+      // A level stroke the line leaves from (Signature's base line) is drawn
+      // over the scrolling just before the line goes on, not just after, so
+      // the line out keeps the same pace as the rest of the line.
+      sec.exit.forEach((p) => { if (p.y1 > lines.out[0]) { const span = p.y1 - p.y0; p.y1 = lines.out[0]; p.y0 = p.y1 - span; } });
     }
   };
 
@@ -877,12 +881,24 @@ function initLines(items, animated) {
   };
 
   // The hero's line grows down from the bird as the page opens (styles.css).
-  // While it's still growing and on the screen, the line below waits for it.
+  // The line below follows on from it. If the pen gets to it before it has
+  // finished growing (scrolling straight away), the pen draws the rest of it
+  // as part of the line, at the pace of the scroll, so the line below never
+  // has to wait and then rush to catch up.
   const heroLine = document.querySelector('.hero__bird-line');
-  const heroAnims = heroLine && heroLine.getAnimations ? heroLine.getAnimations().filter((a) => a.playState !== 'finished') : [];
-  let heroReady = !heroAnims.length;
-  if (!heroReady) Promise.all(heroAnims.map((a) => a.finished)).catch(() => {}).then(() => { heroReady = true; wake(); });
-  const heroWaits = () => !heroReady && heroLine.getBoundingClientRect().bottom > 0;
+  const heroAnim = heroLine && heroLine.getAnimations ? heroLine.getAnimations().find((a) => a.playState !== 'finished') : null;
+  let heroReady = !heroAnim;
+  let heroTip = -1; // once the pen draws it: how far down the hero's line is drawn (px)
+  if (!heroReady) heroAnim.finished.catch(() => {}).then(() => { if (heroTip < 0) { heroReady = true; wake(); } });
+  // How much of the hero's line is showing (0 to 1), from its clip (inset(top right bottom left)).
+  const heroGrown = (height) => {
+    const clip = getComputedStyle(heroLine).clipPath;
+    if (!clip || clip === 'none') return 1;
+    const v = (clip.match(/-?[\d.]+(e-?\d+)?(px|%)?/g) || []).map((x) => ({ n: parseFloat(x), pc: x.endsWith('%') }));
+    const b = v.length >= 3 ? v[2] : v[0];
+    if (!b) return 1;
+    return clamp(1 - (b.pc ? b.n / 100 : b.n / Math.max(height, 1)));
+  };
 
   let ticking = false;
   let last = 0;
@@ -896,8 +912,26 @@ function initLines(items, animated) {
     let moving = false;
     // How far the straight line may have come down the next section: no
     // further than the line above it has (so it never breaks between
-    // sections), and not at all below the hero's bird while its line grows.
-    let limit = heroWaits() ? 0 : Infinity;
+    // sections). The first section follows on from the hero's line.
+    let limit = Infinity;
+    if (!heroReady) {
+      const r = heroLine.getBoundingClientRect();
+      const want = Math.max(0, pen - r.top); // how far down from its top the pen is (on past its end, too)
+      if (heroTip < 0) {
+        const grown = heroGrown(r.height) * r.height;
+        if (r.bottom <= 0) { heroAnim.finish(); heroReady = true; } // off the screen: simply there
+        else if (want > grown + 0.5) { heroAnim.cancel(); heroTip = grown; } // the pen has caught it up: the pen draws the rest
+        else limit = 0; // still growing by itself, ahead of the pen
+      }
+      if (heroTip >= 0 && !heroReady) {
+        const goal = Math.max(heroTip, want);
+        heroTip = goal - heroTip < 0.5 ? goal : heroTip + (goal - heroTip) * k;
+        if (heroTip < goal) moving = true;
+        limit = heroTip - r.height;
+        if (heroTip >= r.height) { heroReady = true; heroLine.style.clipPath = ''; }
+        else heroLine.style.clipPath = `inset(0 0 ${(100 * (1 - heroTip / r.height)).toFixed(3)}% 0)`;
+      }
+    }
     for (const sec of secs) {
       const cap = limit;
       limit = Infinity;
