@@ -652,9 +652,12 @@ html.is-locked body { overflow: hidden; }
 
 .hero .eyebrow { color: var(--color-slate); }
 
+/* The headline: "London’s doctor‑led / IV service, wherever you are." Two
+   lines on laptops, three on phones ("IV service" is kept together), a
+   little smaller than --text-hero so the hero still fits the first screen. */
 .hero__title {
-  max-width: 12ch;
-  font-size: var(--text-hero);
+  max-width: 24ch;
+  font-size: clamp(40px, 6.4vw, 84px);
   font-weight: 300;
   line-height: 1.02;
   text-wrap: balance;
@@ -732,20 +735,27 @@ html.is-locked body { overflow: hidden; }
   stroke-dasharray: 1.002 1.002;
   opacity: 0;
 }
-/* The same width and colour as the central line, exactly on the centre. */
+/* The same width and colour as the central line, exactly on the centre:
+   drawn the same way as the line (an SVG line, not a box), so the two meet
+   without a step where the treatments begin. */
 .hero__bird-line {
   position: absolute;
   top: calc(var(--bird) * var(--tip-y) * 1px - 1px);
-  bottom: 0;
-  left: calc(50% - 1.6px);
-  width: 3.2px;
-  background: var(--color-bluebird);
-  transform-origin: 50% 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--bird) * var(--tip-y) * 1px + 1px);
+  overflow: visible;
+}
+.hero__bird-line line {
+  stroke: var(--color-bluebird);
+  stroke-width: 3.2px;
 }
 @media (max-width: 819.98px) {
   .hero { padding-top: calc(var(--header-h) + var(--space-48)); }
   .hero__inner { padding-bottom: var(--space-48); }
   .hero__bird { --bird: 72; --line: var(--space-48); }
+  /* Three lines on most phones; a touch smaller on the narrowest ones. */
+  .hero__title { font-size: clamp(34px, 10.3vw, 40px); }
 }
 
 /* Drawn once, as the page opens, after the hero's words have risen in (and
@@ -767,7 +777,10 @@ html.is-locked body { overflow: hidden; }
   to { stroke-dashoffset: 0; opacity: 0; }
 }
 @keyframes bird-in { from { opacity: 0; } }
-@keyframes bird-line { from { transform: scaleY(0); } }
+@keyframes bird-line {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
 
 /* ---------- Home page motion: the hero's entrance and gentle reveals ----------
    No library: the hero's words rise in with a CSS animation as the page

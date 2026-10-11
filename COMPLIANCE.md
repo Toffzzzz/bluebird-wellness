@@ -113,7 +113,7 @@ Line by line, the clinic should review these (the wording is in `data/drips.json
 
 ### The website's own wording (not from the menu)
 
-- "Doctor-led IV drips", "Every drip starts with a consultation with one of our doctors", "Led by our doctors, Dr Nema and Dr Mahdi": these must be literally true. The menu's disclaimer says treatments are prescribed by "a registered clinician", which is broader than "a doctor": make the two consistent. Check that both doctors are happy to be named, and follow the GMC's guidance on doctors and advertising.
+- "London’s doctor-led IV service, wherever you are" (the home page's headline): "wherever you are" should match where the mobile call-outs actually go (the call-out area). "Doctor-led IV drips" (the page's title and descriptions), "Every drip starts with a consultation with one of our doctors", "Led by our doctors, Dr Nema and Dr Mahdi": these must be literally true. The menu's disclaimer says treatments are prescribed by "a registered clinician", which is broader than "a doctor": make the two consistent. Check that both doctors are happy to be named, and follow the GMC's guidance on doctors and advertising.
 - The chat's suggestions ("Low energy or tiredness", "Hangover or dehydration", "Immunity support"…) are what a visitor might be looking for, not claims, but the adviser should see them. They're in `STEPS` in `chat.js`.
 - Treatment names such as "Immunity", "Detox", "Energy" and "Longevity" are themselves claims in the ASA's eyes; the adviser may suggest neutral names.
 
