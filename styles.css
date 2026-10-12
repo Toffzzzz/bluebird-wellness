@@ -618,6 +618,10 @@ html.is-locked body { overflow: hidden; }
    treatment's drawing. */
 
 .hero {
+  /* The bird's height (px) and its line's below it (set here, so the photo
+     can end just above the bird). */
+  --bird: 96;
+  --line: var(--space-64);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -704,8 +708,6 @@ html.is-locked body { overflow: hidden; }
    of its tail is, as shares of its width and height. That point sits on the
    centre line, and the line starts there. */
 .hero__bird {
-  --bird: 96;
-  --line: var(--space-64);
   position: relative;
   flex: none;
   width: 100%;
@@ -749,9 +751,60 @@ html.is-locked body { overflow: hidden; }
 @media (max-width: 819.98px) {
   .hero { padding-top: calc(var(--header-h) + var(--space-48)); }
   .hero__inner { padding-bottom: var(--space-48); }
-  .hero__bird { --bird: 72; --line: var(--space-48); }
+  .hero { --bird: 72; --line: var(--space-48); }
   /* Three lines on most phones; a touch smaller on the narrowest ones. */
   .hero__title { font-size: clamp(34px, 10.3vw, 40px); }
+}
+
+/* The opening screen's photo (heroPhoto in site-config.js), once it's in the
+   repo: across the whole width, from under the header to just above the
+   bird, the words in white over it on a soft ink shade. The bird and its
+   line stay on the off-white below it, so the line joins the treatments'
+   line exactly as before. The photo is simply there (no zoom, no fade). */
+.hero:has(> .hero__photo) {
+  --hero-gap: var(--space-24); /* between the photo and the bird */
+  isolation: isolate;
+  color: var(--color-white);
+}
+.hero:has(> .hero__photo) { --hero-photo-h: calc(100% - var(--header-h) - var(--bird) * 1px - var(--line) - var(--hero-gap)); }
+/* (A height, not top and bottom: a picture keeps its own shape otherwise.) */
+.hero > .hero__photo {
+  position: absolute;
+  top: var(--header-h);
+  left: 0;
+  z-index: -2;
+  width: 100%;
+  height: var(--hero-photo-h);
+  max-width: none;
+  object-fit: cover;
+  background: var(--color-ink);
+}
+.hero:has(> .hero__photo)::before {
+  content: '';
+  position: absolute;
+  top: var(--header-h);
+  left: 0;
+  width: 100%;
+  height: var(--hero-photo-h);
+  z-index: -1;
+  background: linear-gradient(to bottom, rgb(18 26 42 / 0.58) 0%, rgb(18 26 42 / 0.66) 45%, rgb(18 26 42 / 0.6) 100%);
+}
+/* The words centred in the photo (the same space above and below them). */
+.hero:has(> .hero__photo) .hero__inner { padding-bottom: calc(var(--space-64) + var(--hero-gap)); }
+.hero:has(> .hero__photo) .hero__lead,
+.hero:has(> .hero__photo) .hero__note { color: rgb(255 255 255 / 0.9); }
+/* Over the photo: Book now in off-white, Speak to a doctor outlined in white. */
+.hero:has(> .hero__photo) .btn--primary { background: var(--color-cream); color: var(--color-ink); }
+.hero:has(> .hero__photo) .btn--primary:hover,
+.hero:has(> .hero__photo) .btn--primary:active { background: var(--color-white); }
+.hero:has(> .hero__photo) .btn--outline { color: var(--color-white); border-color: rgb(255 255 255 / 0.8); }
+.hero:has(> .hero__photo) .btn--outline:hover { background: rgb(255 255 255 / 0.12); border-color: var(--color-white); }
+.hero:has(> .hero__photo) .hero__all,
+.hero:has(> .hero__photo) .hero__all:hover { color: var(--color-white); }
+.hero:has(> .hero__photo) .hero__all > span:first-child { text-decoration-color: rgb(255 255 255 / 0.5); }
+.hero:has(> .hero__photo) .hero__inner :focus-visible { outline-color: var(--color-white); box-shadow: none; }
+@media (max-width: 819.98px) {
+  .hero:has(> .hero__photo) .hero__inner { padding-bottom: calc(var(--space-48) + var(--hero-gap)); }
 }
 
 /* Drawn once, as the page opens, after the hero's words have risen in (and
@@ -3688,6 +3741,11 @@ html.is-locked body { overflow: hidden; }
 @media (max-width: 599.98px) {
   .about__photos:not(.about__photos--1) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16); }
 }
+/* Three: 3 across on laptops; 2 across with the third the full width below
+   them on tablets and phones (never one left on its own in a half). */
+@media (max-width: 899.98px) {
+  .about__photos--3 > li:last-child { grid-column: 1 / -1; }
+}
 @media (min-width: 900px) {
   .about__photos--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .about__photos--4, .about__photos--many { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -3735,7 +3793,8 @@ html.is-locked body { overflow: hidden; }
 }
 .tile > .tile__photo .photo-frame__tag,
 .gallery-band > .about__photo .photo-frame__tag,
-.book-panel > .book-panel__photo .photo-frame__tag { top: 12px; bottom: auto; left: 12px; }
+.book-panel > .book-panel__photo .photo-frame__tag,
+.hero > .hero__photo .photo-frame__tag { top: 12px; bottom: auto; left: 12px; }
 @media (max-width: 599.98px) {
   .doctor--photo { grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr); gap: var(--space-16); }
 }

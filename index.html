@@ -159,11 +159,17 @@
 
   <main id="main">
     <!-- ============ Hero ============
-         At the bottom, the bird draws itself (styles.css) and its line grows
+         Its photo (heroPhoto in site-config.js, between the photo:hero
+         markers) is written in by scripts/build-menu.mjs; the words sit over
+         it in white. At the bottom, on the off-white below the photo, the
+         bird draws itself (styles.css) and its line grows
          down to the central line of the treatments below. Its drawing and
          where the tip of its tail is (--tip-x, --tip-y) are written in from
          images/logo/bluebird-mark.svg by scripts/build-menu.mjs. -->
     <section class="hero" id="top" aria-labelledby="hero-title">
+      <!-- photo:hero -->
+      <span class="hero__photo photo-frame"><img class="photo-frame__img" src="images/clinic/treatment-room.jpg" alt="A treatment room at Bluebird Wellness (placeholder photo)" width="1448" height="1086" style="object-position: center 60%" fetchpriority="high" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span>
+      <!-- /photo:hero -->
       <div class="container hero__inner">
         <h1 class="hero__title" id="hero-title" data-hero>London’s doctor&#8209;led IV&nbsp;service, wherever you are.</h1>
         <p class="hero__lead" data-hero>Every drip starts with a consultation with one of our doctors.</p>
@@ -306,17 +312,16 @@
             </div>
             <div class="about__gallery" data-fade>
               <div class="gallery-band">
-                <span class="about__photo photo-frame"><img class="photo-frame__img" src="images/clinic/treatment-room.jpg" alt="A treatment room at Bluebird Wellness (placeholder photo)" width="1448" height="1086" loading="lazy" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span>
+                <span class="about__photo photo-frame"><img class="photo-frame__img" src="images/clinic/reception.jpg" alt="Reception (placeholder photo)" width="1200" height="900" loading="lazy" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span>
                 <div class="gallery-band__text">
                   <h3 class="about__gallery-title">Inside the clinic</h3>
                   <p>At Bluebird Dentists, near Westfield, London.</p>
                 </div>
               </div>
-              <ul class="about__photos about__photos--4">
+              <ul class="about__photos about__photos--3">
                 <li><span class="about__photo photo-frame"><img class="photo-frame__img" src="images/clinic/treatment-chair.jpg" alt="Relaxing in the treatment chair during a drip (placeholder photo)" width="1200" height="900" loading="lazy" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span></li>
                 <li><span class="about__photo photo-frame"><img class="photo-frame__img" src="images/clinic/drip-preparation.jpg" alt="A drip being prepared (placeholder photo)" width="1200" height="900" loading="lazy" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span></li>
                 <li><span class="about__photo photo-frame"><img class="photo-frame__img" src="images/clinic/entrance.jpg" alt="The entrance to Bluebird Dentists (placeholder photo)" width="1200" height="900" loading="lazy" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span></li>
-                <li><span class="about__photo photo-frame"><img class="photo-frame__img" src="images/clinic/reception.jpg" alt="Reception (placeholder photo)" width="1200" height="900" loading="lazy" decoding="async"><span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span></li>
               </ul>
             </div>
             <!-- /about:content -->

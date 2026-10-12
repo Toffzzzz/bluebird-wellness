@@ -595,9 +595,10 @@ function headMeta({ title, description, path = '', home = false, hide = false })
    (hidden while there are none). With showUnfinished: true, each missing
    piece shows as a highlighted gap instead.
 
-   The other photos (index.html, between <!-- photo:… --> markers): How it
-   works's two panels (howPhotos) and three steps (stepPhotos), and the
-   booking section's (bookPhoto), each shown once its file is in the repo.
+   The other photos (index.html, between <!-- photo:… --> markers): the
+   opening screen's (heroPhoto), How it works's two panels (howPhotos) and
+   three steps (stepPhotos), and the booking section's (bookPhoto), each
+   shown once its file is in the repo.
    While placeholderPhotos is true, every photo is marked "Placeholder". */
 
 // The line under "Inside the clinic", over its first photo.
@@ -605,7 +606,7 @@ const GALLERY_LINE = 'At Bluebird Dentists, near Westfield, London.';
 const ABOUT_FIRST = 'Bluebird Wellness is an IV drip clinic led by two doctors, Dr Nema and Dr Mahdi. We see patients at Bluebird Dentists near Westfield, London, and visit people at home, in hotels and at work across London.';
 // The sizes the photos should be (README.md): used for a file whose size can't be read.
 // (The first clinic photo runs across the whole screen: 2400 × 1600 px is best for it.)
-const PHOTO_SIZE = { doctor: [800, 1000], clinic: [1600, 1200], how: [1600, 1200], step: [1000, 1000], book: [1600, 1200] };
+const PHOTO_SIZE = { doctor: [800, 1000], clinic: [1600, 1200], how: [1600, 1200], step: [1000, 1000], book: [1600, 1200], hero: [2400, 1600] };
 
 // Width and height of a JPEG, PNG or WebP file, from its header.
 function imageSize(file) {
@@ -635,17 +636,20 @@ const photoGap = (cls, file, size) => (SHOW_UNFINISHED ? `<span class="${cls} ph
 // as CSS object-position, e.g. 'center 30%' (across, then down).
 const FOCUS = /^(?:(?:left|center|right|top|bottom|\d{1,3}%)\s*){1,2}$/;
 const focusOK = (focus) => !text(focus) || FOCUS.test(text(focus));
-function photoHTML(cls, file, alt, size, focus) {
+// first: the opening screen's photo, the first thing seen: loaded straight
+// away and before the other pictures, not lazily.
+function photoHTML(cls, file, alt, size, focus, first = false) {
   const [w, h] = imageSize(file) || size;
   const at = text(focus) && focusOK(focus) ? ` style="object-position: ${text(focus)}"` : '';
-  const img = (c, a) => `<img class="${c}" src="${esc(file)}" alt="${esc(a)}" width="${w}" height="${h}"${at} loading="lazy" decoding="async">`;
+  const load = first ? 'fetchpriority="high" decoding="async"' : 'loading="lazy" decoding="async"';
+  const img = (c, a) => `<img class="${c}" src="${esc(file)}" alt="${esc(a)}" width="${w}" height="${h}"${at} ${load}>`;
   if (!PLACEHOLDER_PHOTOS) return img(cls, alt);
   return `<span class="${cls} photo-frame">${img('photo-frame__img', `${alt} (placeholder photo)`)}<span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span>`;
 }
 // A photo from site-config.js ({ file, alt }), or (only with showUnfinished: true) a gap where it goes.
-const listedPhoto = (cls, ph, size) => {
+const listedPhoto = (cls, ph, size, first = false) => {
   const file = photoFile(ph && ph.file);
-  return file ? photoHTML(cls, file, text(ph.alt), size, ph.focus) : photoGap(cls, text(ph && ph.file), size);
+  return file ? photoHTML(cls, file, text(ph.alt), size, ph.focus, first) : photoGap(cls, text(ph && ph.file), size);
 };
 // A line of a doctor's details: shown once filled in (or, with showUnfinished: true, as a gap).
 const detailHTML = (cls, value, html, gapText) => (value || SHOW_UNFINISHED ? `<p class="${cls}">${value ? html : legalGap(gapText)}</p>` : '');
@@ -737,7 +741,10 @@ const photoSlot = (html, name, content) => {
   return html.replace(re, (m, indent, open, close) => `${indent}${open}${content ? `\n${indent}${content}` : ''}\n${indent}${close}`);
 };
 const withPhotos = (html) => {
-  let out = html;
+  // The opening screen's photo (heroPhoto): never a highlighted gap, as the
+  // opening screen without it is finished as it is.
+  const hero = photoFile(SITE.heroPhoto) ? listedPhoto('hero__photo', { file: SITE.heroPhoto, alt: SITE.heroPhotoAlt, focus: SITE.heroPhotoFocus }, PHOTO_SIZE.hero, true) : '';
+  let out = photoSlot(html, 'hero', hero);
   [0, 1].forEach((i) => { out = photoSlot(out, `how-${i + 1}`, listedPhoto('tile__photo', LISTS.howPhotos[i], PHOTO_SIZE.how)); });
   [0, 1, 2].forEach((i) => { out = photoSlot(out, `step-${i + 1}`, listedPhoto('step__photo', LISTS.stepPhotos[i], PHOTO_SIZE.step)); });
   return photoSlot(out, 'book', listedPhoto('book-panel__photo', { file: SITE.bookPhoto, alt: SITE.bookPhotoAlt, focus: SITE.bookPhotoFocus }, PHOTO_SIZE.book));
@@ -1687,11 +1694,15 @@ for (const name of LEGAL) {
   if (LISTS.howPhotos.length > 2) problems.push(`howPhotos lists ${LISTS.howPhotos.length} photos: How it works has 2 panels`);
   if (LISTS.stepPhotos.length > 3) problems.push(`stepPhotos lists ${LISTS.stepPhotos.length} photos: How it works has 3 steps`);
   if (SITE.bookPhoto && !SITE.bookPhotoAlt) problems.push(`bookPhoto (${SITE.bookPhoto}) has no bookPhotoAlt`);
+  if (SITE.heroPhoto && !SITE.heroPhotoAlt) problems.push(`heroPhoto (${SITE.heroPhoto}) has no heroPhotoAlt`);
+  if (!focusOK(SITE.heroPhotoFocus)) problems.push(`heroPhotoFocus '${SITE.heroPhotoFocus}' isn't a position like 'center 30%'`);
+  const twice = [SITE.heroPhoto, ...LISTS.clinicPhotos.map((ph) => ph && ph.file)].filter((f) => text(f)).find((f, i, all) => all.indexOf(f) !== i);
+  if (twice) problems.push(`${twice} is listed twice (heroPhoto and clinicPhotos): each photo shows once`);
   for (const key of ['clinicPhotos', 'howPhotos', 'stepPhotos']) {
     LISTS[key].forEach((ph, i) => { if (ph && !focusOK(ph.focus)) problems.push(`${key}[${i}]: focus '${text(ph.focus)}' isn't a position like 'center 30%'`); });
   }
   if (!focusOK(SITE.bookPhotoFocus)) problems.push(`bookPhotoFocus '${SITE.bookPhotoFocus}' isn't a position like 'center 30%'`);
-  const files = [...LISTS.doctors.map((d) => d.photo), ...[...LISTS.clinicPhotos, ...LISTS.howPhotos, ...LISTS.stepPhotos].map((ph) => ph && ph.file), SITE.bookPhoto].filter((f) => text(f));
+  const files = [SITE.heroPhoto, ...LISTS.doctors.map((d) => d.photo), ...[...LISTS.clinicPhotos, ...LISTS.howPhotos, ...LISTS.stepPhotos].map((ph) => ph && ph.file), SITE.bookPhoto].filter((f) => text(f));
   const shown = files.filter((f) => photoFile(f)).length;
   report(!problems.length, 'site-config.js photos (alt text)', `${shown} of ${files.length} photos in the repo (shown)${PLACEHOLDER_PHOTOS ? ', marked "Placeholder" (placeholderPhotos: true)' : ''}`, problems);
 }

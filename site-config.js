@@ -142,13 +142,24 @@ window.SITE = {
   // Any photo here, in howPhotos and stepPhotos can also have a focus: which
   // part to keep when its place crops it, e.g. focus: 'center 30%' (across,
   // then down; 'center' is the default).
+  // (The treatment room's photo opens the home page instead: heroPhoto, below.)
   clinicPhotos: [
-    { file: 'images/clinic/treatment-room.jpg', alt: 'A treatment room at Bluebird Wellness' },
+    { file: 'images/clinic/reception.jpg', alt: 'Reception' },
     { file: 'images/clinic/treatment-chair.jpg', alt: 'Relaxing in the treatment chair during a drip' },
     { file: 'images/clinic/drip-preparation.jpg', alt: 'A drip being prepared' },
     { file: 'images/clinic/entrance.jpg', alt: 'The entrance to Bluebird Dentists' },
-    { file: 'images/clinic/reception.jpg', alt: 'Reception' },
   ],
+
+  // The home page's opening screen: a photo across its upper part, behind the
+  // headline and the buttons (in white over it, on a soft ink shade), shown
+  // once its file is in the repo. The bird and its line stay on the page's
+  // off-white below it. Landscape, 2400 × 1600 px (3:2), JPEG, under 500 KB,
+  // with nothing important (and no faces) in the middle, where the words sit.
+  // Empty: the opening screen is the off-white page, as before.
+  heroPhoto: 'images/clinic/treatment-room.jpg',
+  heroPhotoAlt: 'A treatment room at Bluebird Wellness',
+  // Which part of it to keep when the screen crops it (as focus above).
+  heroPhotoFocus: 'center 60%',
 
   // How it works: a photo for each of its two panels, in order ("Visit us in
   // clinic", then "Mobile call-out"). Each shows once its file is in
