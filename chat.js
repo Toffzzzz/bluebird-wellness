@@ -424,8 +424,9 @@
      while a menu or dialog is open (html.is-locked), and whenever its box
      (plus 8px) would cover anything: text, links, buttons, fields, pictures,
      line drawings, cards, tiles, prices, badges, any panel with a
-     background… but not the page's or a section's own background, or the
-     central line. Checked after each resize and change (once a frame), and
+     background… but not the page's or a section's own background, the
+     central line, or a photo behind words (the gallery's first, the
+     booking panel's: their words still count). Checked after each resize and change (once a frame), and
      while the page scrolls at most every SCROLL_CHECK ms, then once more as
      soon as it stops: checking every frame made scrolling stutter. */
   const root = document.documentElement;
@@ -454,6 +455,8 @@
   const isContent = (el, box) => {
     if (fab.contains(el) || el === document.body || el === root) return false;
     if (el.closest('.tx-line__svg')) return false; // the central line
+    // A photo behind words (the gallery's first, the booking panel's): a backdrop, like a section's background.
+    if (el.closest('.gallery-band > .about__photo, .book-panel > .book-panel__photo')) return false;
     if (el.closest(BOX)) return true;
     const cs = getComputedStyle(el);
     // A panel with its own background (narrower than the screen: not a section's).

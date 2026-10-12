@@ -384,18 +384,16 @@ const priceHTML = (label, path) => `<p class="price" data-verbatim="${esc(path)}
 const bookHTML = (name) =>
   `<a class="btn btn--primary" href="${esc(BOOK_URL)}" data-book data-book-item="${esc(name)}">Book<span class="visually-hidden"> ${esc(name)}</span></a>`;
 
-// "Learn more →": a text link with an arrow (the one solid button is Book).
-const TEXT_ARROW = '<svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
+// "Learn more": a text link, underlined (the one solid button is Book).
 const learnMoreHTML = (m) =>
-  `<a class="text-link" href="${esc(m.href)}"><span>Learn more</span><span class="visually-hidden"> about ${esc(m.name)}</span>${TEXT_ARROW}</a>`;
+  `<a class="text-link" href="${esc(m.href)}"><span>Learn more</span><span class="visually-hidden"> about ${esc(m.name)}</span></a>`;
 
 // A drip's Pro version, if it has one.
 const proOf = (drip) => (drip && drip.proVariantSlug ? dripBySlug(drip.proVariantSlug) : null);
 
 // "Upgrade to Pro" beside a standard drip's price, linking to its Pro version.
-const UPGRADE_ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg>';
 const proChipHTML = (pro, extra = '') => (pro
-  ? `<a class="pro-chip${extra}" href="treatments/${esc(pro.slug)}/" aria-label="Upgrade to Pro: ${esc(pro.name)}, ${esc(pro.priceLabel)}">Upgrade to Pro${UPGRADE_ARROW}</a>`
+  ? `<a class="pro-chip${extra}" href="treatments/${esc(pro.slug)}/" aria-label="Upgrade to Pro: ${esc(pro.name)}, ${esc(pro.priceLabel)}">Upgrade to Pro</a>`
   : '');
 
 // The price, with "Upgrade to Pro" beside it when the drip has a Pro version.
@@ -415,7 +413,6 @@ function textHTML(t, titleId) {
   const m = menuItem(t);
   const long = m.name.length > LONG_TITLE ? ' treatment-title--long' : '';
   return `
-    <p class="eyebrow">IV therapy</p>
     <h2 class="treatment-title${long}" id="${titleId}" data-verbatim="${esc(m.namePath)}">${esc(m.name)}</h2>
     ${badgeHTML(t.badge)}
     <div class="treatment-actions">${bookHTML(m.name)}${learnMoreHTML(m)}${priceRowHTML(m.drip, m.price, m.pricePath)}</div>`;
@@ -451,6 +448,12 @@ function cardMediaHTML(v, slug) {
 // whole card links to the drip's page: its title's link covers the card, and
 // the "Upgrade to Pro" link sits above that.
 const STANDARD = (drip) => !drip.baseVariantSlug;
+// The drips in firstTreatments (site-config.js: the main ones) come first,
+// then the rest in menu order (as in the Treatments menu).
+function cardsInOrder(drips) {
+  const first = window.SITE && Array.isArray(window.SITE.firstTreatments) ? window.SITE.firstTreatments.map((s) => String(s).trim()) : [];
+  return [...first.map((slug) => drips.find((d) => d.slug === slug)).filter(Boolean), ...drips.filter((d) => !first.includes(d.slug))];
+}
 function cardHTML(drip) {
   const v = MENU_VISUALS[drip.slug] || {};
   const at = `drips.${drip.slug}`;
@@ -462,7 +465,7 @@ function cardHTML(drip) {
       ${proChipHTML(proOf(drip), ' card__upgrade')}
       <div class="card__action">
         ${priceHTML(drip.priceLabel, `${at}.priceLabel`)}
-        <span class="text-link card__more" aria-hidden="true"><span>Learn more</span>${TEXT_ARROW}</span>
+        <span class="text-link card__more" aria-hidden="true"><span>Learn more</span></span>
       </div>
     </article>`;
 }
@@ -527,7 +530,7 @@ function render() {
   // The featured treatments: the side list of names and a section each.
   if (stageRoot && FEATURED.length) stageRoot.innerHTML = treatmentsHTML(FEATURED);
   if (gridRoot) {
-    gridRoot.innerHTML = MENU.drips.filter(STANDARD).map(cardHTML).join('');
+    gridRoot.innerHTML = cardsInOrder(MENU.drips.filter(STANDARD)).map(cardHTML).join('');
     // The cards' line drawings draw themselves as they come into view (site.js).
     if (window.SiteDraw) window.SiteDraw.watch(gridRoot);
   }
@@ -1546,42 +1549,12 @@ function initStart() {
   ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach((e) => window.addEventListener(e, stop, { once: true, passive: true }));
 }
 
-// Each block below the hero (headings, cards, tiles) rises gently as it
-// scrolls into view, once: CSS transitions started by an
-// IntersectionObserver (the hero's own entrance is pure CSS). On phones the
-// rise is shorter and the cards are simply there, ready to scan.
-function initReveals() {
-  if (reduceMotion() || !('IntersectionObserver' in window)) return;
-  const phone = window.matchMedia('(max-width: 819.98px)').matches;
-  const targets = [...document.querySelectorAll(phone ? '[data-fade]' : '[data-fade], [data-card]')];
-  const stagger = phone ? 30 : 70;
-  const io = new IntersectionObserver((entries) => {
-    let k = 0;
-    for (const e of entries) {
-      if (!e.isIntersecting) continue;
-      const el = e.target;
-      el.style.transitionDelay = `${Math.min(k++, 6) * stagger}ms`;
-      el.classList.add('is-in');
-      io.unobserve(el);
-      // Once it has risen, hovering (a card's lift) responds straight away.
-      el.addEventListener('transitionend', () => { el.style.transitionDelay = ''; }, { once: true });
-    }
-  }, { rootMargin: '0px 0px -12% 0px' });
-  targets.forEach((el) => { el.classList.add('reveal'); io.observe(el); });
-  // Leaving the page, and back on it from the browser's memory: they rise
-  // into view afresh.
-  const afresh = () => targets.forEach((el) => { el.classList.remove('is-in'); el.style.transitionDelay = ''; io.unobserve(el); io.observe(el); });
-  window.addEventListener('pagehide', afresh);
-  window.addEventListener('pageshow', (event) => { if (event.persisted) afresh(); });
-}
-
 /* ---------- Start ---------- */
 
 render();
 initHeader();
 initTreatments(!reduceMotion());
 initAnchors();
-initReveals();
 
 const yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();

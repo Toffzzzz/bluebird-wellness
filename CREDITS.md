@@ -4,7 +4,7 @@ Where everything on the website comes from, and the terms it's used under.
 
 ## Font
 
-- **Inter**, by Rasmus Andersson and the Inter Project Authors, version 4.0. Licensed under the SIL Open Font License 1.1; the licence is in `fonts/LICENSE.txt`, which must stay alongside the font files. The files in `fonts/` are the official, unmodified `Inter-Regular`, `Inter-Medium` and `Inter-SemiBold` web fonts from the Inter release (https://github.com/rsms/inter). They're served from the website itself.
+- **Source Sans 3**, by Paul D. Hunt for Adobe. Licensed under the SIL Open Font License 1.1, with Reserved Font Name 'Source'; the licence is in `fonts/SourceSans3-LICENSE.md`, which must stay alongside the font file. `fonts/SourceSans3VF-Upright.ttf.woff2` is the official, unmodified variable web font from Adobe's release (https://github.com/adobe-fonts/source-sans), served from the website itself. (Because of the Reserved Font Name, it must not be subset or otherwise modified under its own name.)
 
 ## Logo
 
@@ -14,6 +14,7 @@ Where everything on the website comes from, and the terms it's used under.
 
 - The treatment pictures and the layer images the animations are made from (`images/`, including `images/treatments/`) were generated with OpenAI's ChatGPT image generation from prompts written for this website. Under OpenAI's terms of use, OpenAI assigns its rights in the output to the user who generated it. They show no real people or brands.
 - The treatment videos in `images/treatment-videos/` were rendered from those pictures by the site's own code (`scripts/render-videos/`).
+- The photos in `images/team/`, `images/clinic/`, `images/how/`, `images/steps/` and `images/book/` are placeholders, generated with OpenAI's ChatGPT image generation from prompts written for this website (cropped, given a light film grade and compressed for the site). Under OpenAI's terms of use, OpenAI assigns its rights in the output to the user who generated it. They show invented people, not the clinic's doctors or patients, nor the clinic itself, and each is marked "Placeholder" on the site. They must be replaced by real photos before launch (see `COMPLIANCE.md`).
 
 ## Line drawings
 

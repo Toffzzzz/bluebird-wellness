@@ -52,6 +52,13 @@ window.SITE = {
   // generator after changing it (it checks the ids).
   featured: ['iron', 'skin', 'hair', 'hydration', 'muscle-recovery', 'signature'],
 
+  // The drips shown first under "All treatments" and in the Treatments menu,
+  // in this order (the main ones); the rest follow in the menu's order. Use
+  // the name in each drip's page address (treatments/iron-infusion/ →
+  // 'iron-infusion'), standard drips only. Run the generator after changing
+  // it (it checks the names). Leave it empty ([]) for the menu's own order.
+  firstTreatments: ['iron-infusion'],
+
   // The site's address, ending in /. Used for link previews (when the site is
   // shared on WhatsApp, iMessage, social media), the 404 page and, once
   // launched, the sitemap for search engines.
@@ -60,7 +67,8 @@ window.SITE = {
   // false while the site is a preview: every page asks search engines not to
   // list it. Set to true at launch (after the compliance review, with the
   // business details filled in), then run the generator: it lifts that and
-  // writes robots.txt and sitemap.xml.
+  // writes robots.txt and sitemap.xml. It refuses true while placeholderPhotos
+  // (under About us, below) is true: every photo must be a real one by then.
   launched: false,
 
   // false (normal): anything still unfinished is hidden. true: show the gaps highlighted, to see what's missing.
@@ -109,8 +117,11 @@ window.SITE = {
   // true: each policy page says it is a draft awaiting the clinic's details and a compliance review.
   legalDraft: true,
 
-  /* ---------- About us: the clinic's words, the doctors, the photos ----------
-     Written into the home page by the generator: run it after changing these. */
+  /* ---------- About us (the clinic's words, the doctors), and the photos ----------
+     The photos are About us's (the doctors, "Inside the clinic"), How it
+     works's and the booking section's. All of it is written into the home
+     page by the generator: run it after changing these, or after adding,
+     replacing or removing a photo. */
 
   // About us: the clinic's own paragraphs, each a string. Empty: only the first (finished) paragraph shows.
   aboutParagraphs: [],
@@ -124,15 +135,53 @@ window.SITE = {
     { name: 'Dr Mahdi', role: '', intro: '', gmc: '', photo: 'images/team/dr-mahdi.jpg', photoAlt: 'Dr Mahdi' },
   ],
 
-  // Photos of the clinic: each shows once its file is in images/clinic/. None there yet: the gallery is hidden.
-  // Landscape, 4:3, 1600 × 1200 px, JPEG, under 400 KB each. Real photos only.
+  // Photos of the clinic: each shows once its file is in images/clinic/ (the gallery is hidden while there are none).
+  // Landscape, 4:3, 1600 × 1200 px, JPEG, under 400 KB each. The first one runs
+  // across the whole screen, with "Inside the clinic" over its lower part: for
+  // it, 2400 × 1600 px (3:2), under 600 KB, with nothing important at the bottom.
+  // Any photo here, in howPhotos and stepPhotos can also have a focus: which
+  // part to keep when its place crops it, e.g. focus: 'center 30%' (across,
+  // then down; 'center' is the default).
   clinicPhotos: [
     { file: 'images/clinic/treatment-room.jpg', alt: 'A treatment room at Bluebird Wellness' },
-    { file: 'images/clinic/treatment-chair.jpg', alt: 'The treatment chair' },
+    { file: 'images/clinic/treatment-chair.jpg', alt: 'Relaxing in the treatment chair during a drip' },
     { file: 'images/clinic/drip-preparation.jpg', alt: 'A drip being prepared' },
     { file: 'images/clinic/entrance.jpg', alt: 'The entrance to Bluebird Dentists' },
     { file: 'images/clinic/reception.jpg', alt: 'Reception' },
   ],
+
+  // How it works: a photo for each of its two panels, in order ("Visit us in
+  // clinic", then "Mobile call-out"). Each shows once its file is in
+  // images/how/, at the top of its panel, in place of the panel's small icon.
+  // Landscape, 4:3, 1600 × 1200 px, JPEG, under 400 KB each.
+  howPhotos: [
+    { file: 'images/how/in-clinic.jpg', alt: 'A clinician checking a patient\'s drip in a treatment room' },
+    { file: 'images/how/call-out.jpg', alt: 'A clinician setting up a drip for a patient on her sofa at home' },
+  ],
+
+  // How it works: a photo for each step, in order (Book, Consultation, Your
+  // drip). Each shows once its file is in images/steps/: above its step on
+  // laptops, beside it on phones. Square, 1000 × 1000 px, JPEG, under 250 KB each.
+  stepPhotos: [
+    { file: 'images/steps/book.jpg', alt: 'Booking an appointment on a phone' },
+    { file: 'images/steps/consultation.jpg', alt: 'A doctor and a patient talking at a small table' },
+    { file: 'images/steps/your-drip.jpg', alt: 'A patient resting with headphones on while his drip runs' },
+  ],
+
+  // Book your appointment: a photo beside the booking panel (above it on
+  // phones), shown once its file is in images/book/. Landscape, 4:3,
+  // 1600 × 1200 px, JPEG, under 400 KB.
+  bookPhoto: 'images/book/welcome.jpg',
+  bookPhotoAlt: 'A clinician welcoming a patient at the clinic door',
+  // Which part of it to keep when the panel crops it (as focus above).
+  bookPhotoFocus: 'center 30%',
+
+  // true while any of the photos above is a stand-in (such as an
+  // AI-generated picture) rather than a real photo of the doctors and the
+  // clinic: each photo is marked "Placeholder" in its corner (and in its alt
+  // text), and the generator refuses launched: true. Set it to false once
+  // every photo is a real one, then run the generator.
+  placeholderPhotos: true,
 
   // The Care Quality Commission. Once the clinic is rated, the law requires
   // the rating on the website: fill in the rating (e.g. 'Good'), the date of

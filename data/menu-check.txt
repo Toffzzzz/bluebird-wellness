@@ -26,7 +26,8 @@ PASS  accessibility/ (policy)                      2 gaps to fill in: hidden unt
 PASS  complaints/ (policy)                         7 gaps to fill in: hidden until then (a "being finalised" notice)
 PASS  faq/ (policy)                                7 gaps to fill in: hidden until then (a "being finalised" notice)
 PASS  data/pages.js (policy pages shown)           cookies
-PASS  site-config.js photos (alt text)             0 of 7 photos in the repo (shown)
+PASS  site-config.js photos (alt text)             13 of 13 photos in the repo (shown), marked "Placeholder" (placeholderPhotos: true)
+PASS  index.html (as the generator writes it)      up to date
 PASS  studies/ (all studies)                       6 studies
 PASS  studies/iron-deficiency-in-the-uk/           9 sources
 PASS  studies/vitamin-d-in-the-uk/                 6 sources

@@ -100,9 +100,9 @@ const MENU = JSON.parse(read('data/drips.json'));
 
 // The booking link and contact details (site-config.js, shared with script.js).
 // FEATURED_IDS: its featured list (the treatments the home page's line draws).
-// LISTS: its lists (aboutParagraphs, doctors, clinicPhotos), as they are.
+// LISTS: its lists (aboutParagraphs, doctors and the photos), as they are.
 let FEATURED_IDS = [];
-const LIST_KEYS = ['featured', 'aboutParagraphs', 'doctors', 'clinicPhotos'];
+const LIST_KEYS = ['featured', 'firstTreatments', 'aboutParagraphs', 'doctors', 'clinicPhotos', 'howPhotos', 'stepPhotos'];
 const LISTS = {};
 const SITE = (() => {
   const window = {};
@@ -123,6 +123,11 @@ const SITE = (() => {
 const isOn = (key) => SITE[key] === 'true';
 // true: everything unfinished shows as a highlighted gap; false: it's hidden.
 const SHOW_UNFINISHED = isOn('showUnfinished');
+// true while the photos are stand-ins (such as AI-generated pictures), not
+// yet real photos of the doctors and the clinic: each is marked
+// "Placeholder", and the site can't be launched.
+const PLACEHOLDER_PHOTOS = isOn('placeholderPhotos');
+if (isOn('launched') && PLACEHOLDER_PHOTOS) fail('launched can\'t be true while placeholderPhotos is true. Replace every placeholder photo with a real photo of the doctors and the clinic, set placeholderPhotos: false in site-config.js, then launch.');
 const SITE_URL = SITE.siteUrl ? SITE.siteUrl.replace(/\/?$/, '/') : '';
 if (SITE_URL && !/^https?:\/\//.test(SITE_URL)) fail('siteUrl in site-config.js must start with https://.');
 
@@ -243,8 +248,6 @@ const esc = (value) =>
 // data-verbatim: the path of the string in data/drips.json.
 const vb = (path) => ` data-verbatim="${esc(path)}"`;
 
-// "Learn more →" and the other secondary actions: text links with this arrow.
-const TEXT_ARROW = '<svg class="text-link__arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>';
 
 // "\n\n" in a menu string is a paragraph break.
 const paras = (text, indent = '') => String(text).split('\n\n').map((p) => `${indent}<p>${esc(p)}</p>`).join('\n');
@@ -344,7 +347,8 @@ function businessLine() {
   if (SITE.vatNumber) parts.push(`VAT number ${esc(SITE.vatNumber)}`);
   if (SITE.icoNumber) parts.push(`ICO registration ${esc(SITE.icoNumber)}`);
   if (SITE.cqcNumber) parts.push(`Care Quality Commission ID ${esc(SITE.cqcNumber)}`);
-  return parts.join(' · ');
+  // Sentences, not a string of labels joined by dots.
+  return parts.length ? `${parts.join('. ')}.` : '';
 }
 const withSite = (html) => html
   .replace(/<p class="contact-item__note" data-callout-fee[^>]*>[\s\S]*?<\/p>/g, () =>
@@ -509,8 +513,23 @@ const ICON_FILE = 'images/icons/treatments.svg';
 const iconHTML = (art) => (art ? `<svg class="menu-icon" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><use href="${ICON_FILE}#art-${esc(art)}"/></svg>` : '<span class="menu-icon menu-icon--none" aria-hidden="true"></span>');
 // Every standard drip, like the cards: a Pro version is reached from its
 // standard version's page and card ("Upgrade to Pro").
+// The standard drips (not the Pro versions), the ones in firstTreatments
+// (site-config.js) first, then the rest in the menu's order. (script.js puts
+// the cards under All treatments in the same order.)
+function standardDripsInOrder() {
+  const standard = DRIPS.filter((d) => !d.baseVariantSlug);
+  const first = LISTS.firstTreatments.map((slug) => String(slug).trim());
+  for (const slug of first) {
+    const drip = DRIPS.find((d) => d.slug === slug);
+    if (!drip) fail(`firstTreatments in site-config.js lists "${slug}", which isn't a drip on the menu. Use one of: ${standard.map((d) => d.slug).join(', ')}.`);
+    else if (drip.baseVariantSlug) fail(`firstTreatments in site-config.js lists "${slug}", a Pro version: list standard drips only (its Pro version is reached from its card).`);
+  }
+  if (new Set(first).size !== first.length) fail('firstTreatments in site-config.js lists a drip twice.');
+  return [...first.map((slug) => standard.find((d) => d.slug === slug)).filter(Boolean), ...standard.filter((d) => !first.includes(d.slug))];
+}
+
 function treatmentsMenuHTML() {
-  return `<ul class="menu-list menu-list--icons">${DRIPS.filter((d) => !d.baseVariantSlug).map((d) => {
+  return `<ul class="menu-list menu-list--icons">${standardDripsInOrder().map((d) => {
     const art = USE_LINES ? VISUALS[d.slug].art : null;
     return `
               <li><a class="menu-item" href="treatments/${esc(d.slug)}/">${iconHTML(art)}<span class="menu-item__text"><span class="menu-item__name"><span${vb(`drips.${d.slug}.name`)}>${esc(d.name)}</span></span><span class="menu-item__price"${vb(`drips.${d.slug}.priceLabel`)}>${esc(d.priceLabel)}</span></span></a></li>`;
@@ -526,7 +545,7 @@ const studyCardHTML = (st, up, h) => `
           <li class="study-card">
             <h${h} class="study-card__title"><a class="study-card__link" href="${up}studies/${esc(st.slug)}/">${esc(st.title)}</a></h${h}>
             <p class="study-card__summary">${esc(st.summary)}</p>
-            <p class="study-card__more text-link" aria-hidden="true"><span>Read the summary</span>${TEXT_ARROW}</p>
+            <p class="study-card__more text-link" aria-hidden="true"><span>Read the summary</span></p>
           </li>`;
 // h: the cards' heading level (3 under a section's h2; 2 on the studies page).
 const studyCardsHTML = (list, up, h = 3) => `<ul class="study-grid">${list.map((st) => studyCardHTML(st, up, h)).join('')}
@@ -574,11 +593,19 @@ function headMeta({ title, description, path = '', home = false, hide = false })
    only when filled in; the Care Quality Commission line once rated; and
    "Inside the clinic", the clinic's photos whose files are in the repo
    (hidden while there are none). With showUnfinished: true, each missing
-   piece shows as a highlighted gap instead. */
+   piece shows as a highlighted gap instead.
 
+   The other photos (index.html, between <!-- photo:… --> markers): How it
+   works's two panels (howPhotos) and three steps (stepPhotos), and the
+   booking section's (bookPhoto), each shown once its file is in the repo.
+   While placeholderPhotos is true, every photo is marked "Placeholder". */
+
+// The line under "Inside the clinic", over its first photo.
+const GALLERY_LINE = 'At Bluebird Dentists, near Westfield, London.';
 const ABOUT_FIRST = 'Bluebird Wellness is an IV drip clinic led by two doctors, Dr Nema and Dr Mahdi. We see patients at Bluebird Dentists near Westfield, London, and visit people at home, in hotels and at work across London.';
 // The sizes the photos should be (README.md): used for a file whose size can't be read.
-const PHOTO_SIZE = { doctor: [800, 1000], clinic: [1600, 1200] };
+// (The first clinic photo runs across the whole screen: 2400 × 1600 px is best for it.)
+const PHOTO_SIZE = { doctor: [800, 1000], clinic: [1600, 1200], how: [1600, 1200], step: [1000, 1000], book: [1600, 1200] };
 
 // Width and height of a JPEG, PNG or WebP file, from its header.
 function imageSize(file) {
@@ -601,6 +628,25 @@ const text = (value) => String(value ?? '').trim();
 // A photo listed in site-config.js: shown once its file is in the repo.
 const photoFile = (file) => text(file) && existsSync(at(text(file))) ? text(file) : '';
 const photoGap = (cls, file, size) => (SHOW_UNFINISHED ? `<span class="${cls} photo-gap"><span>[Photo: ${esc(file || 'not listed yet')}, ${size[0]} × ${size[1]} px]</span></span>` : '');
+// A photo whose file is in the repo, with its width and height, loaded lazily.
+// While placeholderPhotos is true it sits in a frame marked "Placeholder" (and
+// its alt text says so); cls places it either way.
+// focus (optional): which part of the photo to keep when its place crops it,
+// as CSS object-position, e.g. 'center 30%' (across, then down).
+const FOCUS = /^(?:(?:left|center|right|top|bottom|\d{1,3}%)\s*){1,2}$/;
+const focusOK = (focus) => !text(focus) || FOCUS.test(text(focus));
+function photoHTML(cls, file, alt, size, focus) {
+  const [w, h] = imageSize(file) || size;
+  const at = text(focus) && focusOK(focus) ? ` style="object-position: ${text(focus)}"` : '';
+  const img = (c, a) => `<img class="${c}" src="${esc(file)}" alt="${esc(a)}" width="${w}" height="${h}"${at} loading="lazy" decoding="async">`;
+  if (!PLACEHOLDER_PHOTOS) return img(cls, alt);
+  return `<span class="${cls} photo-frame">${img('photo-frame__img', `${alt} (placeholder photo)`)}<span class="photo-frame__tag" aria-hidden="true">Placeholder</span></span>`;
+}
+// A photo from site-config.js ({ file, alt }), or (only with showUnfinished: true) a gap where it goes.
+const listedPhoto = (cls, ph, size) => {
+  const file = photoFile(ph && ph.file);
+  return file ? photoHTML(cls, file, text(ph.alt), size, ph.focus) : photoGap(cls, text(ph && ph.file), size);
+};
 // A line of a doctor's details: shown once filled in (or, with showUnfinished: true, as a gap).
 const detailHTML = (cls, value, html, gapText) => (value || SHOW_UNFINISHED ? `<p class="${cls}">${value ? html : legalGap(gapText)}</p>` : '');
 
@@ -611,10 +657,8 @@ function doctorHTML(d) {
   const gmc = text(d.gmc);
   const file = photoFile(d.photo);
   let photo = '';
-  if (file) {
-    const [w, h] = imageSize(file) || PHOTO_SIZE.doctor;
-    photo = `<img class="doctor__photo" src="${esc(file)}" alt="${esc(text(d.photoAlt))}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
-  } else photo = photoGap('doctor__photo', text(d.photo), PHOTO_SIZE.doctor);
+  if (file) photo = photoHTML('doctor__photo', file, text(d.photoAlt), PHOTO_SIZE.doctor);
+  else photo = photoGap('doctor__photo', text(d.photo), PHOTO_SIZE.doctor);
   const lines = [
     detailHTML('doctor__role', role, esc(role), 'Role and area of medicine'),
     detailHTML('doctor__gmc', gmc, `GMC number: <a href="https://www.gmc-uk.org/registrants/${esc(gmc)}">${esc(gmc)}</a>`, 'GMC number'),
@@ -642,19 +686,28 @@ function cqcHTML() {
 }
 
 function galleryHTML() {
-  const items = LISTS.clinicPhotos.map((ph) => {
-    const file = photoFile(ph.file);
-    if (!file) return photoGap('about__photo', text(ph.file), PHOTO_SIZE.clinic);
-    const [w, h] = imageSize(file) || PHOTO_SIZE.clinic;
-    return `<img class="about__photo" src="${esc(file)}" alt="${esc(text(ph.alt))}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
-  }).filter(Boolean);
-  if (!items.length) return '';
-  return `
-            <div class="about__gallery" data-fade>
-              <h3 class="about__gallery-title">Inside the clinic</h3>
-              <ul class="about__photos">${items.map((item) => `
+  // The first photo in the repo opens the gallery across the whole screen,
+  // with the title over it; the others (and, with showUnfinished: true, the
+  // gaps) follow below it (about__photos--<how many>, up to 4 across).
+  const first = LISTS.clinicPhotos.find((ph) => photoFile(ph.file));
+  const rest = LISTS.clinicPhotos.filter((ph) => ph !== first).map((ph) => listedPhoto('about__photo', ph, PHOTO_SIZE.clinic)).filter(Boolean);
+  if (!first && !rest.length) return '';
+  const title = '<h3 class="about__gallery-title">Inside the clinic</h3>';
+  const band = first ? `
+              <div class="gallery-band">
+                ${listedPhoto('about__photo', first, PHOTO_SIZE.clinic)}
+                <div class="gallery-band__text">
+                  ${title}
+                  <p>${esc(GALLERY_LINE)}</p>
+                </div>
+              </div>` : `
+              ${title}`;
+  const list = rest.length ? `
+              <ul class="about__photos about__photos--${rest.length > 4 ? 'many' : rest.length}">${rest.map((item) => `
                 <li>${item}</li>`).join('')}
-              </ul>
+              </ul>` : '';
+  return `
+            <div class="about__gallery" data-fade>${band}${list}
             </div>`;
 }
 
@@ -676,6 +729,20 @@ const region = (html, name, content) => {
   if (!re.test(html)) fail(`index.html has no <!-- ${name} --> … <!-- /${name} --> markers.`);
   return html.replace(re, (m, open, close) => `${open}\n            ${content}\n            ${close}`);
 };
+// A photo's place in index.html, between <!-- photo:name --> markers (at
+// the markers' own indent): the photo, or nothing.
+const photoSlot = (html, name, content) => {
+  const re = new RegExp(`([ \\t]*)(<!-- photo:${name} -->)[\\s\\S]*?(<!-- /photo:${name} -->)`);
+  if (!re.test(html)) fail(`index.html has no <!-- photo:${name} --> … <!-- /photo:${name} --> markers.`);
+  return html.replace(re, (m, indent, open, close) => `${indent}${open}${content ? `\n${indent}${content}` : ''}\n${indent}${close}`);
+};
+const withPhotos = (html) => {
+  let out = html;
+  [0, 1].forEach((i) => { out = photoSlot(out, `how-${i + 1}`, listedPhoto('tile__photo', LISTS.howPhotos[i], PHOTO_SIZE.how)); });
+  [0, 1, 2].forEach((i) => { out = photoSlot(out, `step-${i + 1}`, listedPhoto('step__photo', LISTS.stepPhotos[i], PHOTO_SIZE.step)); });
+  return photoSlot(out, 'book', listedPhoto('book-panel__photo', { file: SITE.bookPhoto, alt: SITE.bookPhotoAlt, focus: SITE.bookPhotoFocus }, PHOTO_SIZE.book));
+};
+
 const withContent = (html) => {
   let out = region(html, 'menu:treatments', treatmentsMenuHTML());
   out = region(out, 'menu:studies', studiesMenuHTML());
@@ -686,7 +753,7 @@ const withContent = (html) => {
     home: true,
   })}\n  ${close}`);
   out = region(out, 'about:content', aboutHTML());
-  return out;
+  return withPhotos(out);
 };
 
 /* ---------- Header and footer: the home page's, pointed back at it ---------- */
@@ -789,7 +856,7 @@ ${adds.map((a) => `              <li${vb(`${q}.ingredients.${a.i}`)}>${esc(a.lin
             <p class="eyebrow">Upgrade to Pro</p>
             <h2 class="upgrade__title" id="upgrade-title"><span${vb(`${q}.name`)}>${esc(pro.name)}</span> ${PRO_BADGE}</h2>
             <p class="upgrade__price"${vb(`${q}.priceLabel`)}>${esc(pro.priceLabel)}</p>${list}
-            <a class="text-link" href="../${esc(pro.slug)}/"><span>Learn more</span><span class="visually-hidden"> about ${esc(pro.name)}</span>${TEXT_ARROW}</a>
+            <a class="text-link" href="../${esc(pro.slug)}/"><span>Learn more</span><span class="visually-hidden"> about ${esc(pro.name)}</span></a>
           </aside>`;
 }
 
@@ -1162,7 +1229,7 @@ ${paras(item.text, '                  ')}
 // The fonts every page preloads, and the scripts every page other than the
 // home page loads (data/pages.js before booking.js and chat.js, for their
 // privacy policy links).
-const preloads = (up) => `<link rel="preload" href="${up}fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+const preloads = (up) => `<link rel="preload" href="${up}fonts/SourceSans3VF-Upright.ttf.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="${up}fonts/Newsreader-Variable.woff2" as="font" type="font/woff2" crossorigin>`;
 const scripts = (up) => ['site-config.js', 'data/pages.js', 'data/book-list.js', 'site.js', 'treatment.js', 'booking.js', 'chat.js']
   .map((f) => `<script src="${up}${f}" defer></script>`).join('\n  ');
@@ -1200,7 +1267,7 @@ ${body.replace(/^(<p class="legal-lead">[\s\S]*?<\/p>)/, `$1${toc}`)}
     <article class="container legal legal--soon">
       <h1 class="drip-title">${esc(page.title)}</h1>
       <p class="legal-lead">This page is being finalised and will be here soon.</p>
-      <p class="not-found__links"><a class="text-link" href="../"><span>Go to the home page</span>${TEXT_ARROW}</a></p>
+      <p class="not-found__links"><a class="text-link" href="../"><span>Go to the home page</span></a></p>
     </article>`;
   return `<!DOCTYPE html>
 <!-- ${GENERATED} (from content/legal/${name}.html${shown ? '' : '; being finalised: shown in full once its gaps are filled in'}) -->
@@ -1338,7 +1405,7 @@ function notFoundHTML() {
     main: `    <div class="container legal">
       <h1 class="drip-title">Page not found</h1>
       <p class="legal-lead">Sorry, there's no page at this address. It may have moved, or the link may be mistyped.</p>
-      <p class="not-found__links"><a class="btn btn--primary" href="./">Go to the home page</a> <a class="text-link" href="./#treatments"><span>See all treatments</span>${TEXT_ARROW}</a></p>
+      <p class="not-found__links"><a class="btn btn--primary" href="./">Go to the home page</a> <a class="text-link" href="./#treatments"><span>See all treatments</span></a></p>
     </div>`,
   }).replace('<head>\n', `<head>\n  <base href="${esc(base)}">\n`);
 }
@@ -1611,12 +1678,29 @@ for (const name of LEGAL) {
     if (!text(d.name)) problems.push(`doctors[${i}] has no name`);
     if (text(d.photo) && !text(d.photoAlt)) problems.push(`doctors[${i}] (${text(d.name) || 'no name'}): the photo ${text(d.photo)} has no photoAlt`);
   });
-  LISTS.clinicPhotos.forEach((ph, i) => {
-    if (!text(ph.file)) problems.push(`clinicPhotos[${i}] has no file`);
-    if (!text(ph.alt)) problems.push(`clinicPhotos[${i}] (${text(ph.file) || 'no file'}) has no alt`);
-  });
-  const shown = [...LISTS.doctors.map((d) => photoFile(d.photo)), ...LISTS.clinicPhotos.map((ph) => photoFile(ph.file))].filter(Boolean).length;
-  report(!problems.length, 'site-config.js photos (alt text)', `${shown} of ${LISTS.doctors.length + LISTS.clinicPhotos.length} photos in the repo (shown)`, problems);
+  for (const key of ['clinicPhotos', 'howPhotos', 'stepPhotos']) {
+    LISTS[key].forEach((ph, i) => {
+      if (!text(ph && ph.file)) problems.push(`${key}[${i}] has no file`);
+      else if (!text(ph.alt)) problems.push(`${key}[${i}] (${text(ph.file)}) has no alt`);
+    });
+  }
+  if (LISTS.howPhotos.length > 2) problems.push(`howPhotos lists ${LISTS.howPhotos.length} photos: How it works has 2 panels`);
+  if (LISTS.stepPhotos.length > 3) problems.push(`stepPhotos lists ${LISTS.stepPhotos.length} photos: How it works has 3 steps`);
+  if (SITE.bookPhoto && !SITE.bookPhotoAlt) problems.push(`bookPhoto (${SITE.bookPhoto}) has no bookPhotoAlt`);
+  for (const key of ['clinicPhotos', 'howPhotos', 'stepPhotos']) {
+    LISTS[key].forEach((ph, i) => { if (ph && !focusOK(ph.focus)) problems.push(`${key}[${i}]: focus '${text(ph.focus)}' isn't a position like 'center 30%'`); });
+  }
+  if (!focusOK(SITE.bookPhotoFocus)) problems.push(`bookPhotoFocus '${SITE.bookPhotoFocus}' isn't a position like 'center 30%'`);
+  const files = [...LISTS.doctors.map((d) => d.photo), ...[...LISTS.clinicPhotos, ...LISTS.howPhotos, ...LISTS.stepPhotos].map((ph) => ph && ph.file), SITE.bookPhoto].filter((f) => text(f));
+  const shown = files.filter((f) => photoFile(f)).length;
+  report(!problems.length, 'site-config.js photos (alt text)', `${shown} of ${files.length} photos in the repo (shown)${PLACEHOLDER_PHOTOS ? ', marked "Placeholder" (placeholderPhotos: true)' : ''}`, problems);
+}
+
+// index.html as the generator writes it (its menus, About us, the photos, the
+// Book and contact links): up to date with site-config.js and the photos.
+{
+  const problems = read('index.html') === INDEX ? [] : ['out of date: run node scripts/build-menu.mjs'];
+  report(!problems.length, 'index.html (as the generator writes it)', 'up to date', problems);
 }
 
 // The studies: up to date, every citation points at a source, every source is cited.
